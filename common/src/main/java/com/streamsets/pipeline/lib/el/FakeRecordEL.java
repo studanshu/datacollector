@@ -51,7 +51,7 @@ public class FakeRecordEL {
     description = "Returns the value of the field represented by path 'fieldPath' for the record in context or "
       + "the default value if the field is not present")
   public static String getValueOrDefault(
-    @ElParam("fieldPath") String fieldPath, @ElParam("defaultValue") String defaultValue) {
+    @ElParam("fieldPath") String fieldPath, @ElParam("defaultValue") Object defaultValue) {
     return "*";
   }
 
