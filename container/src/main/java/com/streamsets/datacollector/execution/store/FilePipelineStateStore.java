@@ -23,6 +23,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.streamsets.datacollector.event.handler.remote.RemoteDataCollector;
 import com.streamsets.datacollector.execution.PipelineState;
 import com.streamsets.datacollector.execution.PipelineStateStore;
 import com.streamsets.datacollector.execution.PipelineStatus;
@@ -53,6 +54,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -69,8 +71,7 @@ public class FilePipelineStateStore implements PipelineStateStore {
     this.runtimeInfo = runtimeInfo;
     this.configuration = conf;
     File stateDir = new File(runtimeInfo.getDataDir(), PipelineDirectoryUtil.PIPELINE_BASE_DIR);
-    stateDir.mkdirs();
-    if (!stateDir.isDirectory()) {
+    if (!(stateDir.exists() || stateDir.mkdirs()) || !stateDir.isDirectory()) {
       throw new RuntimeException(Utils.format("Could not create directory '{}'", stateDir));
     }
   }
@@ -84,12 +85,24 @@ public class FilePipelineStateStore implements PipelineStateStore {
   }
 
   @Override
-  public PipelineState edited(String user, String name, String rev, ExecutionMode executionMode) throws PipelineStoreException {
-    PipelineState pipelineState = getState(name, rev);
-    Utils.checkState(!pipelineState.getStatus().isActive(),
-      Utils.format("Cannot edit pipeline in state: '{}'", pipelineState.getStatus()));
-    if (pipelineState.getStatus() != PipelineStatus.EDITED || executionMode != pipelineState.getExecutionMode()) {
-      return saveState(user, name, rev, PipelineStatus.EDITED, "Pipeline edited", null, executionMode, null, 0, 0);
+  public PipelineState edited(String user, String name, String rev, ExecutionMode executionMode, boolean isRemote) throws PipelineStoreException {
+    PipelineState pipelineState = null;
+    if (getPipelineStateFile(name, rev).exists()) {
+      pipelineState = getState(name, rev);
+      Utils.checkState(!pipelineState.getStatus().isActive(),
+        Utils.format("Cannot edit pipeline in state: '{}'", pipelineState.getStatus()));
+    }
+    // first time when pipeline is created
+    Map<String, Object> attributes = null;
+    if (pipelineState == null) {
+      attributes = new HashMap<>();
+      attributes.put(RemoteDataCollector.IS_REMOTE_PIPELINE, isRemote);
+    }
+    if (pipelineState == null
+      || pipelineState.getStatus() != PipelineStatus.EDITED
+      || executionMode != pipelineState.getExecutionMode()
+      ) {
+      return saveState(user, name, rev, PipelineStatus.EDITED, "Pipeline edited", attributes, executionMode, null, 0, 0);
     } else {
       return null;
     }
@@ -101,16 +114,25 @@ public class FilePipelineStateStore implements PipelineStateStore {
 
   @Override
   public void delete(String name, String rev) {
-    getPipelineStateFile(name, rev).delete();
+    File pipelineStateFile = getPipelineStateFile(name, rev);
+    if (!pipelineStateFile.delete()){
+      LOG.warn("Failed to delete pipeline state file " + pipelineStateFile.getPath().toString());
+    }
   }
 
   @Override
   public PipelineState saveState(String user, String name, String rev, PipelineStatus status, String message,
-    Map<String, Object> attributes, ExecutionMode executionMode, String metrics, int retryAttempt, long nextRetryTimeStamp)
+    Map<String, Object> attributes, ExecutionMode executionMode, String metrics, int retryAttempt, long nextRetryTimeStamp
+   )
     throws PipelineStoreException {
     register(name, rev);
     LOG.debug("Changing state of pipeline '{}','{}','{}' to '{}' in execution mode: '{}';" + "status msg is '{}'",
       name, rev, user, status, executionMode, message);
+    if (getPipelineStateFile(name, rev).exists()) {
+      if (attributes == null) {
+        attributes = getState(name, rev).getAttributes();
+      }
+    }
     PipelineState pipelineState =
       new PipelineStateImpl(user, name, rev, status, message, System.currentTimeMillis(), attributes, executionMode,
         metrics, retryAttempt, nextRetryTimeStamp);
@@ -124,15 +146,20 @@ public class FilePipelineStateStore implements PipelineStateStore {
     String name = nameAndRevArray[0];
     String rev = nameAndRevArray[1];
     LOG.debug("Loading state from file for pipeline: '{}'::'{}'", name, rev);
-    if (getPipelineStateFile(name, rev).exists()) {
-      try (InputStream is = new DataStore(getPipelineStateFile(name, rev)).getInputStream()) {
-        PipelineStateJson pipelineStatusJsonBean = ObjectMapperFactory.get().readValue(is, PipelineStateJson.class);
-        pipelineState = pipelineStatusJsonBean.getPipelineState();
-      } catch (IOException e) {
-        throw new PipelineStoreException(ContainerError.CONTAINER_0101, e.toString(), e);
+    try {
+      // SDC-2930: We don't check for the existence of the actual state file itself, since the DataStore will take care of
+      // picking up the correct files (the new/tmp files etc).
+      DataStore ds = new DataStore(getPipelineStateFile(name, rev));
+      if (ds.exists()) {
+        try (InputStream is = ds.getInputStream()) {
+          PipelineStateJson pipelineStatusJsonBean = ObjectMapperFactory.get().readValue(is, PipelineStateJson.class);
+          pipelineState = pipelineStatusJsonBean.getPipelineState();
+        }
+      } else {
+        throw new PipelineStoreException(ContainerError.CONTAINER_0209, getPipelineStateFile(name, rev));
       }
-    } else {
-      throw new PipelineStoreException(ContainerError.CONTAINER_0209, getPipelineStateFile(name, rev));
+    } catch (IOException e) {
+      throw new PipelineStoreException(ContainerError.CONTAINER_0101, e.toString(), e);
     }
     return pipelineState;
   }
@@ -168,7 +195,9 @@ public class FilePipelineStateStore implements PipelineStateStore {
   @Override
   public void deleteHistory(String pipelineName, String rev) {
     for (File f : getHistoryStateFiles(pipelineName, rev)) {
-      f.delete();
+      if (!f.delete()) {
+        LOG.warn("Failed to delete history file " + f);
+      }
     }
     LogUtil.resetRollingFileAppender(pipelineName, rev, STATE);
   }
@@ -187,10 +216,14 @@ public class FilePipelineStateStore implements PipelineStateStore {
     } catch (JsonProcessingException e) {
       throw new PipelineStoreException(ContainerError.CONTAINER_0210, e.toString(), e);
     }
-    try (OutputStream os = new DataStore(getPipelineStateFile(pipelineState.getName(), pipelineState.getRev())).getOutputStream()) {
+    DataStore dataStore = new DataStore(getPipelineStateFile(pipelineState.getName(), pipelineState.getRev()));
+    try (OutputStream os = dataStore.getOutputStream()) {
       os.write(pipelineString.getBytes());
+      dataStore.commit(os);
     } catch (IOException e) {
       throw new PipelineStoreException(ContainerError.CONTAINER_0100, e.toString(), e);
+    } finally {
+      dataStore.release();
     }
     // In addition, append the state of the pipeline to the pipelineState.json present in the directory of that
     // pipeline

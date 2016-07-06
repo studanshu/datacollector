@@ -33,14 +33,22 @@ import com.streamsets.pipeline.lib.util.FieldRegexUtil;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import static com.streamsets.pipeline.lib.el.StringEL.MEMOIZED;
 
 public class ExpressionProcessor extends SingleLaneRecordProcessor {
 
   private final List<ExpressionProcessorConfig> expressionProcessorConfigs;
   private final List<HeaderAttributeConfig> headerAttributeConfigs;
+  private final Map<String, ?> memoizedVars = new HashMap<>();
+
+  private ELEval expressionEval;
+  private ELVars expressionVars;
+  private ELEval headerAttributeEval;
 
   public ExpressionProcessor(
       List<ExpressionProcessorConfig> expressionProcessorConfigs,
@@ -49,16 +57,13 @@ public class ExpressionProcessor extends SingleLaneRecordProcessor {
     this.headerAttributeConfigs = headerAttributeConfigs;
   }
 
-  private ELEval expressionEval;
-  private ELVars expressionVars;
-
-  private ELEval headerAttributeEval;
-
   @Override
   protected List<ConfigIssue> init() {
     List<ConfigIssue> issues =  super.init();
-    expressionVars = ELUtils.parseConstants(null, getContext(), Groups.EXPRESSIONS.name(), "constants",
-      Errors.EXPR_01, issues);
+    expressionVars = ELUtils.parseConstants(
+        null, getContext(), Groups.EXPRESSIONS.name(), "constants", Errors.EXPR_01, issues
+    );
+    expressionVars.addContextVariable(MEMOIZED, memoizedVars);
     expressionEval = createExpressionEval(getContext());
     for(ExpressionProcessorConfig expressionProcessorConfig : expressionProcessorConfigs) {
       ELUtils.validateExpression(expressionEval, expressionVars, expressionProcessorConfig.expression, getContext(),
@@ -99,10 +104,18 @@ public class ExpressionProcessor extends SingleLaneRecordProcessor {
         throw new OnRecordErrorException(Errors.EXPR_03, expressionProcessorConfig.expression,
                                          record.getHeader().getSourceId(), e.toString(), e);
       }
-      Field newField = Field.create(getTypeFromObject(result), result);
+
+      Field newField = null;
+      // we want to preserve existing type info if we have it iff the result value is null.
+      if (result == null && record.has(fieldToSet)) {
+        newField = Field.create(record.get(fieldToSet).getType(), null);
+      } else {
+        // otherwise, deduce type from result, even if it's null (which will result in coercion to string)
+        newField = Field.create(getTypeFromObject(result), result);
+      }
 
       if(FieldRegexUtil.hasWildCards(fieldToSet)) {
-        for(String field : FieldRegexUtil.getMatchingFieldPaths(fieldToSet, record.getFieldPaths())) {
+        for(String field : FieldRegexUtil.getMatchingFieldPaths(fieldToSet, record.getEscapedFieldPaths())) {
           record.set(field, newField);
         }
       } else {
@@ -139,7 +152,7 @@ public class ExpressionProcessor extends SingleLaneRecordProcessor {
     batchMaker.addRecord(record);
   }
 
-  private Field.Type getTypeFromObject(Object result) {
+  private static Field.Type getTypeFromObject(Object result) {
     if(result instanceof Double) {
       return Field.Type.DOUBLE;
     } else if(result instanceof Long) {
@@ -147,7 +160,9 @@ public class ExpressionProcessor extends SingleLaneRecordProcessor {
     } else if(result instanceof BigDecimal) {
       return Field.Type.DECIMAL;
     } else if(result instanceof Date) {
-      return Field.Type.DATE;
+      //This can only happen in ${time:now()}
+      return Field.Type.DATETIME;
+      //For all the timeEL, we currently return String so we are safe.
     } else if(result instanceof Short) {
       return Field.Type.SHORT;
     } else if(result instanceof Boolean) {

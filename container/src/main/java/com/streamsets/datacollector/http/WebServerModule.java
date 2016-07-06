@@ -25,6 +25,7 @@ import com.streamsets.datacollector.execution.EventListenerManager;
 import com.streamsets.datacollector.execution.Manager;
 import com.streamsets.datacollector.main.BuildInfo;
 import com.streamsets.datacollector.main.RuntimeInfo;
+import com.streamsets.datacollector.publicrestapi.PublicRestAPI;
 import com.streamsets.datacollector.restapi.RestAPI;
 import com.streamsets.datacollector.restapi.configuration.BuildInfoInjector;
 import com.streamsets.datacollector.restapi.configuration.ConfigurationInjector;
@@ -39,6 +40,7 @@ import com.streamsets.datacollector.task.TaskWrapper;
 import com.streamsets.datacollector.util.Configuration;
 import com.streamsets.datacollector.websockets.SDCWebSocketServlet;
 
+import com.streamsets.lib.security.http.CORSConstants;
 import com.streamsets.pipeline.http.MDCFilter;
 import dagger.Module;
 import dagger.Provides;
@@ -48,6 +50,7 @@ import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.servlets.CrossOriginFilter;
 import org.eclipse.jetty.servlets.GzipFilter;
 import org.glassfish.jersey.server.ServerProperties;
 import org.glassfish.jersey.servlet.ServletContainer;
@@ -55,7 +58,11 @@ import org.glassfish.jersey.servlet.ServletProperties;
 
 import javax.servlet.DispatcherType;
 
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 @Module(injects = {TaskWrapper.class, Manager.class}, library = true, complete = false)
 public class WebServerModule {
@@ -73,6 +80,11 @@ public class WebServerModule {
 
   private final String SWAGGER_PACKAGE = "io.swagger.jaxrs.listing";
 
+  @Provides(type = Type.SET_VALUES)
+  Set<WebAppProvider> provideWebApps() {
+    return Collections.emptySet();
+  }
+
   @Provides(type = Type.SET)
   ContextConfigurator provideStaticWeb(final RuntimeInfo runtimeInfo) {
     return new ContextConfigurator() {
@@ -82,9 +94,24 @@ public class WebServerModule {
         ServletHolder servlet = new ServletHolder(new DefaultServlet());
         servlet.setInitParameter("dirAllowed", "true");
         servlet.setInitParameter("resourceBase", runtimeInfo.getStaticWebDir());
+        servlet.setInitParameter("cacheControl","max-age=0,public");
         context.addServlet(servlet, "/*");
       }
 
+    };
+  }
+
+  @Provides(type = Type.SET)
+  ContextConfigurator provideMesosDir(final RuntimeInfo runtimeInfo) {
+    return new ContextConfigurator() {
+      @Override
+      public void init(ServletContextHandler context) {
+        ServletHolder servlet = new ServletHolder(new DefaultServlet());
+        // can't allow listing of dir as mesos dir will be hosting the jar file
+        servlet.setInitParameter("dirAllowed", "false");
+        servlet.setInitParameter("resourceBase", runtimeInfo.getDataDir());
+        context.addServlet(servlet, "/mesos/*");
+      }
     };
   }
 
@@ -140,8 +167,10 @@ public class WebServerModule {
 
       @Override
       public void stop() {
-        reporter.stop();
-        reporter.close();
+        if(reporter != null) {
+          reporter.stop();
+          reporter.close();
+        }
       }
     };
   }
@@ -153,6 +182,32 @@ public class WebServerModule {
       public void init(ServletContextHandler context) {
         ServletHolder holderEvents = new ServletHolder(new LoginServlet());
         context.addServlet(holderEvents, "/login");
+      }
+    };
+  }
+
+  @Provides(type = Type.SET)
+  ContextConfigurator provideCrossOriginFilter(final Configuration conf) {
+    return new ContextConfigurator() {
+      @Override
+      public void init(ServletContextHandler context) {
+        FilterHolder crossOriginFilter = new FilterHolder(CrossOriginFilter.class);
+        Map<String, String> params = new HashMap<>();
+
+        params.put(CrossOriginFilter.ALLOWED_ORIGINS_PARAM,
+            conf.get(CORSConstants.HTTP_ACCESS_CONTROL_ALLOW_ORIGIN,
+                CORSConstants.HTTP_ACCESS_CONTROL_ALLOW_ORIGIN_DEFAULT));
+
+        params.put(CrossOriginFilter.ALLOWED_METHODS_PARAM,
+            conf.get(CORSConstants.HTTP_ACCESS_CONTROL_ALLOW_METHODS,
+                CORSConstants.HTTP_ACCESS_CONTROL_ALLOW_METHODS_DEFAULT));
+
+        params.put(CrossOriginFilter.ALLOWED_HEADERS_PARAM,
+            conf.get(CORSConstants.HTTP_ACCESS_CONTROL_ALLOW_HEADERS,
+                CORSConstants.HTTP_ACCESS_CONTROL_ALLOW_HEADERS_DEFAULT));
+
+        crossOriginFilter.setInitParameters(params);
+        context.addFilter(crossOriginFilter, "/*", EnumSet.of(DispatcherType.REQUEST));
       }
     };
   }
@@ -188,11 +243,20 @@ public class WebServerModule {
     return new ContextConfigurator() {
       @Override
       public void init(ServletContextHandler context) {
-        ServletHolder servlet = new ServletHolder(new ServletContainer());
-        servlet.setInitParameter(ServerProperties.PROVIDER_PACKAGES,
-          SWAGGER_PACKAGE + "," + RestAPI.class.getPackage().getName());
-        servlet.setInitParameter(ServletProperties.JAXRS_APPLICATION_CLASS, RestAPIResourceConfig.class.getName());
-        context.addServlet(servlet, "/rest/*");
+        // REST API that requires authentication
+        ServletHolder protectedRest = new ServletHolder(new ServletContainer());
+        protectedRest.setInitParameter(
+            ServerProperties.PROVIDER_PACKAGES, SWAGGER_PACKAGE + "," +
+            RestAPI.class.getPackage().getName()
+        );
+        protectedRest.setInitParameter(ServletProperties.JAXRS_APPLICATION_CLASS, RestAPIResourceConfig.class.getName());
+        context.addServlet(protectedRest, "/rest/*");
+
+        // REST API that it does not require authentication
+        ServletHolder publicRest = new ServletHolder(new ServletContainer());
+        publicRest.setInitParameter(ServerProperties.PROVIDER_PACKAGES, PublicRestAPI.class.getPackage().getName());
+        publicRest.setInitParameter(ServletProperties.JAXRS_APPLICATION_CLASS, RestAPIResourceConfig.class.getName());
+        context.addServlet(publicRest, "/public-rest/*");
       }
     };
   }

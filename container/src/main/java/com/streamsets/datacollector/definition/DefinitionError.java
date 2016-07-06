@@ -66,7 +66,7 @@ public enum DefinitionError implements ErrorCode {
   DEF_155("{} Class='{}' Field='{}', field type is not NUMBER, cannot define min or max"),
   DEF_156("{} class '{}' does not have a public default constructor"),
   DEF_157("{} dependsOn name starting with '^' can have only one '^'"),
-  DEF_158("{} dependsOn name ending with multiple '^' cannot have other characters in betweeen"),
+  DEF_158("{} dependsOn name ending with multiple '^' cannot have other characters in between"),
   DEF_159("{} field has {} '^' but its bean depth is only '{}' ('{}')"),
   DEF_160("{} bean does not have any configuration properties"),
   DEF_161("{} Field='{}' there cannot be nested @ComplexField configs"),
@@ -96,6 +96,8 @@ public enum DefinitionError implements ErrorCode {
   DEF_309("{} outputStreamsDrivenByConfig='{}' not defined as configuration"),
   DEF_310("{} configuration '{}' has an undefined group '{}'"),
   DEF_311("{} icon file '{}' not found in the classpath"),
+  DEF_312("{} only a TARGET can trigger offset commit"),
+  DEF_313("{} is hiding non-existing config {}"),
 
   DEF_400("Stage library '{}', file '{}' not found"),
   DEF_401("Stage library '{}', could not read file '{}': {}"),

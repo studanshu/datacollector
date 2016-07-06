@@ -20,11 +20,14 @@
 package com.streamsets.datacollector.stagelibrary;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.streamsets.datacollector.config.ConfigDefinition;
 import com.streamsets.datacollector.config.StageDefinition;
+import com.streamsets.datacollector.config.StageLibraryDefinition;
 import com.streamsets.datacollector.el.ElConstantDefinition;
 import com.streamsets.datacollector.el.ElFunctionDefinition;
 import com.streamsets.datacollector.main.RuntimeInfo;
+import com.streamsets.datacollector.main.RuntimeModule;
 import com.streamsets.datacollector.util.Configuration;
 
 import com.streamsets.pipeline.ApplicationPackage;
@@ -34,10 +37,14 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.io.File;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 
 public class TestClassLoaderStageLibraryTask {
 
@@ -77,10 +84,12 @@ public class TestClassLoaderStageLibraryTask {
 
   @Test
   public void testAutoELs() {
+    File configDir = new File("target", UUID.randomUUID().toString()).getAbsoluteFile();
     ClassLoader cl = new SDCClassLoader("library", "lib", Collections.<URL>emptyList(), getClass().getClassLoader(),
                                         new String[0], new SystemPackage(new String[0]),
                                         new ApplicationPackage(new TreeSet<String>()), false, false);
     RuntimeInfo runtimeInfo = Mockito.mock(RuntimeInfo.class);
+    Mockito.when(runtimeInfo.getConfigDir()).thenReturn(configDir.getAbsolutePath());
     Mockito.when(runtimeInfo.getStageLibraryClassLoaders()).thenReturn((List) ImmutableList.of(cl));
 
     ClassLoaderStageLibraryTask library = new ClassLoaderStageLibraryTask(runtimeInfo, new Configuration());
@@ -107,6 +116,24 @@ public class TestClassLoaderStageLibraryTask {
       }
     }
     Assert.assertTrue(foundAutoC);
+  }
+
+  @Test
+  public void testIgnoreStages() throws Exception {
+    ClassLoaderStageLibraryTask library = new ClassLoaderStageLibraryTask(null, new Configuration());
+
+    StageLibraryDefinition libDef = Mockito.mock(StageLibraryDefinition.class);
+    Mockito.when(libDef.getClassLoader()).thenReturn(Thread.currentThread().getContextClassLoader());
+    Set<String> ignoreList = library.loadIgnoreStagesList(libDef);
+
+    Assert.assertEquals(ImmutableSet.of("foo", "bar"), ignoreList);
+
+    List<String> stageList = ImmutableList.of("a", "b", "c");
+    Assert.assertEquals(stageList, library.removeIgnoreStagesFromList(libDef, stageList));
+
+    List<String> stageListWithIgnores = ImmutableList.of("a", "bar", "b", "c", "foo");
+    Assert.assertEquals(stageList, library.removeIgnoreStagesFromList(libDef, stageListWithIgnores));
+
   }
 
 }

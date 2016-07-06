@@ -29,15 +29,18 @@ import com.streamsets.pipeline.api.ext.RecordReader;
 import com.streamsets.pipeline.config.CsvHeader;
 import com.streamsets.pipeline.config.CsvMode;
 import com.streamsets.pipeline.config.DataFormat;
-import com.streamsets.pipeline.lib.KafkaTestUtil;
+import com.streamsets.pipeline.kafka.api.PartitionStrategy;
+import com.streamsets.pipeline.kafka.common.SdcKafkaTestUtil;
+import com.streamsets.pipeline.kafka.common.SdcKafkaTestUtilFactory;
 import com.streamsets.pipeline.lib.util.SdcAvroTestUtil;
 import com.streamsets.pipeline.sdk.ContextInfoCreator;
 import com.streamsets.pipeline.sdk.TargetRunner;
-
+import com.streamsets.pipeline.stage.destination.kafka.util.KafkaTargetUtil;
+import com.streamsets.pipeline.stage.destination.lib.DataGeneratorFormatConfig;
+import com.streamsets.testing.SingleForkNoReuseTest;
 import kafka.consumer.ConsumerIterator;
 import kafka.consumer.KafkaStream;
-import kafka.zk.EmbeddedZookeeper;
-
+import kafka.utils.TestUtils;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.SeekableByteArrayInput;
@@ -51,6 +54,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
@@ -63,9 +67,13 @@ import java.util.List;
 import java.util.Map;
 
 @Ignore
+/**
+ * Currently ignored due to issues with {@link #testTopicExpression4()} and {@link #testInvalidTopicWhiteList()}
+ * when run using maven even with SingleForkNoReuseTest.
+ */
+@Category(SingleForkNoReuseTest.class)
 public class TestKafkaTargetSinglePartition {
 
-  private static EmbeddedZookeeper zkServer;
   private static List<KafkaStream<byte[], byte[]>> kafkaStreams1;
   private static List<KafkaStream<byte[], byte[]>> kafkaStreams2;
   private static List<KafkaStream<byte[], byte[]>> kafkaStreams3;
@@ -85,6 +93,8 @@ public class TestKafkaTargetSinglePartition {
   private static List<KafkaStream<byte[], byte[]>> kafkaStreams17;
   private static List<KafkaStream<byte[], byte[]>> kafkaStreams18;
   private static List<KafkaStream<byte[], byte[]>> kafkaStreams19;
+  private static List<KafkaStream<byte[], byte[]>> kafkaStreams20;
+  private static List<KafkaStream<byte[], byte[]>> kafkaStreams21;
 
   private static final int PARTITIONS = 1;
   private static final int REPLICATION_FACTOR = 1;
@@ -107,79 +117,99 @@ public class TestKafkaTargetSinglePartition {
   private static final String TOPIC17 = "TestKafkaTargetSinglePartition17";
   private static final String TOPIC18 = "TestKafkaTargetSinglePartition18";
   private static final String TOPIC19 = "TestKafkaTargetSinglePartition19";
+  private static final String TOPIC20 = "TestKafkaTargetSinglePartition20";
+  private static final String TOPIC21 = "TestKafkaTargetSinglePartition21";
+
+  private static final SdcKafkaTestUtil sdcKafkaTestUtil = SdcKafkaTestUtilFactory.getInstance().create();
 
   @BeforeClass
-  public static void setUp() {
-    KafkaTestUtil.startZookeeper();
-    KafkaTestUtil.startKafkaBrokers(1);
-    zkServer = KafkaTestUtil.getZkServer();
+  public static void setUp() throws IOException, InterruptedException {
+    sdcKafkaTestUtil.startZookeeper();
+    sdcKafkaTestUtil.startKafkaBrokers(1);
     // create topic
-    KafkaTestUtil.createTopic(TOPIC1, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC2, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC3, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC4, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC5, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC6, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC7, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC8, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC9, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC10, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC11, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC12, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC13, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC14, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC15, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC16, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC17, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC18, PARTITIONS, REPLICATION_FACTOR);
-    KafkaTestUtil.createTopic(TOPIC19, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC1, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC2, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC3, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC4, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC5, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC6, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC7, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC8, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC9, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC10, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC11, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC12, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC13, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC14, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC15, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC16, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC17, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC18, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC19, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC20, PARTITIONS, REPLICATION_FACTOR);
+    sdcKafkaTestUtil.createTopic(TOPIC21, PARTITIONS, REPLICATION_FACTOR);
 
-    kafkaStreams1 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC1, PARTITIONS);
-    kafkaStreams2 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC2, PARTITIONS);
-    kafkaStreams3 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC3, PARTITIONS);
-    kafkaStreams4 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC4, PARTITIONS);
-    kafkaStreams5 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC5, PARTITIONS);
-    kafkaStreams6 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC6, PARTITIONS);
-    kafkaStreams7 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC7, PARTITIONS);
-    kafkaStreams8 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC8, PARTITIONS);
-    kafkaStreams9 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC9, PARTITIONS);
-    kafkaStreams10 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC10, PARTITIONS);
-    kafkaStreams11 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC11, PARTITIONS);
-    kafkaStreams12 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC12, PARTITIONS);
-    kafkaStreams13 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC13, PARTITIONS);
-    kafkaStreams14 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC14, PARTITIONS);
-    kafkaStreams15 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC15, PARTITIONS);
-    kafkaStreams16 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC16, PARTITIONS);
-    kafkaStreams17 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC17, PARTITIONS);
-    kafkaStreams18 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC18, PARTITIONS);
-    kafkaStreams19 = KafkaTestUtil.createKafkaStream(zkServer.connectString(), TOPIC19, PARTITIONS);
+    for (int i = 1; i <= 21 ; i++) {
+      TestUtils.waitUntilMetadataIsPropagated(
+          scala.collection.JavaConversions.asScalaBuffer(sdcKafkaTestUtil.getKafkaServers()),
+          "TestKafkaTargetSinglePartition" + String.valueOf(i), 0, 5000);
+    }
+
+
+    kafkaStreams1 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC1, PARTITIONS);
+    kafkaStreams2 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC2, PARTITIONS);
+    kafkaStreams3 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC3, PARTITIONS);
+    kafkaStreams4 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC4, PARTITIONS);
+    kafkaStreams5 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC5, PARTITIONS);
+    kafkaStreams6 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC6, PARTITIONS);
+    kafkaStreams7 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC7, PARTITIONS);
+    kafkaStreams8 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC8, PARTITIONS);
+    kafkaStreams9 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC9, PARTITIONS);
+    kafkaStreams10 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC10, PARTITIONS);
+    kafkaStreams11 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC11, PARTITIONS);
+    kafkaStreams12 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC12, PARTITIONS);
+    kafkaStreams13 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC13, PARTITIONS);
+    kafkaStreams14 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC14, PARTITIONS);
+    kafkaStreams15 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC15, PARTITIONS);
+    kafkaStreams16 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC16, PARTITIONS);
+    kafkaStreams17 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC17, PARTITIONS);
+    kafkaStreams18 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC18, PARTITIONS);
+    kafkaStreams19 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC19, PARTITIONS);
+    kafkaStreams20 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC20, PARTITIONS);
+    kafkaStreams21 = sdcKafkaTestUtil.createKafkaStream(sdcKafkaTestUtil.getZkConnect(), TOPIC21, PARTITIONS);
   }
 
   @AfterClass
   public static void tearDown() {
-    KafkaTestUtil.shutdown();
+    sdcKafkaTestUtil.shutdown();
   }
 
   @Test
   public void testWriteNoRecords() throws InterruptedException, StageException {
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .addConfiguration("topic", TOPIC1)
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", null)
-      .addConfiguration("dataFormat", DataFormat.TEXT)
-      .addConfiguration("singleMessagePerBatch", false)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("textFieldPath", "/")
-      .addConfiguration("textEmptyLineIfNull", true)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", false)
-      .addConfiguration("topicExpression", null)
-      .addConfiguration("topicWhiteList", null)
-      .build();
+
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+    dataGeneratorFormatConfig.charset = "UTF-8";
+    dataGeneratorFormatConfig.textFieldPath = "/";
+    dataGeneratorFormatConfig.textEmptyLineIfNull = true;
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+      sdcKafkaTestUtil.getMetadataBrokerURI(),
+      TOPIC1,
+      "0",                               // partition
+      sdcKafkaTestUtil.setMaxAcks(new HashMap<String, String>()), // kafka producer configs
+      false,                              // singleMessagePerBatch
+      PartitionStrategy.ROUND_ROBIN,
+      false,                              // runtimeTopicResolution
+      null,                               // topicExpression
+      null,                               // topic white list
+      new KafkaTargetConfig(),
+      DataFormat.TEXT,
+      dataGeneratorFormatConfig
+    );
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget).build();
 
     targetRunner.runInit();
-    List<Record> logRecords = KafkaTestUtil.createEmptyLogRecords();
+    List<Record> logRecords = sdcKafkaTestUtil.createEmptyLogRecords();
     targetRunner.runWrite(logRecords);
     targetRunner.runDestroy();
 
@@ -199,28 +229,34 @@ public class TestKafkaTargetSinglePartition {
   @Test
   public void testWriteStringRecords() throws InterruptedException, StageException {
 
-    Map<String, String> kafkaProducerConfig = new HashMap();
-    kafkaProducerConfig.put("request.required.acks", "2");
+    Map<String, String> kafkaProducerConfig = new HashMap<>();
+    sdcKafkaTestUtil.setMaxAcks(kafkaProducerConfig);
     kafkaProducerConfig.put("request.timeout.ms", "2000");
 
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .addConfiguration("topic", TOPIC2)
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", kafkaProducerConfig)
-      .addConfiguration("dataFormat", DataFormat.TEXT)
-      .addConfiguration("singleMessagePerBatch", false)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("textFieldPath", "/")
-      .addConfiguration("textEmptyLineIfNull", true)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", false)
-      .addConfiguration("topicExpression", null)
-      .addConfiguration("topicWhiteList", null)
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+    dataGeneratorFormatConfig.charset = "UTF-8";
+    dataGeneratorFormatConfig.textFieldPath = "/";
+    dataGeneratorFormatConfig.textEmptyLineIfNull = true;
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        TOPIC2,
+        "0",                               // partition
+        kafkaProducerConfig,                               // kafka producer configs
+        false,                              // singleMessagePerBatch
+        PartitionStrategy.ROUND_ROBIN,
+        false,                              // runtimeTopicResolution
+        null,                               // topicExpression
+        null,                               // topic white list
+        new KafkaTargetConfig(),
+        DataFormat.TEXT,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget).build();
 
     targetRunner.runInit();
-    List<Record> logRecords = KafkaTestUtil.createStringRecords();
+    List<Record> logRecords = sdcKafkaTestUtil.createStringRecords();
     targetRunner.runWrite(logRecords);
     targetRunner.runDestroy();
 
@@ -243,28 +279,34 @@ public class TestKafkaTargetSinglePartition {
   @Test
   public void testWriteStringRecordsFromJSON() throws InterruptedException, StageException, IOException {
 
-    Map<String, String> kafkaProducerConfig = new HashMap();
-    kafkaProducerConfig.put("request.required.acks", "2");
+    Map<String, String> kafkaProducerConfig = new HashMap<>();
+    sdcKafkaTestUtil.setMaxAcks(kafkaProducerConfig);
     kafkaProducerConfig.put("request.timeout.ms", "2000");
 
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .addConfiguration("topic", TOPIC3)
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", kafkaProducerConfig)
-      .addConfiguration("dataFormat", DataFormat.TEXT)
-      .addConfiguration("singleMessagePerBatch", false)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("textFieldPath", "/name")
-      .addConfiguration("textEmptyLineIfNull", true)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", false)
-      .addConfiguration("topicExpression", null)
-      .addConfiguration("topicWhiteList", null)
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+    dataGeneratorFormatConfig.charset = "UTF-8";
+    dataGeneratorFormatConfig.textFieldPath = "/name";
+    dataGeneratorFormatConfig.textEmptyLineIfNull = true;
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        TOPIC3,
+        "0",                               // partition
+        kafkaProducerConfig,                               // kafka producer configs
+        false,                              // singleMessagePerBatch
+        PartitionStrategy.ROUND_ROBIN,
+        false,                              // runtimeTopicResolution
+        null,                               // topicExpression
+        null,                               // topic white list
+        new KafkaTargetConfig(),
+        DataFormat.TEXT,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget).build();
 
     targetRunner.runInit();
-    List<Record> logRecords = KafkaTestUtil.createJsonRecords();
+    List<Record> logRecords = sdcKafkaTestUtil.createJsonRecords();
     targetRunner.runWrite(logRecords);
     targetRunner.runDestroy();
 
@@ -288,28 +330,34 @@ public class TestKafkaTargetSinglePartition {
   @Test
   public void testWriteStringRecordsFromJSON2() throws InterruptedException, StageException, IOException {
 
-    Map<String, String> kafkaProducerConfig = new HashMap();
-    kafkaProducerConfig.put("request.required.acks", "2");
+    Map<String, String> kafkaProducerConfig = new HashMap<>();
+    sdcKafkaTestUtil.setMaxAcks(kafkaProducerConfig);
     kafkaProducerConfig.put("request.timeout.ms", "2000");
 
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .addConfiguration("topic", TOPIC4)
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", kafkaProducerConfig)
-      .addConfiguration("dataFormat", DataFormat.TEXT)
-      .addConfiguration("singleMessagePerBatch", false)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("textFieldPath", "/lastStatusChange") //this is number field, should be converted to string
-      .addConfiguration("textEmptyLineIfNull", true)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", false)
-      .addConfiguration("topicExpression", null)
-      .addConfiguration("topicWhiteList", null)
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+    dataGeneratorFormatConfig.charset = "UTF-8";
+    dataGeneratorFormatConfig.textFieldPath = "/lastStatusChange";
+    dataGeneratorFormatConfig.textEmptyLineIfNull = true;
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        TOPIC4,
+        "0",                               // partition
+        kafkaProducerConfig,                               // kafka producer configs
+        false,                              // singleMessagePerBatch
+        PartitionStrategy.EXPRESSION,
+        false,                              // runtimeTopicResolution
+        null,                               // topicExpression
+        null,                               // topic white list
+        new KafkaTargetConfig(),
+        DataFormat.TEXT,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget).build();
 
     targetRunner.runInit();
-    List<Record> logRecords = KafkaTestUtil.createJsonRecords();
+    List<Record> logRecords = sdcKafkaTestUtil.createJsonRecords();
     targetRunner.runWrite(logRecords);
     targetRunner.runDestroy();
 
@@ -334,29 +382,35 @@ public class TestKafkaTargetSinglePartition {
   @Test
   public void testWriteStringRecordsFromJSON3() throws InterruptedException, StageException, IOException {
 
-    Map<String, String> kafkaProducerConfig = new HashMap();
-    kafkaProducerConfig.put("request.required.acks", "2");
+    Map<String, String> kafkaProducerConfig = new HashMap<>();
+    sdcKafkaTestUtil.setMaxAcks(kafkaProducerConfig);
     kafkaProducerConfig.put("request.timeout.ms", "2000");
 
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .setOnRecordError(OnRecordError.TO_ERROR)
-      .addConfiguration("topic", TOPIC5)
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", kafkaProducerConfig)
-      .addConfiguration("dataFormat", DataFormat.TEXT)
-      .addConfiguration("singleMessagePerBatch", false)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("textFieldPath", "/") //this is map field, should not be converted to string
-      .addConfiguration("textEmptyLineIfNull", true)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", false)
-      .addConfiguration("topicExpression", null)
-      .addConfiguration("topicWhiteList", null)
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+    dataGeneratorFormatConfig.charset = "UTF-8";
+    dataGeneratorFormatConfig.textFieldPath = "/"; //map, invalid
+    dataGeneratorFormatConfig.textEmptyLineIfNull = true;
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        TOPIC5,
+        "0",                               // partition
+        kafkaProducerConfig,                               // kafka producer configs
+        false,                              // singleMessagePerBatch
+        PartitionStrategy.EXPRESSION,
+        false,                              // runtimeTopicResolution
+        null,                               // topicExpression
+        null,                               // topic white list
+        new KafkaTargetConfig(),
+        DataFormat.TEXT,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget)
+      .setOnRecordError(OnRecordError.TO_ERROR).build();
 
     targetRunner.runInit();
-    List<Record> logRecords = KafkaTestUtil.createJsonRecords();
+    List<Record> logRecords = sdcKafkaTestUtil.createJsonRecords();
     targetRunner.runWrite(logRecords);
     //All records must be sent to error
     Assert.assertEquals(logRecords.size(), targetRunner.getErrorRecords().size());
@@ -383,22 +437,27 @@ public class TestKafkaTargetSinglePartition {
   @Test
   public void testWriteJsonRecords() throws InterruptedException, StageException, IOException {
 
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .addConfiguration("topic", TOPIC6)
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", null)
-      .addConfiguration("dataFormat", DataFormat.SDC_JSON)
-      .addConfiguration("singleMessagePerBatch", false)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", false)
-      .addConfiguration("topicExpression", null)
-      .addConfiguration("topicWhiteList", null)
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        TOPIC6,
+        "0",                               // partition
+        sdcKafkaTestUtil.setMaxAcks(new HashMap<String, String>()), // kafka producer configs
+        false,                              // singleMessagePerBatch
+        PartitionStrategy.EXPRESSION,
+        false,                              // runtimeTopicResolution
+        null,                               // topicExpression
+        null,                               // topic white list
+        new KafkaTargetConfig(),
+        DataFormat.SDC_JSON,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget).build();
 
     targetRunner.runInit();
-    List<Record> logRecords = KafkaTestUtil.createJsonRecords();
+    List<Record> logRecords = sdcKafkaTestUtil.createJsonRecords();
     targetRunner.runWrite(logRecords);
     targetRunner.runDestroy();
 
@@ -429,26 +488,31 @@ public class TestKafkaTargetSinglePartition {
 
     //Test DELIMITED is - "2010,NLDS1,PHI,NL,CIN,NL,3,0,0"
 
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .addConfiguration("topic", TOPIC7)
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", null)
-      .addConfiguration("dataFormat", DataFormat.DELIMITED)
-      .addConfiguration("singleMessagePerBatch", false)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("csvFileFormat", CsvMode.CSV)
-      .addConfiguration("csvHeader", CsvHeader.NO_HEADER)
-      .addConfiguration("csvReplaceNewLines", false)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", false)
-      .addConfiguration("topicExpression", null)
-      .addConfiguration("topicWhiteList", null)
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+    dataGeneratorFormatConfig.csvFileFormat = CsvMode.CSV;
+    dataGeneratorFormatConfig.csvHeader = CsvHeader.NO_HEADER;
+    dataGeneratorFormatConfig.csvReplaceNewLines = false;
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        TOPIC7,
+        "0",                               // partition
+        sdcKafkaTestUtil.setMaxAcks(new HashMap<String, String>()), // kafka producer configs
+        false,                              // singleMessagePerBatch
+        PartitionStrategy.EXPRESSION,
+        false,                              // runtimeTopicResolution
+        null,                               // topicExpression
+        null,                               // topic white list
+        new KafkaTargetConfig(),
+        DataFormat.DELIMITED,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget).build();
 
     targetRunner.runInit();
     File f = new File(Resources.getResource("testKafkaTarget.csv").toURI());
-    List<Record> logRecords = KafkaTestUtil.createCsvRecords(f);
+    List<Record> logRecords = sdcKafkaTestUtil.createCsvRecords(f);
     targetRunner.runWrite(logRecords);
     targetRunner.runDestroy();
 
@@ -466,7 +530,6 @@ public class TestKafkaTargetSinglePartition {
 
   }
 
-  @Ignore
   @Test
   /**
    * Tests runtime topic resolution from record where topics resolved are part of the white list.
@@ -474,27 +537,31 @@ public class TestKafkaTargetSinglePartition {
    */
   public void testTopicExpression1() throws InterruptedException, StageException, IOException {
 
-    Map<String, String> kafkaProducerConfig = new HashMap();
-    kafkaProducerConfig.put("request.required.acks", "2");
+    Map<String, String> kafkaProducerConfig = new HashMap<>();
+    sdcKafkaTestUtil.setMaxAcks(kafkaProducerConfig);
     kafkaProducerConfig.put("request.timeout.ms", "2000");
 
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .addConfiguration("topicExpression", "${record:value('/topic')}")
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", kafkaProducerConfig)
-      .addConfiguration("dataFormat", DataFormat.SDC_JSON)
-      .addConfiguration("singleMessagePerBatch", false)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("textEmptyLineIfNull", true)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", true)
-      .addConfiguration("topic", null)
-      .addConfiguration("topicWhiteList", TOPIC8 + ", " + TOPIC9 + ", " + TOPIC10)
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        null,
+        "0",                               // partition
+        kafkaProducerConfig,                               // kafka producer configs
+        false,                              // singleMessagePerBatch
+        PartitionStrategy.EXPRESSION,
+        true,                              // runtimeTopicResolution
+        "${record:value('/topic')}",                               // topicExpression
+        TOPIC8 + ", " + TOPIC9 + ", " + TOPIC10,                               // topic white list
+        new KafkaTargetConfig(),
+        DataFormat.SDC_JSON,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget).build();
 
     targetRunner.runInit();
-    List<Record> logRecords = KafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of(TOPIC8, TOPIC9, TOPIC10));
+    List<Record> logRecords = sdcKafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of(TOPIC8, TOPIC9, TOPIC10));
     targetRunner.runWrite(logRecords);
     targetRunner.runDestroy();
 
@@ -535,23 +602,27 @@ public class TestKafkaTargetSinglePartition {
     Assert.assertEquals(3, messages.size());
 
     //single message per batch
-    targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .addConfiguration("topicExpression", "${record:value('/topic')}")
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", kafkaProducerConfig)
-      .addConfiguration("dataFormat", DataFormat.SDC_JSON)
-      .addConfiguration("singleMessagePerBatch", true)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("textEmptyLineIfNull", true)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", true)
-      .addConfiguration("topic", null)
-      .addConfiguration("topicWhiteList", TOPIC8 + ", " + TOPIC9 + ", " + TOPIC10)
-      .build();
+    dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+
+    kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        null,
+        "0",                               // partition
+        kafkaProducerConfig,                               // kafka producer configs
+        true,                              // singleMessagePerBatch
+        PartitionStrategy.EXPRESSION,
+        true,                              // runtimeTopicResolution
+        "${record:value('/topic')}",                               // topicExpression
+        TOPIC8 + ", " + TOPIC9 + ", " + TOPIC10,                               // topic white list
+        new KafkaTargetConfig(),
+        DataFormat.SDC_JSON,
+        dataGeneratorFormatConfig
+    );
+
+    targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget).build();
 
     targetRunner.runInit();
-    logRecords = KafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of(TOPIC8, TOPIC9, TOPIC10));
+    logRecords = sdcKafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of(TOPIC8, TOPIC9, TOPIC10));
     targetRunner.runWrite(logRecords);
     targetRunner.runDestroy();
 
@@ -599,27 +670,31 @@ public class TestKafkaTargetSinglePartition {
    */
   public void testTopicExpression2() throws InterruptedException, StageException, IOException {
 
-    Map<String, String> kafkaProducerConfig = new HashMap();
-    kafkaProducerConfig.put("request.required.acks", "2");
+    Map<String, String> kafkaProducerConfig = new HashMap<>();
+    sdcKafkaTestUtil.setMaxAcks(kafkaProducerConfig);
     kafkaProducerConfig.put("request.timeout.ms", "2000");
 
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .addConfiguration("topicExpression", "${record:value('/topic')}")
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", kafkaProducerConfig)
-      .addConfiguration("dataFormat", DataFormat.SDC_JSON)
-      .addConfiguration("singleMessagePerBatch", false)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("textEmptyLineIfNull", true)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", true)
-      .addConfiguration("topic", null)
-      .addConfiguration("topicWhiteList", "*")
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        null,
+        "0",                               // partition
+        kafkaProducerConfig,                               // kafka producer configs
+        false,                              // singleMessagePerBatch
+        PartitionStrategy.EXPRESSION,
+        true,                              // runtimeTopicResolution
+        "${record:value('/topic')}",                               // topicExpression
+        "*",                               // topic white list
+        new KafkaTargetConfig(),
+        DataFormat.SDC_JSON,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget).build();
 
     targetRunner.runInit();
-    List<Record> logRecords = KafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of(TOPIC12, TOPIC13, TOPIC14));
+    List<Record> logRecords = sdcKafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of(TOPIC12, TOPIC13, TOPIC14));
     targetRunner.runWrite(logRecords);
     targetRunner.runDestroy();
 
@@ -660,23 +735,27 @@ public class TestKafkaTargetSinglePartition {
     Assert.assertEquals(3, messages.size());
 
     //single message per batch
-    targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .addConfiguration("topicExpression", "${record:value('/topic')}")
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", kafkaProducerConfig)
-      .addConfiguration("dataFormat", DataFormat.SDC_JSON)
-      .addConfiguration("singleMessagePerBatch", true)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("textEmptyLineIfNull", true)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", true)
-      .addConfiguration("topic", null)
-      .addConfiguration("topicWhiteList", "*")
-      .build();
+    dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+
+    kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        null,
+        "0",                               // partition
+        kafkaProducerConfig,               // kafka producer configs
+        true,                              // singleMessagePerBatch
+        PartitionStrategy.EXPRESSION,
+        true,                              // runtimeTopicResolution
+        "${record:value('/topic')}",       // topicExpression
+        "*",
+        new KafkaTargetConfig(),
+        DataFormat.SDC_JSON,
+        dataGeneratorFormatConfig
+    );
+
+    targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget).build();
 
     targetRunner.runInit();
-    logRecords = KafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of(TOPIC12, TOPIC13, TOPIC14));
+    logRecords = sdcKafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of(TOPIC12, TOPIC13, TOPIC14));
     targetRunner.runWrite(logRecords);
     targetRunner.runDestroy();
 
@@ -725,28 +804,32 @@ public class TestKafkaTargetSinglePartition {
    */
   public void testTopicExpression3() throws InterruptedException, StageException, IOException {
 
-    Map<String, String> kafkaProducerConfig = new HashMap();
-    kafkaProducerConfig.put("request.required.acks", "2");
+    Map<String, String> kafkaProducerConfig = new HashMap<>();
+    sdcKafkaTestUtil.setMaxAcks(kafkaProducerConfig);
     kafkaProducerConfig.put("request.timeout.ms", "2000");
 
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .setOnRecordError(OnRecordError.TO_ERROR)
-      .addConfiguration("topicExpression", "${record:value('/topic')}")
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", kafkaProducerConfig)
-      .addConfiguration("dataFormat", DataFormat.SDC_JSON)
-      .addConfiguration("singleMessagePerBatch", false)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("textEmptyLineIfNull", true)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", true)
-      .addConfiguration("topic", null)
-      .addConfiguration("topicWhiteList", TOPIC15)
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        null,
+        "0",
+        kafkaProducerConfig,
+        false,
+        PartitionStrategy.EXPRESSION,
+        true,
+        "${record:value('/topic')}",
+        TOPIC15,
+        new KafkaTargetConfig(),
+        DataFormat.SDC_JSON,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget)
+      .setOnRecordError(OnRecordError.TO_ERROR).build();
 
     targetRunner.runInit();
-    List<Record> logRecords = KafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of(TOPIC15, "BlackListTopic"));
+    List<Record> logRecords = sdcKafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of(TOPIC15, "BlackListTopic"));
     targetRunner.runWrite(logRecords);
 
     Assert.assertEquals(3, targetRunner.getErrorRecords().size());
@@ -765,24 +848,28 @@ public class TestKafkaTargetSinglePartition {
     }
     Assert.assertEquals(3, messages.size());
 
-    targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .setOnRecordError(OnRecordError.TO_ERROR)
-      .addConfiguration("topicExpression", "${record:value('/topic')}")
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", kafkaProducerConfig)
-      .addConfiguration("dataFormat", DataFormat.SDC_JSON)
-      .addConfiguration("singleMessagePerBatch", true)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("textEmptyLineIfNull", true)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", true)
-      .addConfiguration("topic", null)
-      .addConfiguration("topicWhiteList", TOPIC15)
-      .build();
+    dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+
+    kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        null,
+        "0",
+        kafkaProducerConfig,
+        true,
+        PartitionStrategy.EXPRESSION,
+        true,
+        "${record:value('/topic')}",
+        TOPIC15,
+        new KafkaTargetConfig(),
+        DataFormat.SDC_JSON,
+        dataGeneratorFormatConfig
+    );
+
+    targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget)
+      .setOnRecordError(OnRecordError.TO_ERROR).build();
 
     targetRunner.runInit();
-    logRecords = KafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of(TOPIC15, "BlackListTopic"));
+    logRecords = sdcKafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of(TOPIC15, "BlackListTopic"));
     targetRunner.runWrite(logRecords);
 
     Assert.assertEquals(3, targetRunner.getErrorRecords().size());
@@ -810,52 +897,60 @@ public class TestKafkaTargetSinglePartition {
    */
   public void testTopicExpression4() throws InterruptedException, StageException, IOException {
 
-    Map<String, String> kafkaProducerConfig = new HashMap();
-    kafkaProducerConfig.put("request.required.acks", "2");
+    Map<String, String> kafkaProducerConfig = new HashMap<>();
+    sdcKafkaTestUtil.setMaxAcks(kafkaProducerConfig);
     kafkaProducerConfig.put("request.timeout.ms", "2000");
 
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .setOnRecordError(OnRecordError.TO_ERROR)
-      .addConfiguration("topicExpression", "${record:value('/topic')}")
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", kafkaProducerConfig)
-      .addConfiguration("dataFormat", DataFormat.SDC_JSON)
-      .addConfiguration("singleMessagePerBatch", false)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("textEmptyLineIfNull", true)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", true)
-      .addConfiguration("topic", null)
-      .addConfiguration("topicWhiteList", "*")
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        null,
+        "0",
+        kafkaProducerConfig,
+        false,
+        PartitionStrategy.EXPRESSION,
+        true,
+        "${record:value('/topic')}",
+        "*",
+        new KafkaTargetConfig(),
+        DataFormat.SDC_JSON,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget)
+      .setOnRecordError(OnRecordError.TO_ERROR).build();
 
     targetRunner.runInit();
-    List<Record> logRecords = KafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of("InvalidTopic"));
+    List<Record> logRecords = sdcKafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of("InvalidTopic"));
     targetRunner.runWrite(logRecords);
 
     Assert.assertEquals(logRecords.size(), targetRunner.getErrorRecords().size());
 
     targetRunner.runDestroy();
 
-    targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .setOnRecordError(OnRecordError.TO_ERROR)
-      .addConfiguration("topicExpression", "${record:value('/topic')}")
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", kafkaProducerConfig)
-      .addConfiguration("dataFormat", DataFormat.SDC_JSON)
-      .addConfiguration("singleMessagePerBatch", true)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("textEmptyLineIfNull", true)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", true)
-      .addConfiguration("topic", null)
-      .addConfiguration("topicWhiteList", "*")
-      .build();
+    dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+
+    kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        null,
+        "0",
+        kafkaProducerConfig,
+        true,
+        PartitionStrategy.EXPRESSION,
+        true,
+        "${record:value('/topic')}",
+        TOPIC15,
+        new KafkaTargetConfig(),
+        DataFormat.SDC_JSON,
+        dataGeneratorFormatConfig
+    );
+
+    targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget)
+      .setOnRecordError(OnRecordError.TO_ERROR).build();
 
     targetRunner.runInit();
-    logRecords = KafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of("InvalidTopic"));
+    logRecords = sdcKafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of("InvalidTopic"));
     targetRunner.runWrite(logRecords);
 
     Assert.assertEquals(logRecords.size(), targetRunner.getErrorRecords().size());
@@ -869,28 +964,32 @@ public class TestKafkaTargetSinglePartition {
    */
   public void testInvalidPartition() throws InterruptedException, StageException, IOException {
 
-    Map<String, String> kafkaProducerConfig = new HashMap();
-    kafkaProducerConfig.put("request.required.acks", "2");
+    Map<String, String> kafkaProducerConfig = new HashMap<>();
+    sdcKafkaTestUtil.setMaxAcks(kafkaProducerConfig);
     kafkaProducerConfig.put("request.timeout.ms", "2000");
 
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .setOnRecordError(OnRecordError.TO_ERROR)
-      .addConfiguration("topicExpression", "${record:value('/topic')}")
-      .addConfiguration("partition", "${record:value('/partition')}")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", kafkaProducerConfig)
-      .addConfiguration("dataFormat", DataFormat.SDC_JSON)
-      .addConfiguration("singleMessagePerBatch", false)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("textEmptyLineIfNull", true)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", true)
-      .addConfiguration("topic", null)
-      .addConfiguration("topicWhiteList", "*")
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        null,
+        "${record:value('/partition')}",
+        kafkaProducerConfig,
+        false,
+        PartitionStrategy.EXPRESSION,
+        true,
+        "${record:value('/topic')}",
+        "*",
+        new KafkaTargetConfig(),
+        DataFormat.SDC_JSON,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget)
+      .setOnRecordError(OnRecordError.TO_ERROR).build();
 
     targetRunner.runInit();
-    List<Record> logRecords = KafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of(TOPIC16));
+    List<Record> logRecords = sdcKafkaTestUtil.createJsonRecordsWithTopicField(ImmutableList.of(TOPIC16));
     targetRunner.runWrite(logRecords);
 
     Assert.assertEquals(1, targetRunner.getErrorRecords().size());
@@ -913,32 +1012,36 @@ public class TestKafkaTargetSinglePartition {
   @Test
   public void testTopicConstant() throws InterruptedException, StageException {
 
-    Map<String, String> kafkaProducerConfig = new HashMap();
-    kafkaProducerConfig.put("request.required.acks", "2");
+    Map<String, String> kafkaProducerConfig = new HashMap<>();
+    sdcKafkaTestUtil.setMaxAcks(kafkaProducerConfig);
     kafkaProducerConfig.put("request.timeout.ms", "2000");
 
     Map<String, Object> constants = new HashMap<>();
     constants.put("TOPIC11", TOPIC11);
 
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .addConfiguration("topic", "${TOPIC11}")
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", kafkaProducerConfig)
-      .addConfiguration("dataFormat", DataFormat.TEXT)
-      .addConfiguration("singleMessagePerBatch", false)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("textFieldPath", "/")
-      .addConfiguration("textEmptyLineIfNull", true)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", false)
-      .addConfiguration("topicExpression", null)
-      .addConfiguration("topicWhiteList", null)
-      .addConstants(constants)
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+    dataGeneratorFormatConfig.textFieldPath = "/";
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        "${TOPIC11}",
+        "0",
+        kafkaProducerConfig,
+        false,
+        PartitionStrategy.EXPRESSION,
+        false,
+        null,
+        null,
+        new KafkaTargetConfig(),
+        DataFormat.TEXT,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget)
+      .setOnRecordError(OnRecordError.TO_ERROR).addConstants(constants).build();
 
     targetRunner.runInit();
-    List<Record> logRecords = KafkaTestUtil.createStringRecords();
+    List<Record> logRecords = sdcKafkaTestUtil.createStringRecords();
     targetRunner.runWrite(logRecords);
     targetRunner.runDestroy();
 
@@ -958,65 +1061,67 @@ public class TestKafkaTargetSinglePartition {
     }
   }
 
-  @Test
+  @Test(expected = StageException.class)
   /**
    * Tests that KafkaTarget validates the names of the topics present in the white list during init
    */
   public void testInvalidTopicWhiteList() throws InterruptedException, StageException {
 
-    Map<String, String> kafkaProducerConfig = new HashMap();
-    kafkaProducerConfig.put("request.required.acks", "2");
+    Map<String, String> kafkaProducerConfig = new HashMap<>();
+    sdcKafkaTestUtil.setMaxAcks(kafkaProducerConfig);
     kafkaProducerConfig.put("request.timeout.ms", "2000");
     kafkaProducerConfig.put("message.send.max.retries", "10");
     kafkaProducerConfig.put("retry.backoff.ms", "1000");
 
     //STOP PIPELINE
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .setOnRecordError(OnRecordError.STOP_PIPELINE)
-      .addConfiguration("topic", null)
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", kafkaProducerConfig)
-      .addConfiguration("dataFormat", DataFormat.TEXT)
-      .addConfiguration("singleMessagePerBatch", false)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("textFieldPath", "/")
-      .addConfiguration("textEmptyLineIfNull", true)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", true)
-      .addConfiguration("topicExpression", "hello")
-      .addConfiguration("topicWhiteList", "badTopic")
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+    dataGeneratorFormatConfig.textFieldPath = "/";
 
-    try {
-      targetRunner.runInit();
-      Assert.fail("Expected exception while validating topic white list, got none");
-    } catch (StageException e) {
-      //All good
-    }
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        null,
+        "0",
+        kafkaProducerConfig,
+        false,
+        PartitionStrategy.EXPRESSION,
+        true,
+        "hello",
+        "badTopic",
+        new KafkaTargetConfig(),
+        DataFormat.TEXT,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget)
+      .setOnRecordError(OnRecordError.STOP_PIPELINE).build();
+
+    targetRunner.runInit();
   }
 
   @Test
   public void testWriteAvroRecords() throws Exception {
 
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .addConfiguration("topic", TOPIC17)
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", null)
-      .addConfiguration("dataFormat", DataFormat.AVRO)
-      .addConfiguration("singleMessagePerBatch", false)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("csvFileFormat", CsvMode.CSV)
-      .addConfiguration("csvHeader", CsvHeader.NO_HEADER)
-      .addConfiguration("csvReplaceNewLines", false)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", false)
-      .addConfiguration("topicExpression", null)
-      .addConfiguration("topicWhiteList", null)
-      .addConfiguration("avroSchema", SdcAvroTestUtil.AVRO_SCHEMA1)
-      .addConfiguration("includeSchema", true)
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+    dataGeneratorFormatConfig.avroSchema = SdcAvroTestUtil.AVRO_SCHEMA1;
+    dataGeneratorFormatConfig.includeSchema = true;
+
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        TOPIC17,
+        "0",
+        null,
+        false,
+        PartitionStrategy.EXPRESSION,
+        false,
+        null,
+        null,
+        new KafkaTargetConfig(),
+        DataFormat.AVRO,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget).build();
 
     targetRunner.runInit();
 
@@ -1049,24 +1154,26 @@ public class TestKafkaTargetSinglePartition {
   @Test
   public void testWriteAvroRecordsSingleMessage() throws Exception {
 
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .addConfiguration("topic", TOPIC17)
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", null)
-      .addConfiguration("dataFormat", DataFormat.AVRO)
-      .addConfiguration("singleMessagePerBatch", true)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("csvFileFormat", CsvMode.CSV)
-      .addConfiguration("csvHeader", CsvHeader.NO_HEADER)
-      .addConfiguration("csvReplaceNewLines", false)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", false)
-      .addConfiguration("topicExpression", null)
-      .addConfiguration("topicWhiteList", null)
-      .addConfiguration("avroSchema", SdcAvroTestUtil.AVRO_SCHEMA1)
-      .addConfiguration("includeSchema", true)
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+    dataGeneratorFormatConfig.avroSchema = SdcAvroTestUtil.AVRO_SCHEMA1;
+    dataGeneratorFormatConfig.includeSchema = true;
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        TOPIC18,
+        "0",
+        null,
+        true,
+        PartitionStrategy.EXPRESSION,
+        false,
+        null,
+        null,
+        new KafkaTargetConfig(),
+        DataFormat.AVRO,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget).build();
 
     targetRunner.runInit();
 
@@ -1078,8 +1185,8 @@ public class TestKafkaTargetSinglePartition {
     List<GenericRecord> genericRecords = new ArrayList<>();
     DatumReader<GenericRecord> datumReader = new GenericDatumReader<>(); //Reader schema argument is optional
 
-    Assert.assertTrue(kafkaStreams17.size() == 1);
-    ConsumerIterator<byte[], byte[]> it = kafkaStreams17.get(0).iterator();
+    Assert.assertTrue(kafkaStreams18.size() == 1);
+    ConsumerIterator<byte[], byte[]> it = kafkaStreams18.get(0).iterator();
     int messageCount = 0;
     try {
       while (it.hasNext()) {
@@ -1102,24 +1209,26 @@ public class TestKafkaTargetSinglePartition {
   @Test
   public void testWriteAvroRecordsDropSchema() throws Exception {
 
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .addConfiguration("topic", TOPIC17)
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", null)
-      .addConfiguration("dataFormat", DataFormat.AVRO)
-      .addConfiguration("singleMessagePerBatch", false)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("csvFileFormat", CsvMode.CSV)
-      .addConfiguration("csvHeader", CsvHeader.NO_HEADER)
-      .addConfiguration("csvReplaceNewLines", false)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", false)
-      .addConfiguration("topicExpression", null)
-      .addConfiguration("topicWhiteList", null)
-      .addConfiguration("avroSchema", SdcAvroTestUtil.AVRO_SCHEMA1)
-      .addConfiguration("includeSchema", false)
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+    dataGeneratorFormatConfig.avroSchema = SdcAvroTestUtil.AVRO_SCHEMA1;
+    dataGeneratorFormatConfig.includeSchema = false;
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        TOPIC19,
+        "0",
+        null,
+        false,
+        PartitionStrategy.EXPRESSION,
+        false,
+        null,
+        null,
+        new KafkaTargetConfig(),
+        DataFormat.AVRO,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget).build();
 
     targetRunner.runInit();
 
@@ -1133,8 +1242,8 @@ public class TestKafkaTargetSinglePartition {
     datumReader.setSchema(new Schema.Parser().parse(SdcAvroTestUtil.AVRO_SCHEMA1));
     int messageCounter = 0;
 
-    Assert.assertTrue(kafkaStreams17.size() == 1);
-    ConsumerIterator<byte[], byte[]> it = kafkaStreams17.get(0).iterator();
+    Assert.assertTrue(kafkaStreams19.size() == 1);
+    ConsumerIterator<byte[], byte[]> it = kafkaStreams19.get(0).iterator();
     try {
       while (it.hasNext()) {
         messageCounter++;
@@ -1154,24 +1263,26 @@ public class TestKafkaTargetSinglePartition {
   @Test
   public void testWriteAvroRecordsDropSchemaSingleMessage() throws Exception {
 
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .addConfiguration("topic", TOPIC17)
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", null)
-      .addConfiguration("dataFormat", DataFormat.AVRO)
-      .addConfiguration("singleMessagePerBatch", true)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("csvFileFormat", CsvMode.CSV)
-      .addConfiguration("csvHeader", CsvHeader.NO_HEADER)
-      .addConfiguration("csvReplaceNewLines", false)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", false)
-      .addConfiguration("topicExpression", null)
-      .addConfiguration("topicWhiteList", null)
-      .addConfiguration("avroSchema", SdcAvroTestUtil.AVRO_SCHEMA1)
-      .addConfiguration("includeSchema", false)
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+    dataGeneratorFormatConfig.avroSchema = SdcAvroTestUtil.AVRO_SCHEMA1;
+    dataGeneratorFormatConfig.includeSchema = false;
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        TOPIC20,
+        "0",
+        null,
+        true,
+        PartitionStrategy.EXPRESSION,
+        false,
+        null,
+        null,
+        new KafkaTargetConfig(),
+        DataFormat.AVRO,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget).build();
 
     targetRunner.runInit();
 
@@ -1185,8 +1296,8 @@ public class TestKafkaTargetSinglePartition {
     datumReader.setSchema(new Schema.Parser().parse(SdcAvroTestUtil.AVRO_SCHEMA1));
     int messageCounter = 0;
 
-    Assert.assertTrue(kafkaStreams17.size() == 1);
-    ConsumerIterator<byte[], byte[]> it = kafkaStreams17.get(0).iterator();
+    Assert.assertTrue(kafkaStreams20.size() == 1);
+    ConsumerIterator<byte[], byte[]> it = kafkaStreams20.get(0).iterator();
     try {
       while (it.hasNext()) {
         messageCounter++;
@@ -1213,35 +1324,38 @@ public class TestKafkaTargetSinglePartition {
   @Test
   public void testWriteBinaryRecords() throws InterruptedException, StageException {
 
-    Map<String, String> kafkaProducerConfig = new HashMap();
-    kafkaProducerConfig.put("request.required.acks", "2");
+    Map<String, String> kafkaProducerConfig = new HashMap<>();
+    sdcKafkaTestUtil.setMaxAcks(kafkaProducerConfig);
     kafkaProducerConfig.put("request.timeout.ms", "2000");
 
-    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class)
-      .addConfiguration("topic", TOPIC19)
-      .addConfiguration("partition", "0")
-      .addConfiguration("metadataBrokerList", KafkaTestUtil.getMetadataBrokerURI())
-      .addConfiguration("kafkaProducerConfigs", kafkaProducerConfig)
-      .addConfiguration("dataFormat", DataFormat.BINARY)
-      .addConfiguration("singleMessagePerBatch", false)
-      .addConfiguration("partitionStrategy", PartitionStrategy.EXPRESSION)
-      .addConfiguration("textFieldPath", "/")
-      .addConfiguration("textEmptyLineIfNull", true)
-      .addConfiguration("charset", "UTF-8")
-      .addConfiguration("runtimeTopicResolution", false)
-      .addConfiguration("topicExpression", null)
-      .addConfiguration("topicWhiteList", null)
-      .addConfiguration("binaryFieldPath", "/data")
-      .build();
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+    dataGeneratorFormatConfig.binaryFieldPath = "/data";
+
+    KafkaTarget kafkaTarget = KafkaTargetUtil.createKafkaTarget(
+        sdcKafkaTestUtil.getMetadataBrokerURI(),
+        TOPIC21,
+        "0",
+        kafkaProducerConfig,
+        false,
+        PartitionStrategy.EXPRESSION,
+        false,
+        null,
+        null,
+        new KafkaTargetConfig(),
+        DataFormat.BINARY,
+        dataGeneratorFormatConfig
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(KafkaDTarget.class, kafkaTarget).build();
 
     targetRunner.runInit();
-    List<Record> binaryRecords = KafkaTestUtil.createBinaryRecords();
+    List<Record> binaryRecords = sdcKafkaTestUtil.createBinaryRecords();
     targetRunner.runWrite(binaryRecords);
     targetRunner.runDestroy();
 
     List<byte[]> messages = new ArrayList<>();
-    Assert.assertTrue(kafkaStreams19.size() == 1);
-    ConsumerIterator<byte[], byte[]> it = kafkaStreams19.get(0).iterator();
+    Assert.assertTrue(kafkaStreams21.size() == 1);
+    ConsumerIterator<byte[], byte[]> it = kafkaStreams21.get(0).iterator();
     try {
       while (it.hasNext()) {
         messages.add(it.next().message());

@@ -20,11 +20,15 @@
    <topicmeta>
     <shortdesc/>
    </topicmeta>
+   <topicref href="../Destinations/Destinations_AWSCredentials.dita"/>
   </topicref>
   <topicref href="../Destinations/AmazonS3.dita" chunk="to-content">
    <topicmeta>
     <shortdesc/>
    </topicmeta>
+   <topicref href="../Destinations/AmazonS3-OutputFileNames.dita"/>
+   <topicref href="../Destinations/AmazonS3-PartitionPrefix.dita"/>
+   <topicref href="../Destinations/AmazonS3-ServerSideEncryption.dita"/>
    <topicref href="../Destinations/AmazonS3-DataFormat.dita"/>
    <topicref href="../Destinations/AmazonS3-Configuring.dita"/>
   </topicref>
@@ -39,12 +43,14 @@
    <topicmeta>
     <shortdesc/>
    </topicmeta>
+   <topicref href="../Destinations/Elastic-TimeBasis.dita"/>
+   <topicref href="../Destinations/Elastic-DocIDandUpserts.dita"/>
    <topicref href="../Destinations/Elasticsearch-Configuring.dita"/>
   </topicref>
-  <topicref href="../Destinations/Flume.dita" chunk="to-content">
+  <topicref href="../Destinations/Flume.dita" chunk="to-content"> 
    <topicmeta>
-    <shortdesc/>
-   </topicmeta>
+   <shortdesc/>
+  </topicmeta>
    <topicref href="../Destinations/Flume-DataFormats.dita"/>
    <topicref href="../Destinations/Flume-Configuring.dita"/>
   </topicref>
@@ -52,15 +58,14 @@
    <topicmeta>
     <shortdesc/>
    </topicmeta>
-   <topicref href="../Destinations/HadoopFS-Kerberos.dita"/>
-   <topicref href="../Destinations/HadoopFS-HDFSUser-dest.dita"/>
-   <topicref href="../Destinations/Compression-Overview.dita">
-    <topicref href="../Destinations/Compression-Enabling.dita"/>
-   </topicref>
-   <topicref href="../Destinations/HadoopFS-DataFormat.dita"/>
    <topicref href="../Destinations/HadoopFS-DirectoryTemplates.dita"/>
    <topicref href="../Destinations/HadoopFS-TimeBasis.dita"/>
    <topicref href="../Destinations/HadoopFS-LateRecordHandling.dita"/>
+   <topicref href="../Destinations/HadoopFS-IdleTimeout.dita"/>
+   <topicref href="../Destinations/HadoopFS-RecordHeaderAttributes.dita"/>
+   <topicref href="../Destinations/HadoopFS-DataFormat.dita"/>
+   <topicref href="../Destinations/HadoopFS-Kerberos.dita"/>
+   <topicref href="../Destinations/HadoopFS-HDFSUser-dest.dita"/>
    <topicref href="../Destinations/HadoopFS-HadoopProperties-dest.dita"/>
    <topicref href="../Destinations/HadoopFS-Configuring.dita"/>
   </topicref>
@@ -68,10 +73,25 @@
    <topicmeta>
     <shortdesc/>
    </topicmeta>
+   <topicref href="../Destinations/HBase-FieldMappings.dita"/>
    <topicref href="../Destinations/HBase-Kerberos.dita"/>
    <topicref href="../Destinations/HBase-HBaseUser.dita"/>
+   <topicref href="../Destinations/HBase-TimeBasis.dita"/>
    <topicref href="../Destinations/HBase-HBaseProperties.dita"/>
    <topicref href="../Destinations/HBase-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Destinations/HiveMetastore.dita" chunk="to-content">
+   <topicmeta>
+    <shortdesc/>
+   </topicmeta>
+   <topicref href="../Destinations/HiveMetastore-MetadataProcessing.dita"/>
+   <topicref href="../Destinations/HiveMetastore-TableGen.dita"/>
+   <topicref href="../Destinations/HiveMetastore-Cache.dita">
+    <topicref href="../Reusable_Content/HiveMeta-CacheEvict.dita"/>
+   </topicref>
+   <topicref href="../Destinations/HiveMetastore-Kerberos.dita"/>
+   <topicref href="../Destinations/HiveMetastore-HiveProps.dita"/>
+   <topicref href="../Destinations/HiveMetastore-Configuring.dita"/>
   </topicref>
   <topicref href="../Destinations/Hive.dita" chunk="to-content">
    <topicmeta>
@@ -79,6 +99,12 @@
    </topicmeta>
    <topicref href="../Destinations/Hive-HiveProperties.dita"/>
    <topicref href="../Destinations/Hive-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Destinations/InfluxDB.dita" chunk="to-content">
+   <topicmeta>
+    <shortdesc/>
+   </topicmeta>
+   <topicref href="../Destinations/InfluxDB-Configuring.dita"/>
   </topicref>
   <topicref href="../Destinations/JDBCProducer.dita" chunk="to-content">
    <topicmeta>
@@ -96,19 +122,109 @@
    <topicref href="../Destinations/KProducer-RuntimeResolution.dita"/>
    <topicref href="../Destinations/KProducer-PartitionStrategy.dita"/>
    <topicref href="../Destinations/KProducer-AdditionalKProperties.dita"/>
+   <topicref href="../Destinations/KProducer-EnablingSecurity.dita">
+    <topicref href="../Destinations/KProducer-EnablingSSL.dita"/>
+    <topicref href="../Destinations/KProducer-EnablingKerberos.dita"/>
+    <topicref href="../Destinations/KProducer-EnablingSSLandKerb.dita"/>
+   </topicref>
    <topicref href="../Destinations/KProducer-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Destinations/KinFirehose.dita" chunk="to-content">  
+   <topicmeta>
+    <shortdesc/>
+   </topicmeta>
+   <topicref href="../Destinations/KinFirehose-DeliveryStream.dita"/>
+   <topicref href="../Destinations/KinFirehose-DataFormat.dita"/>
+   <topicref href="../Destinations/KinFirehose-Configuring.dita"/>
   </topicref>
   <topicref href="../Destinations/KinProducer.dita" chunk="to-content">  
    <topicmeta>
    <shortdesc/>
   </topicmeta>
+   <topicref href="../Destinations/KinProducer-DataFormat.dita"/>
    <topicref href="../Destinations/KinProducer-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Destinations/Kudu.dita" chunk="to-content">
+   <topicmeta>
+    <shortdesc/>
+   </topicmeta>
+   <topicref href="../Destinations/Kudu-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Destinations/LocalFS.dita" chunk="to-content">
+   <topicmeta>
+    <shortdesc/>
+   </topicmeta>
+   <topicref href="../Destinations/LocalFS-DataFormat.dita"/>
+   <topicref href="../Destinations/LocalFS-DirectoryTemplates.dita"/>
+   <topicref href="../Destinations/LocalFS-TimeBasis.dita"/>
+   <topicref href="../Destinations/LocalFS-LateRecordHandling.dita"/>
+   <topicref href="../Destinations/LocalFS-IdleTimeout.dita"/>
+   <topicref href="../Destinations/LocalFS-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Destinations/MapRDB.dita" chunk="to-content">
+   <topicmeta>
+    <shortdesc/>
+   </topicmeta>
+   <topicref href="../Destinations/MapRDB-FieldMappings.dita"/>
+   <topicref href="../Destinations/MapRDB-Kerberos.dita"/>
+   <topicref href="../Destinations/MapRDB-HBaseUser.dita"/>
+   <topicref href="../Destinations/MapRDB-TimeBasis.dita"/>
+   <topicref href="../Destinations/MapRDB-HBaseProperties.dita"/>
+   <topicref href="../Destinations/MapRDB-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Destinations/MapRFS.dita" chunk="to-content"> 
+   <topicmeta>
+   <shortdesc/>
+  </topicmeta>
+   <topicref href="../Destinations/MapRFS-Kerberos.dita"/>
+   <topicref href="../Destinations/MapRFS-HDFSUser.dita"/>
+   <topicref href="../Destinations/MapRFS-DataFormats.dita"/>
+   <topicref href="../Destinations/MapRFS-DirectoryTemplates.dita"/>
+   <topicref href="../Destinations/MapRFS-TimeBasis.dita"/>
+   <topicref href="../Destinations/MapRFS-LateRecordHandling.dita"/>
+   <topicref href="../Destinations/MapRFS-IdleTimeout.dita"/>
+   <topicref href="../Destinations/MapRFS-HadoopProps.dita"/>
+   <topicref href="../Destinations/MapRFS-Configuring.dita"/></topicref>
+  <topicref href="../Destinations/MapRStreamsProd.dita" chunk="to-content">
+   <topicmeta>
+    <shortdesc/>
+   </topicmeta>
+   <topicref href="../Destinations/MapRStreamsProd-DataFormats.dita"/>
+   <topicref href="../Destinations/MapRStreamsProd-RuntimeResolution.dita"/>
+   <topicref href="../Destinations/MapRStreamsProd-PartitionStrat.dita"/>
+   <topicref href="../Destinations/MapRStreamsProd-AddProps.dita"/>
+   <topicref href="../Destinations/MapRStreamsProd-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Destinations/MongoDB.dita" chunk="to-content"> 
+   <topicmeta>
+   <shortdesc/>
+  </topicmeta>
+   <topicref href="../Destinations/MongoDB-OperationHeader.dita"/>
+   <topicref href="../Destinations/MongoDB-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Destinations/RabbitMQ.dita" chunk="to-content">
+   <topicmeta>
+    <shortdesc/>
+   </topicmeta>
+   <topicref href="../Destinations/RabbitMQ-DataFormats.dita"/>
+   <topicref href="../Destinations/RabbitMQ-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Destinations/Redis.dita" chunk="to-content">
+   <topicmeta>
+    <shortdesc/>
+   </topicmeta>
+   <topicref href="../Destinations/Redis-Mode.dita">
+    <topicref href="../Destinations/Redis-BatchModeDataTypes.dita"/>
+    <topicref href="../Destinations/Redis-DataFormat.dita"/>
+   </topicref>
+   <topicref href="../Destinations/Redis-Configuring.dita"/>
   </topicref>
   <topicref href="../Destinations/SDC_RPCdest.dita" chunk="to-content"> 
    <topicmeta>
    <shortdesc/>
   </topicmeta>
    <topicref href="../Destinations/RPCdest-Connections.dita"/>
+   <topicref href="../Destinations/RPC-Compression.dita"/>
    <topicref href="../Destinations/RPCdest-Configuring.dita"/>
   </topicref>
   <topicref href="../Destinations/Solr.dita" chunk="to-content"><topicmeta>

@@ -19,17 +19,22 @@
  */
 package com.streamsets.datacollector.config;
 
+import com.google.common.collect.ImmutableSet;
 import com.streamsets.datacollector.creation.StageConfigBean;
 import com.streamsets.pipeline.api.ExecutionMode;
+import com.streamsets.pipeline.api.HideConfigs;
 import com.streamsets.pipeline.api.Label;
+import com.streamsets.pipeline.api.Stage;
 import com.streamsets.pipeline.api.StageUpgrader;
 import com.streamsets.pipeline.api.impl.LocalizableMessage;
 import com.streamsets.pipeline.api.impl.Utils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Captures the configuration options for a {@link com.streamsets.pipeline.api.Stage}.
@@ -39,13 +44,14 @@ public class StageDefinition {
   private final StageLibraryDefinition libraryDefinition;
   private final boolean privateClassLoader;
   private final ClassLoader classLoader;
-  private final Class klass;
+  private final Class<? extends Stage> klass;
   private final String name;
   private final int version;
   private final String label;
   private final String description;
   private final StageType type;
   private final boolean errorStage;
+  private final boolean statsAggregatorStage;
   private final boolean preconditions;
   private final boolean onRecordError;
   private final RawSourceDefinition rawSourceDefinition;
@@ -62,15 +68,39 @@ public class StageDefinition {
   private final StageUpgrader upgrader;
   private final List<String> libJarsRegex;
   private final boolean resetOffset;
+  private final String onlineHelpRefUrl;
+  private final boolean offsetCommitTrigger;
 
   // localized version
-  private StageDefinition(StageLibraryDefinition libraryDefinition, boolean privateClassLoader, ClassLoader classLoader,
-      Class klass, String name,
-      int version, String label, String description, StageType type, boolean errorStage, boolean preconditions,
-      boolean onRecordError, List<ConfigDefinition> configDefinitions, RawSourceDefinition rawSourceDefinition,
-      String icon, ConfigGroupDefinition configGroupDefinition, boolean variableOutputStreams, int outputStreams,
-      List<String> outputStreamLabels, List<ExecutionMode> executionModes, boolean recordsByRef,
-      StageUpgrader upgrader, List<String> libJarsRegex, boolean resetOffset) {
+  private StageDefinition(
+      StageLibraryDefinition libraryDefinition,
+      boolean privateClassLoader,
+      ClassLoader classLoader,
+      Class klass,
+      String name,
+      int version,
+      String label,
+      String description,
+      StageType type,
+      boolean errorStage,
+      boolean preconditions,
+      boolean onRecordError,
+      List<ConfigDefinition> configDefinitions,
+      RawSourceDefinition rawSourceDefinition,
+      String icon,
+      ConfigGroupDefinition configGroupDefinition,
+      boolean variableOutputStreams,
+      int outputStreams,
+      List<String> outputStreamLabels,
+      List<ExecutionMode> executionModes,
+      boolean recordsByRef,
+      StageUpgrader upgrader,
+      List<String> libJarsRegex,
+      boolean resetOffset,
+      String onlineHelpRefUrl,
+      boolean statsAggregatorStage,
+      boolean offsetCommitTrigger
+  ) {
     this.libraryDefinition = libraryDefinition;
     this.privateClassLoader = privateClassLoader;
     this.classLoader = classLoader;
@@ -85,6 +115,8 @@ public class StageDefinition {
     this.onRecordError = onRecordError;
     this.configDefinitions = configDefinitions;
     this.rawSourceDefinition = rawSourceDefinition;
+    this.onlineHelpRefUrl = onlineHelpRefUrl;
+    this.statsAggregatorStage = statsAggregatorStage;
     configDefinitionsMap = new HashMap<>();
     for (ConfigDefinition conf : configDefinitions) {
       configDefinitionsMap.put(conf.getName(), conf);
@@ -109,7 +141,7 @@ public class StageDefinition {
     this.upgrader = upgrader;
     this.libJarsRegex = libJarsRegex;
     this.resetOffset = resetOffset;
-
+    this.offsetCommitTrigger = offsetCommitTrigger;
   }
 
   public StageDefinition(StageDefinition def, ClassLoader classLoader) {
@@ -117,7 +149,8 @@ public class StageDefinition {
     privateClassLoader = def.privateClassLoader;
     this.classLoader = classLoader;
     try {
-      klass = classLoader.loadClass(def.getClassName());
+
+      klass = (Class<? extends Stage>) classLoader.loadClass(def.getClassName());
     } catch (Exception ex) {
       throw new Error(ex);
     }
@@ -142,18 +175,43 @@ public class StageDefinition {
     upgrader = def.upgrader;
     libJarsRegex = def.libJarsRegex;
     resetOffset = def.resetOffset;
+    onlineHelpRefUrl = def.onlineHelpRefUrl;
+    statsAggregatorStage = def.statsAggregatorStage;
+    offsetCommitTrigger = def.offsetCommitTrigger;
   }
 
-    public StageDefinition(StageLibraryDefinition libraryDefinition, boolean privateClassLoader, Class klass,
-        String name, int version, String label, String description,
-      StageType type, boolean errorStage, boolean preconditions, boolean onRecordError,
-      List<ConfigDefinition> configDefinitions, RawSourceDefinition rawSourceDefinition, String icon,
-      ConfigGroupDefinition configGroupDefinition, boolean variableOutputStreams, int outputStreams,
-      String outputStreamLabelProviderClass, List<ExecutionMode> executionModes, boolean recordsByRef,
-        StageUpgrader upgrader, List<String> libJarsRegex, boolean resetOffset) {
+  public StageDefinition(
+      StageLibraryDefinition libraryDefinition,
+      boolean privateClassLoader,
+      Class klass,
+      String name,
+      int version,
+      String label,
+      String description,
+      StageType type,
+      boolean errorStage,
+      boolean preconditions,
+      boolean onRecordError,
+      List<ConfigDefinition> configDefinitions,
+      RawSourceDefinition rawSourceDefinition,
+      String icon,
+      ConfigGroupDefinition configGroupDefinition,
+      boolean variableOutputStreams,
+      int outputStreams,
+      String outputStreamLabelProviderClass,
+      List<ExecutionMode> executionModes,
+      boolean recordsByRef,
+      StageUpgrader upgrader,
+      List<String> libJarsRegex,
+      boolean resetOffset,
+      String onlineHelpRefUrl,
+      boolean statsAggregatorStage,
+      boolean offsetCommitTrigger
+  ) {
     this.libraryDefinition = libraryDefinition;
     this.privateClassLoader = privateClassLoader;
-    this.classLoader = libraryDefinition.getClassLoader();
+      this.onlineHelpRefUrl = onlineHelpRefUrl;
+      this.classLoader = libraryDefinition.getClassLoader();
     this.klass = klass;
     this.name = name;
     this.version = version;
@@ -188,6 +246,8 @@ public class StageDefinition {
     this.upgrader = upgrader;
     this.libJarsRegex = libJarsRegex;
     this.resetOffset = resetOffset;
+    this.statsAggregatorStage = statsAggregatorStage;
+    this.offsetCommitTrigger = offsetCommitTrigger;
   }
 
   public List<ExecutionMode> getLibraryExecutionModes() {
@@ -258,6 +318,10 @@ public class StageDefinition {
     return onRecordError;
   }
 
+  public boolean isStatsAggregatorStage() {
+    return statsAggregatorStage;
+  }
+
   public void addConfiguration(ConfigDefinition confDef) {
     if (configDefinitionsMap.containsKey(confDef.getName())) {
       throw new IllegalArgumentException(Utils.format("Stage '{}:{}:{}', configuration definition '{}' already exists",
@@ -267,12 +331,24 @@ public class StageDefinition {
     configDefinitions.add(confDef);
   }
 
+  public boolean isOffsetCommitTrigger() {
+    return offsetCommitTrigger;
+  }
+
   public List<ConfigDefinition> getConfigDefinitions() {
     return configDefinitions;
   }
 
   public ConfigDefinition getConfigDefinition(String configName) {
     return configDefinitionsMap.get(configName);
+  }
+
+  public Set<String> getHideConfigs() {
+    HideConfigs hideConfigs = klass.getAnnotation(HideConfigs.class);
+    Set<String> hideConfigSet = (hideConfigs != null) ?
+        ImmutableSet.copyOf(hideConfigs.value()) :
+        Collections.<String>emptySet();
+    return hideConfigSet;
   }
 
   public Map<String, ConfigDefinition> getConfigDefinitionsMap() {
@@ -415,11 +491,35 @@ public class StageDefinition {
       streamLabels = getLocalizedOutputStreamLabels(classLoader);
     }
 
-    return new StageDefinition(libraryDefinition, privateClassLoader, getStageClassLoader(), getStageClass(), getName(),
-                               getVersion(), label, description, getType(), isErrorStage(),
-                               hasPreconditions(), hasOnRecordError(), configDefs, rawSourceDef, getIcon(), groupDefs,
-                               isVariableOutputStreams(), getOutputStreams(), streamLabels, executionModes,
-                               recordsByRef, upgrader, libJarsRegex, resetOffset);
+    return new StageDefinition(
+        libraryDefinition,
+        privateClassLoader,
+        getStageClassLoader(),
+        getStageClass(),
+        getName(),
+        getVersion(),
+        label,
+        description,
+        getType(),
+        isErrorStage(),
+        hasPreconditions(),
+        hasOnRecordError(),
+        configDefs,
+        rawSourceDef,
+        getIcon(),
+        groupDefs,
+        isVariableOutputStreams(),
+        getOutputStreams(),
+        streamLabels,
+        executionModes,
+        recordsByRef,
+        upgrader,
+        libJarsRegex,
+        resetOffset,
+        onlineHelpRefUrl,
+        statsAggregatorStage,
+        offsetCommitTrigger
+    );
   }
 
   private List<String> _getOutputStreamLabels(ClassLoader classLoader, boolean localized) {
@@ -444,14 +544,13 @@ public class StageDefinition {
     return list;
   }
 
-  private List<String> getOutputStreamLabels(ClassLoader classLoader) {
-    return _getOutputStreamLabels(classLoader, false);
-  }
-
   private List<String> getLocalizedOutputStreamLabels(ClassLoader classLoader) {
     return _getOutputStreamLabels(classLoader, true);
   }
 
+  public String getOnlineHelpRefUrl() {
+    return onlineHelpRefUrl;
+  }
 }
 
 

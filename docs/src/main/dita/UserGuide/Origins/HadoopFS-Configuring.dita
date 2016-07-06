@@ -39,36 +39,36 @@
                             </thead>
                             <tbody>
                                 <row>
-                                    <entry>Hadoop FS URI</entry>
-                                    <entry>HDFS URI. Include the HDFS scheme and authority as
-                                        follows:
-                                        <codeph>&lt;scheme>://&lt;authority></codeph>.</entry>
-                                </row>
-                                <row>
-                                    <entry>Directory Path</entry>
-                                    <entry>Directory for the data to be read. Include the HDFS
-                                        scheme and authority in the path as follows:
-                                            <codeph>&lt;scheme>://&lt;authority>/path</codeph>.</entry>
-                                </row>
-                                <row>
-                                    <entry>Include All Subdirectories</entry>
-                                    <entry>Reads from all directories within the specified directory
-                                        path.</entry>
-                                </row>
-                                <row>
-                                    <entry>Data Format <xref
-                                            href="HadoopFS-DataFormat.dita">
+                                    <entry>Data Format <xref href="HadoopFS-DataFormat.dita">
                                             <image href="../Graphics/icon_moreInfo.png" scale="10"
                                                 placement="inline" id="image_mfn_hwx_5r"
                                         /></xref></entry>
                                     <entry>
                                         <p>Type of data to be read. Use one of the following
                                             options: <ul id="ul_czf_y14_vs">
+                                                <li>Avro</li>
+                                                <li>Delimited</li>
                                                 <li>Text</li>
-                                                <li>JSON</li>
-                                                <li>Log</li>
                                             </ul></p>
                                     </entry>
+                                </row>
+                                <row>
+                                    <entry>Hadoop FS URI</entry>
+                                    <entry>HDFS URI. Include the HDFS scheme and authority as
+                                        follows:
+                                            <codeph>&lt;scheme>://&lt;authority></codeph>.<p>For
+                                            example:<codeblock>hdfs://nameservice</codeblock></p></entry>
+                                </row>
+                                <row>
+                                    <entry>Input Paths</entry>
+                                    <entry>Location of the input data to be read. Enter the path as
+                                        follows: <codeph>/&lt;path></codeph>.<p>For
+                                            example:<codeblock>/user/hadoop/directory</codeblock></p></entry>
+                                </row>
+                                <row>
+                                    <entry>Include All Subdirectories</entry>
+                                    <entry>Reads from all directories within the specified input
+                                        path.</entry>
                                 </row>
                                 <row>
                                     <entry>Produce Single Record</entry>
@@ -85,7 +85,9 @@
                                             selected, uses the Kerberos principal and keytab defined
                                             in the <ph
                                                 conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                            /> configuration file. </p></entry>
+                                            /> configuration file,
+                                                <codeph>$SDC_CONF/sdc.properties</codeph>.
+                                        </p></entry>
                                 </row>
                                 <row>
                                     <entry>Hadoop FS Configuration Directory  <xref
@@ -94,9 +96,12 @@
                                                 placement="inline" id="image_ocv_4qg_xs"
                                         /></xref></entry>
                                     <entry>
-                                        <p>Location of the HDFS configuration files. Use a directory
-                                            or symlink within the Data Collector resources
-                                            directory.</p>
+                                        <p>Location of the HDFS configuration files. </p>
+                                        <p>For a Cloudera Manager installation, enter
+                                                <codeph>hadoop-conf</codeph>. For all other
+                                            installations, use a directory or symlink within the <ph
+                                                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                            /> resources directory.</p>
                                         <p>You can use the following files with the Hadoop FS
                                                 origin:<ul
                                                 conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/ul-HDFSfiles_HDFSorigin"
@@ -135,34 +140,16 @@
                                         </p>
                                     </entry>
                                 </row>
-                            </tbody>
-                        </tgroup>
-                    </table>
-                </info>
-            </step>
-            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/Text">
-                <cmd/>
-            </step>
-            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/DelimFILE">
-                <cmd/>
-            </step>
-            <step>
-                <cmd>For JSON data, on the <wintitle>JSON</wintitle> tab, configure the following
-                    property:</cmd>
-                <info>
-                    <table frame="all" rowsep="1" colsep="1" id="table_h3y_342_2t">
-                        <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
-                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
-                            <thead>
-                                <row>
-                                    <entry>JSON Property</entry>
-                                    <entry>Description</entry>
-                                </row>
-                            </thead>
-                            <tbody>
                                 <row
-                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/ROW-MaxObject">
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/MaxBatchSize">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/Charset">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/IgnoreControlChars-row">
                                     <entry/>
                                 </row>
                             </tbody>
@@ -170,10 +157,13 @@
                     </table>
                 </info>
             </step>
-            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/LogData_Log4j">
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/O-AVROHadoopFS">
                 <cmd/>
             </step>
-            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/O-AVRO-FILE">
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/DelimFILE">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/Text">
                 <cmd/>
             </step>
         </steps>

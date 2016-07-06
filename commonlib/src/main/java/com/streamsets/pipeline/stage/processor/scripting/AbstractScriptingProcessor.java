@@ -22,10 +22,15 @@ package com.streamsets.pipeline.stage.processor.scripting;
 import com.streamsets.pipeline.api.Batch;
 import com.streamsets.pipeline.api.Record;
 import com.streamsets.pipeline.api.StageException;
+import com.streamsets.pipeline.api.base.OnRecordErrorException;
 import com.streamsets.pipeline.api.base.SingleLaneProcessor;
 import com.streamsets.pipeline.api.impl.Utils;
+import com.streamsets.pipeline.stage.common.DefaultErrorRecordHandler;
+import com.streamsets.pipeline.stage.common.ErrorRecordHandler;
 import org.slf4j.Logger;
 
+import javax.script.Compilable;
+import javax.script.CompiledScript;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
@@ -36,6 +41,7 @@ import java.util.List;
 
 public abstract class AbstractScriptingProcessor extends SingleLaneProcessor {
   private final Logger log;
+
   // to hide all other methods of batchMaker
   public interface Out {
     public void write(ScriptRecord record);
@@ -53,12 +59,16 @@ public abstract class AbstractScriptingProcessor extends SingleLaneProcessor {
   private final String scriptConfigName;
   private final ProcessingMode processingMode;
   private final  String script;
-  private ScriptObjectFactory scriptObjectFactory;
-  protected ScriptEngine engine;
-  private Err err;
-
+  private final SimpleBindings bindings = new SimpleBindings();
   // State obj for use by end-user scripts.
   private final Object state;
+
+  private CompiledScript compiledScript;
+  private ScriptObjectFactory scriptObjectFactory;
+  private ErrorRecordHandler errorRecordHandler;
+  private Err err;
+
+  protected ScriptEngine engine;
 
   public AbstractScriptingProcessor(
       Logger log,
@@ -91,22 +101,32 @@ public abstract class AbstractScriptingProcessor extends SingleLaneProcessor {
   @Override
   protected List<ConfigIssue> init() {
     List<ConfigIssue> issues = super.init();
+    errorRecordHandler = new DefaultErrorRecordHandler(getContext());
+
     try {
       engine = new ScriptEngineManager(getClass().getClassLoader()).getEngineByName(scriptingEngineName);
       if (engine == null) {
         issues.add(getContext().createConfigIssue(null, null, Errors.SCRIPTING_00, scriptingEngineName));
       }
     } catch (Exception ex) {
-      issues.add(getContext().createConfigIssue(null, null, Errors.SCRIPTING_01, scriptingEngineName, ex.toString(),
-                                                ex));
+      issues.add(
+          getContext().createConfigIssue(null, null, Errors.SCRIPTING_01, scriptingEngineName, ex.toString(), ex)
+      );
     }
 
     if (script.trim().isEmpty()) {
       issues.add(getContext().createConfigIssue(scriptConfigGroup, scriptConfigName, Errors.SCRIPTING_02));
+    } else {
+      try {
+        compiledScript = ((Compilable) engine).compile(script);
+      } catch (ScriptException e) {
+        // This likely means that there is a syntactic error in the script.
+        issues.add(
+            getContext().createConfigIssue(scriptConfigGroup, scriptConfigName, Errors.SCRIPTING_03, e.toString())
+        );
+        log.error(Errors.SCRIPTING_03.getMessage(), e.toString(), e);
+      }
     }
-
-    // we cannot verify the script is syntactically correct as there is no way to differentiate
-    // that from an exception due to a script execution :(
 
     err = new Err();
 
@@ -121,73 +141,73 @@ public abstract class AbstractScriptingProcessor extends SingleLaneProcessor {
         singleLaneBatchMaker.addRecord(getScriptObjectFactory().getRecord(scriptRecord));
       }
     };
+
     switch (processingMode) {
-      case RECORD: {
-        List<ScriptRecord> records = new ArrayList<>();
-        records.add(null);
-        Iterator<Record> it = batch.getRecords();
-        while (it.hasNext()) {
-          Record record = it.next();
-          records.set(0, getScriptObjectFactory().createScriptRecord(record));
-          runScript(records, out, err, state, log);
-        }
+      case RECORD:
+        runRecord(batch, out);
         break;
-      }
-      case BATCH: {
-        List<ScriptRecord> records = new ArrayList<>();
-        Iterator<Record> it = batch.getRecords();
-        while (it.hasNext()) {
-          Record record = it.next();
-          records.add(getScriptObjectFactory().createScriptRecord(record));
-        }
-        runScript(records, out, err, state, log);
+      case BATCH:
+        runBatch(batch, out);
         break;
-      }
+      default:
+        throw new IllegalStateException(Utils.format("Unknown Processing Mode: '{}'", processingMode));
     }
   }
 
-  private void runScript(List<ScriptRecord> records, Out out, Err err, Object state, Logger LOG) throws StageException {
-    SimpleBindings bindings = new SimpleBindings();
+  private void runRecord(Batch batch, Out out) throws StageException {
+    List<ScriptRecord> records = new ArrayList<>();
+    records.add(null);
+    Iterator<Record> it = batch.getRecords();
+    while (it.hasNext()) {
+      Record record = it.next();
+      records.set(0, getScriptObjectFactory().createScriptRecord(record));
+      runScript(records, out, err, state, log);
+    }
+  }
+
+  private void runBatch(Batch batch, Out out) throws StageException {
+    List<ScriptRecord> records = new ArrayList<>();
+    Iterator<Record> it = batch.getRecords();
+    while (it.hasNext()) {
+      Record record = it.next();
+      records.add(getScriptObjectFactory().createScriptRecord(record));
+    }
+    runScript(records, out, err, state, log);
+  }
+
+  private void runScript(List<ScriptRecord> records, Out out, Err err, Object state, Logger log) throws StageException {
     bindings.put("records", records.toArray(new Object[records.size()]));
-    bindings.put("out", out);
-    bindings.put("err", err);
+    bindings.put("output", out);
+    bindings.put("error", err);
     bindings.put("state", state);
-    bindings.put("log", LOG);
+    bindings.put("log", log);
     try {
       runScript(bindings);
     } catch (ScriptException ex) {
       switch (processingMode) {
         case RECORD:
-          switch (getContext().getOnErrorRecord()) {
-            case DISCARD:
-              break;
-            case TO_ERROR:
-              getContext().toError(
+          errorRecordHandler.onError(
+              new OnRecordErrorException(
                   getScriptObjectFactory().getRecord(records.get(0)),
                   Errors.SCRIPTING_05,
                   ex.toString(),
                   ex
-              );
-              break;
-            case STOP_PIPELINE:
-              throw new StageException(Errors.SCRIPTING_05, ex.toString(), ex);
-            default:
-              throw new IllegalStateException(Utils.format("Unknown OnError value '{}'",
-                                                           getContext().getOnErrorRecord(), ex));
-          }
+              )
+          );
           break;
         case BATCH:
           throw new StageException(Errors.SCRIPTING_06, ex.toString(), ex);
         default:
-          throw new IllegalStateException(Utils.format("Unknown OnError value '{}'",
-                                                       getContext().getOnErrorRecord(), ex));
+          throw new IllegalStateException(
+              Utils.format("Unknown OnError value '{}'", getContext().getOnErrorRecord(), ex)
+          );
       }
     }
 
   }
 
   private void runScript(SimpleBindings bindings) throws ScriptException {
-    engine.eval(script, bindings);
+    compiledScript.eval(bindings);
   }
 
 }

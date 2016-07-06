@@ -31,7 +31,7 @@ public class CredentialsConfig {
     displayPosition = 2000,
     group = "#0"
   )
-  public boolean useCredentials;
+  public boolean useCredentials = true;
 
   @ConfigDef(
     required = true,
@@ -42,7 +42,7 @@ public class CredentialsConfig {
     displayPosition = 10,
     group = "CREDENTIALS"
   )
-  public String username;
+  public String username = "";
 
   @ConfigDef(
     required = true,
@@ -53,5 +53,5 @@ public class CredentialsConfig {
     displayPosition = 20,
     group = "CREDENTIALS"
   )
-  public String password;
+  public String password = "";
 }

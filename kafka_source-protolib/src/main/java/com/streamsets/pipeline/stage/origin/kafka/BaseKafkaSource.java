@@ -19,304 +19,226 @@
  */
 package com.streamsets.pipeline.stage.origin.kafka;
 
+import com.google.common.net.HostAndPort;
 import com.streamsets.pipeline.api.Field;
 import com.streamsets.pipeline.api.OffsetCommitter;
 import com.streamsets.pipeline.api.Record;
 import com.streamsets.pipeline.api.StageException;
 import com.streamsets.pipeline.api.base.BaseSource;
-import com.streamsets.pipeline.api.impl.Utils;
-import com.streamsets.pipeline.api.impl.XMLChar;
-import com.streamsets.pipeline.config.CsvHeader;
-import com.streamsets.pipeline.config.CsvMode;
-import com.streamsets.pipeline.config.CsvRecordType;
+import com.streamsets.pipeline.api.base.OnRecordErrorException;
 import com.streamsets.pipeline.config.DataFormat;
-import com.streamsets.pipeline.config.JsonMode;
-import com.streamsets.pipeline.config.LogMode;
-import com.streamsets.pipeline.config.OnParseError;
+import com.streamsets.pipeline.kafka.api.ConsumerFactorySettings;
+import com.streamsets.pipeline.kafka.api.KafkaOriginGroups;
+import com.streamsets.pipeline.kafka.api.SdcKafkaConsumer;
+import com.streamsets.pipeline.kafka.api.SdcKafkaConsumerFactory;
+import com.streamsets.pipeline.kafka.api.SdcKafkaValidationUtil;
+import com.streamsets.pipeline.kafka.api.SdcKafkaValidationUtilFactory;
 import com.streamsets.pipeline.lib.kafka.KafkaErrors;
-import com.streamsets.pipeline.lib.KafkaBroker;
-import com.streamsets.pipeline.lib.KafkaUtil;
-import com.streamsets.pipeline.lib.parser.DataParserFactory;
 import com.streamsets.pipeline.lib.parser.DataParser;
 import com.streamsets.pipeline.lib.parser.DataParserException;
-import com.streamsets.pipeline.lib.parser.DataParserFactoryBuilder;
-import com.streamsets.pipeline.lib.parser.avro.AvroDataParserFactory;
-import com.streamsets.pipeline.lib.parser.log.LogDataFormatValidator;
-import com.streamsets.pipeline.lib.parser.log.RegExConfig;
-import com.streamsets.pipeline.lib.parser.xml.XmlDataParserFactory;
-import com.streamsets.pipeline.lib.util.DelimitedDataConstants;
+import com.streamsets.pipeline.lib.parser.DataParserFactory;
+import com.streamsets.pipeline.stage.common.DefaultErrorRecordHandler;
+import com.streamsets.pipeline.stage.common.ErrorRecordHandler;
+import com.streamsets.pipeline.stage.common.HeaderAttributeConstants;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.nio.charset.UnsupportedCharsetException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public abstract class BaseKafkaSource extends BaseSource implements OffsetCommitter {
-  // required in children
-  protected final String metadataBrokerList;
-  protected final String zookeeperConnect;
-  protected final String consumerGroup;
-  protected final int maxBatchSize;
-  protected final Map<String, String> kafkaConsumerConfigs;
-  protected final String topic;
-  protected final DataFormat dataFormat;
-  protected final String charset;
-  protected final boolean removeCtrlChars;
-  protected final boolean produceSingleRecordPerMessage;
-  // required only in self
-  private final int textMaxLineLen;
-  private final JsonMode jsonContent;
-  private final int jsonMaxObjectLen;
-  private final CsvMode csvFileFormat;
-  private final CsvHeader csvHeader;
-  private final int csvMaxObjectLen;
-  private final String xmlRecordElement;
-  private final int xmlMaxObjectLen;
-  private final LogMode logMode;
-  private final int logMaxObjectLen;
-  private final boolean logRetainOriginalLine;
-  private final String customLogFormat;
-  private final String regex;
-  private final String grokPatternDefinition;
-  private final String grokPattern;
-  private final List<RegExConfig> fieldPathsToGroupName;
-  private final boolean enableLog4jCustomLogFormat;
-  private final String log4jCustomLogFormat;
-  private final int maxStackTraceLines;
-  private final OnParseError onParseError;
-  protected KafkaConsumer kafkaConsumer;
-  private final boolean messageHasSchema;
-  private final String avroSchema;
-  private final int binaryMaxObjectLen;
-  private final char csvCustomDelimiter;
-  private final char csvCustomEscape;
-  private final char csvCustomQuote;
-  private final CsvRecordType csvRecordType;
 
-  protected int maxWaitTime;
-  private LogDataFormatValidator logDataFormatValidator;
-  private Charset messageCharset;
+  protected final KafkaConfigBean conf;
+  protected SdcKafkaConsumer kafkaConsumer;
+
+  private ErrorRecordHandler errorRecordHandler;
   private DataParserFactory parserFactory;
   private int originParallelism = 0;
+  private SdcKafkaValidationUtil kafkaValidationUtil;
 
-  public BaseKafkaSource(SourceArguments args) {
-    this.metadataBrokerList = args.getMetadataBrokerList();
-    this.zookeeperConnect = args.getZookeeperConnect();
-    this.consumerGroup = args.getConsumerGroup();
-    this.maxBatchSize = args.getMaxBatchSize();
-    this.kafkaConsumerConfigs = args.getKafkaConsumerConfigs();
-    this.topic = args.getTopic();
-    this.dataFormat = args.getDataFormat();
-    this.charset = args.getCharset();
-    this.removeCtrlChars = args.getRemoveCtrlChars();
-    this.produceSingleRecordPerMessage = args.isProduceSingleRecordPerMessage();
-    this.maxWaitTime = args.getMaxWaitTime();
-    this.textMaxLineLen = args.getTextMaxLineLen();
-    this.jsonContent = args.getJsonContent();
-    this.jsonMaxObjectLen = args.getJsonMaxObjectLen();
-    this.csvFileFormat = args.getCsvFileFormat();
-    this.csvHeader = args.getCsvHeader();
-    this.csvMaxObjectLen = args.getCsvMaxObjectLen();
-    this.xmlRecordElement = args.getXmlRecordElement();
-    this.xmlMaxObjectLen = args.getXmlMaxObjectLen();
-    this.logMode = args.getLogMode();
-    this.logMaxObjectLen = args.getLogMaxObjectLen();
-    this.logRetainOriginalLine = args.isRetainOriginalLine();
-    this.customLogFormat = args.getCustomLogFormat();
-    this.regex = args.getRegex();
-    this.fieldPathsToGroupName = args.getFieldPathsToGroupName();
-    this.grokPatternDefinition = args.getGrokPatternDefinition();
-    this.grokPattern = args.getGrokPattern();
-    this.enableLog4jCustomLogFormat = args.isEnableLog4jCustomLogFormat();
-    this.log4jCustomLogFormat = args.getLog4jCustomLogFormat();
-    this.maxStackTraceLines = args.getMaxStackTraceLines();
-    this.onParseError = args.getOnParseError();
-    this.messageHasSchema = args.isSchemaInMessage();
-    this.avroSchema = args.getAvroSchema();
-    this.binaryMaxObjectLen = args.getBinaryMaxObjectLen();
-    this.csvCustomDelimiter = args.getCsvCustomDelimiter();
-    this.csvCustomEscape = args.getCsvCustomEscape();
-    this.csvCustomQuote = args.getCsvCustomQuote();
-    this.csvRecordType = args.getCsvRecordType();
+  public BaseKafkaSource(KafkaConfigBean conf) {
+    this.conf = conf;
+    kafkaValidationUtil = SdcKafkaValidationUtilFactory.getInstance().create();
   }
 
   @Override
   protected List<ConfigIssue> init() {
-    List<ConfigIssue> issues = new ArrayList<ConfigIssue>();
-    if(topic == null || topic.isEmpty()) {
-      issues.add(getContext().createConfigIssue(Groups.KAFKA.name(), "topic",
-        KafkaErrors.KAFKA_05));
+    List<ConfigIssue> issues = new ArrayList<>();
+    errorRecordHandler = new DefaultErrorRecordHandler(getContext());
+
+    if (conf.topic == null || conf.topic.isEmpty()) {
+      issues.add(
+          getContext().createConfigIssue(
+              KafkaOriginGroups.KAFKA.name(),
+              KafkaConfigBean.KAFKA_CONFIG_BEAN_PREFIX + "topic",
+              KafkaErrors.KAFKA_05
+          )
+      );
     }
     //maxWaitTime
-    if(maxWaitTime < 1) {
-      issues.add(getContext().createConfigIssue(Groups.KAFKA.name(), "maxWaitTime",
-        KafkaErrors.KAFKA_35));
+    if (conf.maxWaitTime < 1) {
+      issues.add(
+          getContext().createConfigIssue(
+              KafkaOriginGroups.KAFKA.name(),
+              KafkaConfigBean.KAFKA_CONFIG_BEAN_PREFIX + "maxWaitTime",
+              KafkaErrors.KAFKA_35
+          )
+      );
     }
 
-    switch (dataFormat) {
-      case JSON:
-        if (jsonMaxObjectLen < 1) {
-          issues.add(getContext().createConfigIssue(Groups.JSON.name(), "maxJsonObjectLen", KafkaErrors.KAFKA_38));
-        }
-        break;
-      case TEXT:
-        if (textMaxLineLen < 1) {
-          issues.add(getContext().createConfigIssue(Groups.TEXT.name(), "maxLogLineLength", KafkaErrors.KAFKA_38));
-        }
-        break;
-      case DELIMITED:
-        if (csvMaxObjectLen < 1) {
-          issues.add(getContext().createConfigIssue(Groups.DELIMITED.name(), "csvMaxObjectLen", KafkaErrors.KAFKA_38));
-        }
-        break;
-      case XML:
-        if (produceSingleRecordPerMessage) {
-          issues.add(getContext().createConfigIssue(Groups.KAFKA.name(), "produceSingleRecordPerMessage",
-                                                    KafkaErrors.KAFKA_40));
-        }
-        if (xmlMaxObjectLen < 1) {
-          issues.add(getContext().createConfigIssue(Groups.XML.name(), "maxXmlObjectLen", KafkaErrors.KAFKA_38));
-        }
-        if (xmlRecordElement != null && !xmlRecordElement.isEmpty() && !XMLChar.isValidName(xmlRecordElement)) {
-          issues.add(getContext().createConfigIssue(Groups.XML.name(), "xmlRecordElement", KafkaErrors.KAFKA_36,
-                                                    xmlRecordElement));
-        }
-        break;
-      case SDC_JSON:
-      case BINARY:
-        break;
-      case LOG:
-        logDataFormatValidator = new LogDataFormatValidator(logMode, logMaxObjectLen,
-          logRetainOriginalLine, customLogFormat, regex, grokPatternDefinition, grokPattern,
-          enableLog4jCustomLogFormat, log4jCustomLogFormat, onParseError, maxStackTraceLines,
-          Groups.LOG.name(), getFieldPathToGroupMap(fieldPathsToGroupName));
-        logDataFormatValidator.validateLogFormatConfig(issues, getContext());
-        break;
-      case AVRO:
-        if(!messageHasSchema && (avroSchema == null || avroSchema.isEmpty())) {
-          issues.add(getContext().createConfigIssue(Groups.AVRO.name(), "avroSchema", KafkaErrors.KAFKA_43,
-            avroSchema));
-        }
-        break;
-      default:
-        issues.add(getContext().createConfigIssue(Groups.KAFKA.name(), "dataFormat", KafkaErrors.KAFKA_39, dataFormat));
+    conf.dataFormatConfig.init(
+        getContext(),
+        conf.dataFormat,
+        KafkaOriginGroups.KAFKA.name(),
+        KafkaConfigBean.DATA_FROMAT_CONFIG_BEAN_PREFIX,
+        issues
+    );
+    if (conf.dataFormat == DataFormat.XML && conf.produceSingleRecordPerMessage) {
+      issues.add(
+          getContext().createConfigIssue(
+              KafkaOriginGroups.KAFKA.name(),
+              KafkaConfigBean.KAFKA_CONFIG_BEAN_PREFIX + "produceSingleRecordPerMessage",
+              KafkaErrors.KAFKA_40
+          )
+      );
     }
 
-    validateParserFactoryConfigs(issues);
+    parserFactory = conf.dataFormatConfig.getParserFactory();
 
     // Validate broker config
-    try {
-      int partitionCount = KafkaUtil.getPartitionCount(metadataBrokerList, topic, 3, 1000);
-      if(partitionCount < 1) {
-        issues.add(getContext().createConfigIssue(Groups.KAFKA.name(), "topic",
-          KafkaErrors.KAFKA_42, topic));
-      } else {
-        //cache the partition count as parallelism for future use
-        originParallelism = partitionCount;
+    List<HostAndPort> kafkaBrokers = kafkaValidationUtil.validateKafkaBrokerConnectionString(
+        issues,
+        conf.metadataBrokerList,
+        KafkaOriginGroups.KAFKA.name(),
+        KafkaConfigBean.KAFKA_CONFIG_BEAN_PREFIX + "metadataBrokerList",
+        getContext()
+    );
+
+    if(!kafkaBrokers.isEmpty()) {
+      try {
+        int partitionCount = kafkaValidationUtil.getPartitionCount(
+          conf.metadataBrokerList,
+          conf.topic,
+          conf.kafkaConsumerConfigs == null ?
+            Collections.<String, Object>emptyMap() :
+            new HashMap<String, Object>(conf.kafkaConsumerConfigs),
+          3,
+          1000
+        );
+        if (partitionCount < 1) {
+          issues.add(
+            getContext().createConfigIssue(
+              KafkaOriginGroups.KAFKA.name(),
+              KafkaConfigBean.KAFKA_CONFIG_BEAN_PREFIX + "topic",
+              KafkaErrors.KAFKA_42,
+              conf.topic
+            )
+          );
+        } else {
+          //cache the partition count as parallelism for future use
+          originParallelism = partitionCount;
+        }
+      } catch (StageException e) {
+        issues.add(
+          getContext().createConfigIssue(
+            KafkaOriginGroups.KAFKA.name(),
+            KafkaConfigBean.KAFKA_CONFIG_BEAN_PREFIX + "topic",
+            KafkaErrors.KAFKA_41,
+            conf.topic,
+            e.toString(),
+            e
+          )
+        );
       }
-    } catch (IOException e) {
-      issues.add(getContext().createConfigIssue(Groups.KAFKA.name(), "topic",
-        KafkaErrors.KAFKA_41, topic, e.toString(), e));
     }
 
     // Validate zookeeper config
-    List<KafkaBroker> kafkaBrokers = KafkaUtil.validateZkConnectionString(issues, zookeeperConnect,
-      Groups.KAFKA.name(), "zookeeperConnect", getContext());
+    kafkaValidationUtil.validateZkConnectionString(
+        issues,
+        conf.zookeeperConnect,
+        KafkaOriginGroups.KAFKA.name(),
+        KafkaConfigBean.KAFKA_CONFIG_BEAN_PREFIX + "zookeeperConnect",
+        getContext()
+    );
 
-     //validate connecting to kafka
-     if(kafkaBrokers != null && !kafkaBrokers.isEmpty() && topic !=null && !topic.isEmpty()) {
-       kafkaConsumer = new KafkaConsumer(zookeeperConnect, topic, consumerGroup, maxBatchSize, maxWaitTime,
-         kafkaConsumerConfigs, getContext());
-       kafkaConsumer.validate(issues, getContext());
-     }
+    //consumerGroup
+    if (conf.consumerGroup == null || conf.consumerGroup.isEmpty()) {
+      issues.add(
+        getContext().createConfigIssue(
+          KafkaOriginGroups.KAFKA.name(),
+          KafkaConfigBean.KAFKA_CONFIG_BEAN_PREFIX + "consumerGroup",
+          KafkaErrors.KAFKA_33
+        )
+      );
+    }
 
-     //consumerGroup
-     if(consumerGroup == null || consumerGroup.isEmpty()) {
-       issues.add(getContext().createConfigIssue(Groups.KAFKA.name(), "consumerGroup",
-         KafkaErrors.KAFKA_33));
-     }
-     return issues;
+    //validate connecting to kafka
+    if (issues.isEmpty()) {
+      ConsumerFactorySettings settings = new ConsumerFactorySettings(
+          conf.zookeeperConnect,
+          conf.metadataBrokerList,
+          conf.topic,
+          conf.maxWaitTime,
+          getContext(),
+          conf.kafkaConsumerConfigs == null ?
+              Collections.<String, Object>emptyMap() :
+              new HashMap<String, Object>(conf.kafkaConsumerConfigs),
+              conf.consumerGroup
+      );
+      kafkaConsumer = SdcKafkaConsumerFactory.create(settings).create();
+      kafkaConsumer.validate(issues, getContext());
+    }
+
+    return issues;
   }
 
   // This API is being used by ClusterKafkaSource
-  public int getParallelism() throws IOException {
-    if(originParallelism == 0) {
+  public int getParallelism() throws StageException {
+    if (originParallelism == 0) {
       //origin parallelism is not yet calculated
-      originParallelism = KafkaUtil.getPartitionCount(metadataBrokerList, topic, 3, 1000);
+      originParallelism = kafkaValidationUtil.getPartitionCount(
+          conf.metadataBrokerList,
+          conf.topic,
+          conf.kafkaConsumerConfigs == null ?
+              Collections.<String, Object>emptyMap() :
+              new HashMap<String, Object>(conf.kafkaConsumerConfigs),
+          3,
+          1000
+      );
+      if(originParallelism < 1) {
+        throw new StageException(KafkaErrors.KAFKA_42, conf.topic);
+      }
     }
     return originParallelism;
   }
 
-
-  private void validateParserFactoryConfigs(List<ConfigIssue> issues) {
-    DataParserFactoryBuilder builder = new DataParserFactoryBuilder(getContext(), dataFormat.getParserFormat())
-      .setCharset(Charset.defaultCharset());
-    if (charset == null) {
-      messageCharset = StandardCharsets.UTF_8;
-    } else {
-      try {
-        messageCharset = Charset.forName(charset);
-      } catch (UnsupportedCharsetException ex) {
-        // setting it to a valid one so the parser factory can be configured and tested for more errors
-        messageCharset = StandardCharsets.UTF_8;
-        issues.add(getContext().createConfigIssue(Groups.KAFKA.name(), "charset", KafkaErrors.KAFKA_08, charset));
-      }
-    }
-    builder.setCharset(messageCharset).setRemoveCtrlChars(removeCtrlChars);
-
-    switch ((dataFormat)) {
-      case TEXT:
-        builder.setMaxDataLen(textMaxLineLen);
-        break;
-      case JSON:
-        builder.setMode(jsonContent);
-        builder.setMaxDataLen(jsonMaxObjectLen);
-        break;
-      case DELIMITED:
-        builder.setMaxDataLen(csvMaxObjectLen)
-          .setMode(csvFileFormat).setMode(csvHeader).setMode(csvRecordType)
-          .setConfig(DelimitedDataConstants.DELIMITER_CONFIG, csvCustomDelimiter)
-          .setConfig(DelimitedDataConstants.ESCAPE_CONFIG, csvCustomEscape)
-          .setConfig(DelimitedDataConstants.ESCAPE_CONFIG, csvCustomEscape)
-          .setConfig(DelimitedDataConstants.QUOTE_CONFIG, csvCustomQuote);
-        break;
-      case XML:
-        builder.setMaxDataLen(xmlMaxObjectLen);
-        builder.setConfig(XmlDataParserFactory.RECORD_ELEMENT_KEY, xmlRecordElement);
-        break;
-      case SDC_JSON:
-        builder.setMaxDataLen(-1);
-        break;
-      case LOG:
-        logDataFormatValidator.populateBuilder(builder);
-        parserFactory = builder.build();
-        break;
-      case AVRO:
-        builder.setMaxDataLen(Integer.MAX_VALUE).setConfig(AvroDataParserFactory.SCHEMA_KEY, avroSchema)
-        .setConfig(AvroDataParserFactory.SCHEMA_IN_MESSAGE_KEY, messageHasSchema);
-        break;
-      case BINARY:
-        builder.setMaxDataLen(binaryMaxObjectLen);
-    }
-    parserFactory = builder.build();
-  }
-
-  protected List<Record> processKafkaMessage(String messageId, byte[] payload) throws StageException {
+  protected List<Record> processKafkaMessage(String partition, long offset, String messageId, byte[] payload) throws StageException {
     List<Record> records = new ArrayList<>();
     try (DataParser parser = parserFactory.getParser(messageId, payload)) {
       Record record = parser.parse();
       while (record != null) {
+        record.getHeader().setAttribute(HeaderAttributeConstants.TOPIC, conf.topic);
+        record.getHeader().setAttribute(HeaderAttributeConstants.PARTITION, partition);
+        record.getHeader().setAttribute(HeaderAttributeConstants.OFFSET, String.valueOf(offset));
+
         records.add(record);
         record = parser.parse();
       }
     } catch (IOException|DataParserException ex) {
-      handleException(messageId, ex);
+      Record record = getContext().createRecord(messageId);
+      record.set(Field.create(payload));
+      errorRecordHandler.onError(
+          new OnRecordErrorException(
+              record,
+              KafkaErrors.KAFKA_37,
+              messageId,
+              ex.toString(),
+              ex
+          )
+      );
     }
-    if (produceSingleRecordPerMessage) {
+    if (conf.produceSingleRecordPerMessage) {
       List<Field> list = new ArrayList<>();
       for (Record record : records) {
         list.add(record.get());
@@ -327,36 +249,6 @@ public abstract class BaseKafkaSource extends BaseSource implements OffsetCommit
       records.add(record);
     }
     return records;
-  }
-
-  private void handleException(String messageId, Exception ex) throws StageException {
-    switch (getContext().getOnErrorRecord()) {
-      case DISCARD:
-        break;
-      case TO_ERROR:
-        getContext().reportError(KafkaErrors.KAFKA_37, messageId, ex.toString(), ex);
-        break;
-      case STOP_PIPELINE:
-        if (ex instanceof StageException) {
-          throw (StageException) ex;
-        } else {
-          throw new StageException(KafkaErrors.KAFKA_37, messageId, ex.toString(), ex);
-        }
-      default:
-        throw new IllegalStateException(Utils.format("Unknown OnError value '{}'",
-          getContext().getOnErrorRecord(), ex));
-    }
-  }
-
-  private Map<String, Integer> getFieldPathToGroupMap(List<RegExConfig> fieldPathsToGroupName) {
-    if(fieldPathsToGroupName == null) {
-      return new HashMap<>();
-    }
-    Map<String, Integer> fieldPathToGroup = new HashMap<>();
-    for(RegExConfig r : fieldPathsToGroupName) {
-      fieldPathToGroup.put(r.fieldPath, r.group);
-    }
-    return fieldPathToGroup;
   }
 
 }

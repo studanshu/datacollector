@@ -24,9 +24,7 @@ import com.streamsets.datacollector.client.JSON;
 import com.streamsets.datacollector.client.TypeRef;
 import com.streamsets.datacollector.client.api.StoreApi;
 import com.streamsets.datacollector.client.cli.command.BaseCommand;
-import com.streamsets.datacollector.client.cli.command.PipelineConfigAndRulesJson;
-import com.streamsets.datacollector.client.model.PipelineConfigurationJson;
-import com.streamsets.datacollector.client.model.RuleDefinitionsJson;
+import com.streamsets.datacollector.client.model.PipelineEnvelopeJson;
 import io.airlift.airline.Command;
 import io.airlift.airline.Option;
 
@@ -55,30 +53,28 @@ public class ImportPipelineCommand extends BaseCommand {
   )
   public String fileName;
 
+  @Option(
+      name = {"-o", "--overwrite"},
+      description = "Overwrite if pipeline with name already exists",
+      required = false
+  )
+  public boolean overwrite;
+
+  @Override
   public void run() {
     ApiClient apiClient = getApiClient();
     StoreApi storeApi = new StoreApi(apiClient);
     try {
       if(fileName != null) {
         JSON json = apiClient.getJson();
-        TypeRef returnType = new TypeRef<PipelineConfigAndRulesJson>() {};
-        PipelineConfigAndRulesJson pipelineConfigAndRulesJson = json.deserialize(new File(fileName), returnType);
-
-        PipelineConfigurationJson pipelineConfigurationJson = pipelineConfigAndRulesJson.getPipelineConfig();
-        RuleDefinitionsJson ruleDefinitionsJson = pipelineConfigAndRulesJson.getPipelineRules();
-
-        // Import Pipeline is 3 steps: Create Pipeline, Update Pipeline & Update Rules
-        PipelineConfigurationJson newPipeline = storeApi.createPipeline(pipelineName,
-          pipelineDescription);
-        RuleDefinitionsJson newPipelineRules = storeApi.getPipelineRules(pipelineName, "0");
-
-
-        pipelineConfigurationJson.setUuid(newPipeline.getUuid());
-        storeApi.savePipeline(pipelineName, pipelineConfigurationJson, "0", pipelineDescription);
-
-        ruleDefinitionsJson.setUuid(newPipelineRules.getUuid());
-        storeApi.savePipelineRules(pipelineName, ruleDefinitionsJson, "0");
-
+        TypeRef returnType = new TypeRef<PipelineEnvelopeJson>() {};
+        PipelineEnvelopeJson pipelineEnvelopeJson = json.deserialize(new File(fileName), returnType);
+        storeApi.importPipeline(
+            pipelineName,
+            "0",
+            overwrite,
+            pipelineEnvelopeJson
+        );
         System.out.println("Successfully imported from file '" + fileName + "' to pipeline - " + pipelineName );
       }
     } catch (Exception ex) {

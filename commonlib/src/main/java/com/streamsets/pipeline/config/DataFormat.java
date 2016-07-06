@@ -34,6 +34,8 @@ public enum DataFormat implements Label {
   LOG("Log", DataParserFormat.LOG, null),
   AVRO("Avro", DataParserFormat.AVRO, DataGeneratorFormat.AVRO),
   BINARY("Binary", DataParserFormat.BINARY, DataGeneratorFormat.BINARY),
+  PROTOBUF("Protobuf", DataParserFormat.PROTOBUF, DataGeneratorFormat.PROTOBUF),
+  DATAGRAM("Datagram", DataParserFormat.DATAGRAM, null),
   ;
 
   private final String label;

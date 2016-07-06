@@ -88,17 +88,20 @@ public class ProductionSourceOffsetTracker implements SourceOffsetTracker {
   public SourceOffset getSourceOffset(String pipelineName, String rev) {
     File pipelineOffsetFile = OffsetFileUtil.getPipelineOffsetFile(runtimeInfo, pipelineName, rev);
     SourceOffset sourceOffset;
-    if (pipelineOffsetFile.exists() && pipelineOffsetFile.length() != 0) {
-      // offset file exists, read from it
-      try (InputStream is = new DataStore(pipelineOffsetFile).getInputStream()) {
-        SourceOffsetJson sourceOffsetJson = ObjectMapperFactory.get().readValue(is, SourceOffsetJson.class);
-        sourceOffset = BeanHelper.unwrapSourceOffset(sourceOffsetJson);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
+    DataStore ds = new DataStore(pipelineOffsetFile);
+    try {
+      if (ds.exists()) {
+        // offset file exists, read from it
+        try (InputStream is = ds.getInputStream()) {
+          SourceOffsetJson sourceOffsetJson = ObjectMapperFactory.get().readValue(is, SourceOffsetJson.class);
+          sourceOffset = BeanHelper.unwrapSourceOffset(sourceOffsetJson);
+        }
+      } else {
+        sourceOffset = new SourceOffset(DEFAULT_OFFSET);
+        saveOffset(pipelineName, rev, sourceOffset);
       }
-    } else {
-      sourceOffset = new SourceOffset(DEFAULT_OFFSET);
-      saveOffset(pipelineName, rev, sourceOffset);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
     return sourceOffset;
   }
@@ -109,12 +112,16 @@ public class ProductionSourceOffsetTracker implements SourceOffsetTracker {
 
   private void saveOffset(String pipelineName, String rev, SourceOffset s) {
     LOG.debug("Saving offset {} for pipeline {}", s.getOffset(), pipelineName);
-    try (OutputStream os = new DataStore(OffsetFileUtil.getPipelineOffsetFile(runtimeInfo,
-          pipelineName, rev)).getOutputStream()) {
+    DataStore dataStore = new DataStore(OffsetFileUtil.getPipelineOffsetFile(runtimeInfo,
+      pipelineName, rev));
+    try (OutputStream os = dataStore.getOutputStream()) {
       ObjectMapperFactory.get().writeValue((os), BeanHelper.wrapSourceOffset(s));
+      dataStore.commit(os);
     } catch (IOException e) {
       LOG.error("Failed to save offset value {}. Reason {}", s.getOffset(), e.toString(), e);
       throw new RuntimeException(e);
+    } finally {
+      dataStore.release();
     }
   }
 

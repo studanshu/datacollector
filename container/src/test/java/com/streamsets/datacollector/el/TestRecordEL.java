@@ -19,9 +19,6 @@
  */
 package com.streamsets.datacollector.el;
 
-import com.google.common.collect.ImmutableMap;
-import com.streamsets.datacollector.el.ELEvaluator;
-import com.streamsets.datacollector.el.ELVariables;
 import com.streamsets.pipeline.api.Field;
 import com.streamsets.pipeline.api.Record;
 import com.streamsets.pipeline.lib.el.RecordEL;
@@ -30,7 +27,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -55,7 +51,11 @@ public class TestRecordEL {
     Mockito.when(record.has(Mockito.eq("/x"))).thenReturn(true);
     Mockito.when(record.has(Mockito.eq("/y"))).thenReturn(false);
     Mockito.when(record.get(Mockito.eq("/a"))).thenReturn(Field.create("A"));
+<<<<<<< HEAD
     Mockito.when(record.get(Mockito.eq("/b"))).thenReturn(Field.create(1));
+=======
+    Mockito.when(record.get(Mockito.eq("/null"))).thenReturn(Field.create((String)null));
+>>>>>>> master
 
     RecordEL.setRecordInContext(variables, record);
 
@@ -72,6 +72,7 @@ public class TestRecordEL {
     Assert.assertEquals("A", eval.eval(variables, "${record:valueOrDefault('/a', 'dummy')}", Object.class));
     Assert.assertEquals(1, (int)eval.eval(variables, "${record:valueOrDefault('/b', 'dummy')}", Object.class));
     Assert.assertEquals("B", eval.eval(variables, "${record:valueOrDefault('/z', 'B')}", Object.class));
+    Assert.assertEquals("dummy", eval.eval(variables, "${record:valueOrDefault('/null', 'dummy')}", Object.class));
   }
 
   @Test

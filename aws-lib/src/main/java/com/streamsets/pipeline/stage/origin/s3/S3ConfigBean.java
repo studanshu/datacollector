@@ -28,6 +28,7 @@ import com.streamsets.pipeline.common.InterfaceAudience;
 import com.streamsets.pipeline.common.InterfaceStability;
 import com.streamsets.pipeline.config.DataFormat;
 import com.streamsets.pipeline.config.PostProcessingOptions;
+import com.streamsets.pipeline.stage.lib.aws.ProxyConfig;
 import com.streamsets.pipeline.stage.origin.lib.BasicConfig;
 import com.streamsets.pipeline.stage.origin.lib.DataParserFormatConfig;
 
@@ -37,8 +38,19 @@ import java.util.List;
 @InterfaceStability.Unstable
 public class S3ConfigBean {
 
+  public static final String S3_CONFIG_BEAN_PREFIX = "s3ConfigBean.";
+  private static final String S3_CONFIG_PREFIX = S3_CONFIG_BEAN_PREFIX + "s3Config.";
+  private static final String S3_DATA_FROMAT_CONFIG_PREFIX = S3_CONFIG_BEAN_PREFIX + "dataFormatConfig.";
+  private static final String BASIC_CONFIG_PREFIX = S3_CONFIG_BEAN_PREFIX + "basicConfig.";
+  private static final String POST_PROCESSING_CONFIG_PREFIX = S3_CONFIG_BEAN_PREFIX + "postProcessingConfig.";
+  private static final String ERROR_CONFIG_PREFIX = S3_CONFIG_BEAN_PREFIX + "errorConfig.";
+
   @ConfigDefBean(groups = {"S3"})
   public BasicConfig basicConfig;
+
+
+  @ConfigDefBean(groups = "ADVANCED")
+  public ProxyConfig advancedConfig;
 
   @ConfigDef(
     required = true,
@@ -59,76 +71,114 @@ public class S3ConfigBean {
   @ConfigDefBean(groups = {"POST_PROCESSING"})
   public S3PostProcessingConfig postProcessingConfig;
 
-  @ConfigDefBean(groups = {"ADVANCED"})
-  public S3AdvancedConfig advancedConfig;
-
   @ConfigDefBean(groups = {"S3"})
   public S3FileConfig s3FileConfig;
 
-  @ConfigDefBean(groups = {"S3"})
+  @ConfigDefBean(groups = {"S3", "ADVANCED"})
   public S3Config s3Config;
 
   public void init(Stage.Context context, List<Stage.ConfigIssue> issues) {
 
     s3FileConfig.init(context, issues);
-    dataFormatConfig.init(context, dataFormat, Groups.S3.name(), s3FileConfig.overrunLimit, issues);
-    basicConfig.init(context, issues, Groups.S3.name());
+    dataFormatConfig.init(
+        context,
+        dataFormat,
+        Groups.S3.name(),
+        S3_DATA_FROMAT_CONFIG_PREFIX,
+        s3FileConfig.overrunLimit,
+        issues
+    );
+    basicConfig.init(context, Groups.S3.name(), BASIC_CONFIG_PREFIX, issues);
 
     //S3 source specific validation
-    s3Config.init(context, issues, advancedConfig);
+    s3Config.init(context, S3_CONFIG_PREFIX, advancedConfig, issues);
 
-    if(errorConfig.errorFolder != null && !errorConfig.errorFolder.isEmpty() &&
-      !errorConfig.errorFolder.endsWith(s3Config.delimiter)) {
-      errorConfig.errorFolder = errorConfig.errorFolder + s3Config.delimiter;
+    if(errorConfig.errorPrefix != null && !errorConfig.errorPrefix.isEmpty() &&
+      !errorConfig.errorPrefix.endsWith(s3Config.delimiter)) {
+      errorConfig.errorPrefix = errorConfig.errorPrefix + s3Config.delimiter;
     }
 
-    if(postProcessingConfig.postProcessFolder != null && !postProcessingConfig.postProcessFolder.isEmpty() &&
-      !postProcessingConfig.postProcessFolder.endsWith(s3Config.delimiter)) {
-      postProcessingConfig.postProcessFolder = postProcessingConfig.postProcessFolder + s3Config.delimiter;
+    if(postProcessingConfig.postProcessPrefix != null && !postProcessingConfig.postProcessPrefix.isEmpty() &&
+      !postProcessingConfig.postProcessPrefix.endsWith(s3Config.delimiter)) {
+      postProcessingConfig.postProcessPrefix = postProcessingConfig.postProcessPrefix + s3Config.delimiter;
     }
 
     if(s3Config.getS3Client() != null) {
-      validateBucket(context, issues, s3Config.getS3Client(), s3Config.bucket, Groups.S3.name(), "bucket");
+      validateBucket(
+          context,
+          issues,
+          s3Config.getS3Client(),
+          s3Config.bucket,
+          Groups.S3.name(),
+          S3_CONFIG_PREFIX + "bucket"
+      );
     }
 
     //post process config options
-    postProcessingConfig.postProcessBucket = validatePostProcessing(context, postProcessingConfig.postProcessing,
-      postProcessingConfig.archivingOption, postProcessingConfig.postProcessBucket,
-      postProcessingConfig.postProcessFolder, Groups.POST_PROCESSING.name(), "postProcessBucket", "postProcessFolder",
-      issues);
+    postProcessingConfig.postProcessBucket = validatePostProcessing(
+        context,
+        postProcessingConfig.postProcessing,
+        postProcessingConfig.archivingOption,
+        postProcessingConfig.postProcessBucket,
+        postProcessingConfig.postProcessPrefix,
+        Groups.POST_PROCESSING.name(),
+        POST_PROCESSING_CONFIG_PREFIX + "postProcessBucket",
+        POST_PROCESSING_CONFIG_PREFIX + "postProcessPrefix",
+        issues
+    );
 
     //error handling config options
-    errorConfig.errorBucket = validatePostProcessing(context, errorConfig.errorHandlingOption,
-      errorConfig.archivingOption, errorConfig.errorBucket, errorConfig.errorFolder, Groups.ERROR_HANDLING.name(),
-      "errorBucket", "errorFolder",issues);
-
+    if (errorConfig.errorHandlingOption == PostProcessingOptions.NONE) {
+      // If error handling is "None" and Post Processing is "Archive", SDC will archive files that caused error
+      // even though SDC did not process the file due to error. So this validation detects and raises issue if
+      // error handling is None and Post Processing is not None.
+      if (postProcessingConfig.postProcessing != PostProcessingOptions.NONE){
+        issues.add(context.createConfigIssue(Groups.ERROR_HANDLING.name(),
+            ERROR_CONFIG_PREFIX + "errorHandlingOption",
+            Errors.S3_SPOOLDIR_07,
+            errorConfig.errorHandlingOption,
+            postProcessingConfig.postProcessing));
+      }
+    } else {
+      errorConfig.errorBucket = validatePostProcessing(
+          context,
+          errorConfig.errorHandlingOption,
+          errorConfig.archivingOption,
+          errorConfig.errorBucket,
+          errorConfig.errorPrefix,
+          Groups.ERROR_HANDLING.name(),
+          ERROR_CONFIG_PREFIX + "errorBucket",
+          ERROR_CONFIG_PREFIX + "errorPrefix",
+          issues
+      );
+    }
   }
 
   private String validatePostProcessing(Stage.Context context, PostProcessingOptions postProcessingOptions,
                                       S3ArchivingOption s3ArchivingOption, String postProcessBucket,
                                       String postProcessFolder, String groupName, String bucketConfig,
-                                      String folderConfig, List<Stage.ConfigIssue> issues) {
+                                      String prefixConfig, List<Stage.ConfigIssue> issues) {
     //validate post processing options
-    //In case of post processing option archive user could choose move to bucket or move to folder [within same bucket]
+    //In case of post processing option archive user could choose move to bucket or move to prefix [within same bucket]
     if(postProcessingOptions == PostProcessingOptions.ARCHIVE) {
-      //If "move to bucket" then valid bucket name must be specified and folder name may or may not be specified
-      //If the bucket name is same as the source bucket then a folder must be specified must it must be different from
-      // source folder
+      //If "move to bucket" then valid bucket name must be specified and prefix name may or may not be specified
+      //If the bucket name is same as the source bucket then a prefix must be specified must it must be different from
+      // source prefix
       if(s3ArchivingOption == S3ArchivingOption.MOVE_TO_BUCKET) {
         //If archive option is move to bucket, then bucket must be specified.
         validateBucket(context, issues, s3Config.getS3Client(), postProcessBucket,groupName, bucketConfig);
-        //If the specified bucket is same as the source bucket then folder must be specified
+        //If the specified bucket is same as the source bucket then prefix must be specified
         if(postProcessBucket != null && !postProcessBucket.isEmpty() &&postProcessBucket.equals(s3Config.bucket)) {
-          validatePostProcessingFolder(context, postProcessBucket, postProcessFolder, groupName, folderConfig, issues);
+          validatePostProcessingPrefix(context, postProcessBucket, postProcessFolder, groupName, prefixConfig, issues);
         }
       }
 
-      //In case of move to directory, bucket is same as the source bucket and folder must be non-null, non empty and
-      //different from source folder.
-      if(s3ArchivingOption == S3ArchivingOption.MOVE_TO_DIRECTORY) {
+      //In case of move to prefix, bucket is same as the source bucket and prefix must be non-null, non empty and
+      //different from source prefix.
+      if(s3ArchivingOption == S3ArchivingOption.MOVE_TO_PREFIX) {
         //same bucket as source bucket
         postProcessBucket = s3Config.bucket;
-        validatePostProcessingFolder(context, postProcessBucket, postProcessFolder, groupName, folderConfig, issues);
+        validatePostProcessingPrefix(context, postProcessBucket, postProcessFolder, groupName, prefixConfig, issues);
       }
     }
     return postProcessBucket;
@@ -147,15 +197,15 @@ public class S3ConfigBean {
     }
   }
 
-  private void validatePostProcessingFolder(Stage.Context context, String postProcessBucket, String postProcessFolder,
+  private void validatePostProcessingPrefix(Stage.Context context, String postProcessBucket, String postProcessPrefix,
                                             String groupName, String configName, List<Stage.ConfigIssue> issues) {
-    //should be non null, non-empty and different from source folder
-    if (postProcessFolder == null || postProcessFolder.isEmpty()) {
+    //should be non null, non-empty and different from source prefix
+    if (postProcessPrefix == null || postProcessPrefix.isEmpty()) {
       issues.add(context.createConfigIssue(groupName, configName, Errors.S3_SPOOLDIR_13));
-    } else if((postProcessBucket + s3Config.delimiter + postProcessFolder)
-      .equals(s3Config.bucket + s3Config.delimiter + s3Config.folder)) {
+    } else if((postProcessBucket + s3Config.delimiter + postProcessPrefix)
+      .equals(s3Config.bucket + s3Config.delimiter + s3Config.commonPrefix)) {
       issues.add(context.createConfigIssue(groupName, configName, Errors.S3_SPOOLDIR_14,
-        s3Config.bucket + s3Config.delimiter + s3Config.folder));
+        s3Config.bucket + s3Config.delimiter + s3Config.commonPrefix));
     }
   }
 }

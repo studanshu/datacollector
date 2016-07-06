@@ -41,11 +41,19 @@ public class JdbcTargetUpgrader extends JdbcBaseUpgrader{
         // fall through
       case 3:
         upgradeV3toV4(configs);
+        // fall through
+      case 4:
+        upgradeV4toV5(configs);
         break;
       default:
         throw new IllegalStateException(Utils.format("Unexpected fromVersion {}", fromVersion));
     }
     return configs;
+  }
+
+  private void upgradeV4toV5(List<Config> configs) {
+    // added new max parameters feature - set to default
+    configs.add(new Config("maxPrepStmtParameters", "-1"));
   }
 
   @SuppressWarnings("unchecked")
@@ -56,6 +64,7 @@ public class JdbcTargetUpgrader extends JdbcBaseUpgrader{
     for (Config config : configs) {
       if (config.getName().equals("qualifiedTableName")) {
         tableNameConfig = config;
+        break;
       }
     }
 
@@ -79,5 +88,28 @@ public class JdbcTargetUpgrader extends JdbcBaseUpgrader{
 
   private void upgradeV3toV4(List<Config> configs) {
     upgradeToConfigBeanV1(configs);
+
+    Config tableNameConfig = null;
+    Config readOnlyConfig = null;
+    for (Config config : configs) {
+      if (config.getName().equals("tableName")) {
+        tableNameConfig = config;
+      }
+      if (config.getName().equals("hikariConfigBean.readOnly")) {
+        readOnlyConfig = config;
+      }
+    }
+
+    // Rename tableName to tableNameTemplate
+    if (null != tableNameConfig) {
+      configs.add(new Config("tableNameTemplate", tableNameConfig.getValue()));
+      configs.remove(tableNameConfig);
+    }
+
+    // Remove hikariConfigBean.readOnly
+    if (null != readOnlyConfig) {
+      configs.remove(readOnlyConfig);
+    }
+
   }
 }

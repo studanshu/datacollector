@@ -37,7 +37,8 @@ import java.util.Random;
   label = "Dev Random Error",
   description = "Generates error records and silently discards records as specified.",
   icon= "dev.png",
-  upgrader = RandomErrorProcessorUpgrader.class
+  upgrader = RandomErrorProcessorUpgrader.class,
+  onlineHelpRefUrl = "index.html#Pipeline_Design/DevStages.html"
 )
 public class RandomErrorProcessor extends SingleLaneProcessor {
   private Random random;
@@ -73,7 +74,8 @@ public class RandomErrorProcessor extends SingleLaneProcessor {
         if (action < batchThreshold1) {
           batchMaker.addRecord(it.next());
         } else if (action < batchThreshold2) {
-          getContext().toError(it.next(), "Random error");
+          Exception ex = new RuntimeException("Random Error");
+          getContext().toError(it.next(), RandomProcessorErrors.RANDOM_01, "RANDOM_01", ex.getMessage(), ex);
         } else {
           // we eat the record
           it.next();
@@ -82,14 +84,16 @@ public class RandomErrorProcessor extends SingleLaneProcessor {
         if (action < batchThreshold1) {
           batchMaker.addRecord(it.next());
         } else {
-          getContext().toError(it.next(), "Random error");
+          Exception ex = new RuntimeException(RandomProcessorErrors.RANDOM_01.getMessage());
+          getContext().toError(it.next(), RandomProcessorErrors.RANDOM_01, "RANDOM_01", ex.getMessage(), ex);
         }
       }
     }
 
     //generate error message 50% of the time
     if(random.nextFloat() < 0.5) {
-      getContext().reportError("Error reported by the RandomErrorProcessor");
+      Exception ex = new RuntimeException(RandomProcessorErrors.RANDOM_02.getMessage());
+      getContext().reportError(RandomProcessorErrors.RANDOM_02, "randomId", ex.getMessage(), ex);
     }
   }
 

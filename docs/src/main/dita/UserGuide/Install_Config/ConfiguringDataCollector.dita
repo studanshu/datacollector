@@ -14,14 +14,12 @@
 -->
 <!DOCTYPE task PUBLIC "-//OASIS//DTD DITA General Task//EN" "generalTask.dtd">
 <task id="task_lxk_kjw_1r">
-    <title>Configuring the <ph
-            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-        /></title>
-    <shortdesc>You can customize the <ph
+    <title>Configuring Data Collector</title>
+    <shortdesc>You can customize <ph
             conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/> by
         editing the <ph
             conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/>
-        configuration file. </shortdesc>
+        configuration file, <codeph>sdc.properties</codeph>. </shortdesc>
     <taskbody>
         <context><p><indexterm>Data Collector configuration
                     file<indexterm>configuring</indexterm></indexterm><indexterm>sdc.properties
@@ -29,13 +27,10 @@
                         Collector configuration</indexterm></indexterm>Use a text editor to edit the
                     <ph
                     conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                /> configuration file. After you edit the file, restart the <ph
+                /> configuration file, <codeph>$SDC_CONF/sdc.properties</codeph>. To enable the
+                changes, restart <ph
                     conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                /> to enable the changes. </p><p>The <ph
-                    conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                /> configuration file, <filepath>sdc.properties</filepath>, is located in the
-                following
-                location:<codeblock>&lt;SDCinstalldir>/etc/sdc.properties</codeblock></p><p>The <ph
+                />. </p><p>The <ph
                     conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
                 /> configuration file includes the following general properties:<table frame="all"
                     rowsep="1" colsep="1" id="table_eyq_gkw_1r">
@@ -49,6 +44,32 @@
                             </row>
                         </thead>
                         <tbody>
+                            <row>
+                                <entry>sdc.base.http.url </entry>
+                                <entry>Data Collector URL that is included in emails sent for metric
+                                    and data alerts. <p>Default is
+                                            <codeph>http://&lt;hostname>:&lt;http.port></codeph>
+                                        where <codeph>&lt;hostname></codeph> is the value defined in
+                                        the http.bindHost property. If the host name is not defined
+                                        in http.bindHost, <ph
+                                            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                        /> runs the following command to determine the host name:
+                                            <codeph>hostname -f</codeph></p><p>Be sure to uncomment
+                                        the property if you change the value.</p></entry>
+                            </row>
+                            <row>
+                                <entry>http.bindHost</entry>
+                                <entry>Host name or IP address that <ph
+                                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                    /> binds to. You might want to configure a specific host or IP
+                                    address when the machine that <ph
+                                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                    /> is installed on has multiple network cards.<p>Default is
+                                        0.0.0.0, which means that <ph
+                                            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                        /> can bind to any host or IP address. Be sure to uncomment
+                                        the property if you change the value.</p></entry>
+                            </row>
                             <row>
                                 <entry>http.port</entry>
                                 <entry>Port number to use for the <ph
@@ -65,48 +86,180 @@
                             </row>
                             <row>
                                 <entry>https.keystore.path</entry>
-                                <entry>Keystore path and file name. <p>By default, the file name is
-                                            <filepath>sdc-keystore.jks</filepath> and expected in
-                                        the same directory as the <ph
-                                            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                        /> configuration file.</p></entry>
+                                <entry>Keystore path and file name. Enter an absolute path or a path
+                                    relative to the <codeph>$SDC_CONF</codeph> directory. For
+                                    cluster pipelines, enter the path to the file on the gateway
+                                        node.<p>Default is <filepath>sdc-keystore.jks</filepath> in
+                                        the <codeph>$SDC_CONF</codeph> directory.</p></entry>
                             </row>
                             <row>
                                 <entry>https.keystore.password</entry>
-                                <entry>File that contains the password to the keystore file. <p>By
-                                        default, the file name is
-                                            <filepath>keystore-password.txt</filepath> and expected
-                                        in the same directory as the <ph
-                                            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                        /> configuration file.</p><p>When appropriate, you can
-                                        replace the default file name.</p></entry>
+                                <entry>Path and name of the file that contains the password to the
+                                    keystore file. Enter an absolute path or a path relative to the
+                                        <codeph>$SDC_CONF</codeph> directory. For cluster pipelines,
+                                    enter the path to the file on the gateway node.<p>Default is
+                                            <filepath>keystore-password.txt</filepath> in the
+                                            <codeph>$SDC_CONF</codeph> directory.</p></entry>
+                            </row>
+                            <row>
+                                <entry>https.cluster.keystore.path</entry>
+                                <entry>For cluster pipelines, the absolute path and file name of the
+                                    keystore file on worker nodes. The file must be in the same
+                                    location on each worker node.</entry>
+                            </row>
+                            <row>
+                                <entry>https.cluster.keystore.password</entry>
+                                <entry>For cluster pipeines, the absolute path and name of the file
+                                    that contains the password to the keystore file on worker nodes.
+                                    The file must be in the same location on each worker
+                                    node.</entry>
+                            </row>
+                            <row>
+                                <entry>https.truststore.path</entry>
+                                <entry>For cluster pipelines, the path and name of the truststore
+                                    file on the gateway node. Enter an absolute path or a path
+                                    relative to the <codeph>$SDC_CONF</codeph> directory.<p>Default
+                                        is the file from the following directory:
+                                            <codeph>$JAVA_HOME/jre/lib/security/cacerts</codeph>. Be
+                                        sure to uncomment the property if you change the
+                                    value.</p></entry>
+                            </row>
+                            <row>
+                                <entry>https.truststore.password</entry>
+                                <entry>For cluster pipelines, the path and name of the file that
+                                    contains the password to the truststore file on the gateway
+                                    node. Enter an absolute path or a path relative to the
+                                        <codeph>$SDC_CONF</codeph> directory.<p>Be sure to uncomment
+                                        the property and provide a path to the password file if you
+                                        use a generated truststore file instead of the default file
+                                        from the following directory:
+                                            <codeph>$JAVA_HOME/jre/lib/security/cacerts</codeph>.
+                                    </p></entry>
+                            </row>
+                            <row>
+                                <entry>https.cluster.truststore.path</entry>
+                                <entry>For cluster pipelines, the absolute path and file name of the
+                                    truststore file on the worker nodes. The file must be in the
+                                    same location on each worker node.<p>Default is the file from
+                                        the following directory:
+                                            <codeph>$JAVA_HOME/jre/lib/security/cacerts</codeph>. Be
+                                        sure to uncomment the property if you change the
+                                    value.</p></entry>
+                            </row>
+                            <row>
+                                <entry>https.cluster.truststore.password</entry>
+                                <entry>For cluster pipelines, the absolute path and name of the file
+                                    that contains the password to the truststore file on the worker
+                                    nodes. The file must be in the same location on each worker
+                                        node.<p>Be sure to uncomment the property and provide a path
+                                        to the password file if you use a generated truststore file
+                                        instead of the default file from the following directory:
+                                            <codeph>$JAVA_HOME/jre/lib/security/cacerts</codeph>.
+                                    </p></entry>
+                            </row>
+                            <row>
+                                <entry>http.session.max.inactive.interval</entry>
+                                <entry>Maximum amount of time that the <ph
+                                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                    /> console can remain inactive before the user is logged out.
+                                    Use -1 to allow user sessions to remain inactive
+                                        indefinitely.<p>Default is 86,400 seconds (24
+                                    hours).</p></entry>
                             </row>
                             <row>
                                 <entry>http.authentication</entry>
-                                <entry>HTTP authentication. Use none, basic, digest, or
-                                        form.<p>Default is form.</p></entry>
+                                <entry>HTTP authentication. Use none, basic, digest, form.<p>When
+                                        using basic, digest, or form, use the associated
+                                        realm.properties file to define user accounts. The
+                                        realm.properties files are located in the
+                                            <codeph>$SDC_CONF</codeph> directory.</p><p>Default is
+                                        form. <draft-comment author="Loretta">Not mentioning dpm
+                                            until they add it. </draft-comment></p></entry>
+                            </row>
+                            <row>
+                                <entry>http.authentication.login.module</entry>
+                                <entry>Indicates where user account information resides:<ul
+                                        id="ul_vhv_qvr_g5">
+                                        <li>Set to <uicontrol>file</uicontrol> to use the
+                                            realm.properties files. </li>
+                                        <li>Set to <uicontrol>ldap</uicontrol> to use an LDAP
+                                            server.</li>
+                                    </ul></entry>
+                            </row>
+                            <row>
+                                <entry>http.digest.realm</entry>
+                                <entry>Realm used for HTTP authentication. Use basic-realm,
+                                    digest-realm, or form-realm. The associated realm.properties
+                                    file must be located in the <codeph>$SDC_CONF</codeph>
+                                        directory.<p>Default is
+                                            <codeph>&lt;http.authentication>-realm</codeph>. Be sure
+                                        to uncomment the property if you change the
+                                    value.</p></entry>
+                            </row>
+                            <row>
+                                <entry>http.realm.file.permission.check</entry>
+                                <entry>Checks the permissions for the realm.properties file in
+                                        use:<ul id="ul_aff_bwr_g5">
+                                        <li>Set to <uicontrol>true</uicontrol> to ensure that the
+                                            file allows access only to the owner.</li>
+                                        <li>Set to <uicontrol>false</uicontrol> to skip the
+                                            permission check.</li>
+                                    </ul><p>Relevant when http.authentication.login.module is set to
+                                        file. </p></entry>
+                            </row>
+                            <row>
+                                <entry>http.authentication.ldap.role.mapping <xref
+                                        href="LDAP-Configuring.dita">
+                                        <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                            placement="inline"/></xref></entry>
+                                <entry>Maps groups defined by the LDAP server to <ph
+                                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                    /> roles. <p>Enter a semicolon-separated list as
+                                        follows:<codeblock>&lt;ldap group>:&lt;SDC role><i>,&lt;additional SDC role></i><i>,&lt;additional SDC role></i>);
+&lt;ldap group>:&lt;SDC role><i>,&lt;additional SDC role></i>... </codeblock></p><p>Relevant
+                                        when http.authentication.login.module is set to
+                                    ldap.</p></entry>
+                            </row>
+                            <row>
+                                <entry>http.access.control.allow.origin</entry>
+                                <entry>List of domains allowed to access the <ph
+                                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                    /> REST API for cross-origin resource sharing (CORS). To
+                                    restrict access to specific domains, enter a comma-separated
+                                    list as
+                                        follows:<codeblock>http://www.mysite.com, http://www.myothersite.com</codeblock><p>Default
+                                        is the asterisk wildcard (*) which means that any domain can
+                                        access the <ph
+                                            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                        /> REST API.</p></entry>
+                            </row>
+                            <row>
+                                <entry>http.access.control.allow.headers</entry>
+                                <entry>List of HTTP headers allowed during a cross-domain
+                                    request.</entry>
+                            </row>
+                            <row>
+                                <entry>http.access.control.allow.methods</entry>
+                                <entry>List of HTTP methods that can be called during a cross-domain
+                                    request.</entry>
                             </row>
                             <row>
                                 <entry>kerberos.client.enabled</entry>
-                                <entry>Enables the <ph
+                                <entry>Enables Kerberos authentication for <ph
                                         conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                    /> to use Kerberos authentication. Must be enabled to allow a
-                                    stage to use Kerberos authentication to access external systems.
-                                </entry>
+                                    />. Must be enabled to allow stages to use Kerberos to access
+                                    external systems. </entry>
                             </row>
                             <row>
                                 <entry>kerberos.client.principal</entry>
-                                <entry>Kerberos principal for the <ph
-                                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                    /> to use. Enter a service principal.</entry>
+                                <entry>Kerberos principal to use. Enter a service principal.</entry>
                             </row>
                             <row>
                                 <entry>kerberos.client.keytab</entry>
                                 <entry>Location of the Kerberos keytab file that contains the
                                     credentials for the Kerberos principal. <p>Use a fully-qualified
-                                        directory or a directory relative to the <ph
-                                            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                        /> configuration directory.</p></entry>
+                                        directory or a directory relative to the
+                                            <codeph>$SDC_CONF</codeph> directory.</p></entry>
                             </row>
                             <row>
                                 <entry>preview.maxBatchSize</entry>
@@ -149,21 +302,32 @@
                                 <entry>Maximum number of WebSocket calls allowed. </entry>
                             </row>
                             <row>
-                                <entry>ui.help.base.url</entry>
-                                <entry>Base URL for the local <ph
+                                <entry>monitor.memory</entry>
+                                <entry>Displays the Stage Heap Memory Usage and the Heap Memory
+                                    Usage statistics in Monitor mode for the pipeline or for a
+                                    stage. <p>Generally, you should not need to change this
+                                        value.</p></entry>
+                            </row>
+                            <row>
+                                <entry>ui.header.title</entry>
+                                <entry>Optional text to display in the <ph
                                         conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                    /> online help. <p>Do not change this value.</p></entry>
+                                    /> console next to the StreamSets logo.</entry>
+                            </row>
+                            <row>
+                                <entry>ui.local.help.base.url</entry>
+                                <entry>Base URL for the online help installed with <ph
+                                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                        />.<p>Do not change this value.</p></entry>
                             </row>
                             <row>
                                 <entry>ui.hosted.help.base.url</entry>
-                                <entry>Base URL for the <ph
-                                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                    /> online help hosted by the StreamSets website. <p>Do not
-                                        change this value.</p></entry>
+                                <entry>Base URL for the online help hosted on the StreamSets
+                                    website. <p>Do not change this value.</p></entry>
                             </row>
                             <row>
                                 <entry>ui.refresh.interval.ms</entry>
-                                <entry>Interval in milliseconds that the <ph
+                                <entry>Interval in milliseconds that <ph
                                         conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
                                     /> waits before refreshing the <ph
                                         conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
@@ -176,12 +340,12 @@
                             </row>
                             <row>
                                 <entry>ui.enable.usage.data.collection</entry>
-                                <entry>Allows anonymous Google Analytics information to be sent
+                                <entry>Allows anonymous Google Analytics information to be sent to
                                     StreamSets. <p>Default is true. </p></entry>
                             </row>
                             <row>
                                 <entry>ui.enable.webSocket</entry>
-                                <entry>Enables the <ph
+                                <entry>Enables <ph
                                         conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
                                     /> to use WebSocket to gather pipeline information.</entry>
                             </row>
@@ -189,6 +353,29 @@
                                 <entry>ui.undo.limit</entry>
                                 <entry>Number of recent actions stored so you can undo them.
                                 </entry>
+                            </row>
+                            <row>
+                                <entry>config.includes</entry>
+                                <entry>Additional configuration files to include in the <ph
+                                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                    /> configuration. The files must be stored in a directory
+                                    relative to the <systemoutput>$SDC_CONF</systemoutput>
+                                        directory.<p>You can enter multiple file names separated by
+                                        commas. The files are loaded into the <ph
+                                            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                        /> configuration in the listed order. If the same
+                                        configuration property is defined in multiple files, the
+                                        value defined in the last loaded file takes precedence.
+                                        </p><draft-comment author="alisontaylor">Not mentioning dpm
+                                        until they add it.</draft-comment></entry>
+                            </row>
+                            <row>
+                                <entry>runner.thread.pool.size</entry>
+                                <entry>Number of threads in the pool that are available to run
+                                    standalone pipelines. The default value is sufficient to run
+                                    approximately 20 standalone pipelines at the same
+                                        time.<p>Default is 20. Be sure to uncomment the property if
+                                        you change the value.</p></entry>
                             </row>
                         </tbody>
                     </tgroup>
@@ -250,10 +437,9 @@
                                 <entry>File that contains the password for the email account.<p>By
                                         default, the file name is
                                             <filepath>email-password.txt</filepath> and expected in
-                                        the same directory as the <ph
-                                            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                        /> configuration file.</p><p>When appropriate, you can
-                                        replace the default file name.</p></entry>
+                                        the <codeph>$SDC_CONF</codeph> directory.</p><p>When
+                                        appropriate, you can replace the default file
+                                    name.</p></entry>
                             </row>
                             <row>
                                 <entry>xmail.from.address</entry>
@@ -276,7 +462,7 @@
                     </thead>
                     <tbody>
                         <row>
-                            <entry>runtime.conf.location  <xref
+                            <entry>runtime.conf.location <xref
                                     href="../Advanced_Config/RuntimeProperties.dita#concept_fjx_g31_1s"
                                         ><image href="../Graphics/icon_moreInfo.png" scale="10"/>
                                 </xref></entry>
@@ -290,15 +476,105 @@
                                             name>.</p></li>
                                     <li>&lt;file path> - The directory and file name where runtime
                                         properties are defined. The runtime properties file must be
-                                        local to the <ph
-                                            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                        />. <p>When you define runtime properties in a separate
+                                        relative to the <codeph>$SDC_CONF</codeph> directory.
+                                            <p>When you define runtime properties in a separate
                                             file, do not prefix the property names with
                                             runtime.conf_ .</p></li>
                                 </ul></entry>
                         </row>
                     </tbody>
                 </tgroup>
-            </table></context>
+            </table><p>The <ph
+                    conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                /> configuration file includes the following observer properties, used to process
+                data rules and alerts:<table frame="all" rowsep="1" colsep="1" id="table_hwc_b5z_pv">
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                        <colspec colname="c2" colnum="2" colwidth="3.0*"/>
+                        <thead>
+                            <row>
+                                <entry>Observer Properties</entry>
+                                <entry>Description</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry>observer.queue.size</entry>
+                                <entry>Maximum queue size for data rule evaluation requests. Each
+                                    data rule generates an evaluation request for every batch that
+                                    passes through the stream. When the number of requests outstrips
+                                    the queue size, requests are dropped.<p>Default is 100.
+                                    </p></entry>
+                            </row>
+                            <row>
+                                <entry>observer.sampled.records.cache.size</entry>
+                                <entry>Maximum number of records to be cached for display for each
+                                    rule. The exact number of records is specified in the data rule.
+                                        <p>Default is 100. You can reduce this number as
+                                    needed.</p></entry>
+                            </row>
+                            <row>
+                                <entry>observer.queue.offer.max.wait.time.ms</entry>
+                                <entry>Maximum number of milliseconds to wait before dropping a data
+                                    rule evaluation request when the observer queue is full.</entry>
+                            </row>
+                            <row>
+                                <entry>max.stage.private.classloaders</entry>
+                                <entry>Maximum number of stage libraries <ph
+                                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                    /> allows. <p>Default is 50.</p></entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table></p><p>The configuration file includes stage and stage library aliases to
+                enable backward compability for pipelines created with earlier versions of <ph
+                    conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                />, such
+                as:<codeblock>stage.alias.streamsets-datacollector-basic-lib,
+com_streamsets_pipeline_stage_destination_jdbc_JdbcDTarget=
+streamsets-datacollector-jdbc-lib,
+com_streamsets_pipeline_stage_destination_jdbc_JdbcDTarget
+
+library.alias.streamsets-datacollector-apache-kafka_0_8_1_1-lib=
+streamsets-datacollector-apache-kafka_0_8_1-lib</codeblock>Generally,
+                you should not need to change or remove these aliases.</p><p>You can optionally add
+                stage libraries to the blacklist or whitelist properties to limit the stage
+                libraries <ph
+                    conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                /> uses:<table frame="all" rowsep="1" colsep="1" id="table_gmf_fvf_qv">
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                        <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                        <thead>
+                            <row>
+                                <entry>Blacklist / Whitelist Properties <xref
+                                        href="BlacklistWhitelist.dita"><image
+                                            href="../Graphics/icon_moreInfo.png" scale="10"
+                                            id="image_pvr_lgg_qv"/>
+                                    </xref></entry>
+                                <entry>Description</entry>
+                            </row>
+                        </thead>
+                        <tbody>
+                            <row>
+                                <entry>system.stagelibs.whitelist<p>system.stagelibs.blacklist</p></entry>
+                                <entry>Use one list to limit the StreamSets stage libraries that can
+                                    be used in <ph
+                                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                    />. Do not use both.</entry>
+                            </row>
+                            <row>
+                                <entry>user.stagelibs.whitelist<p>user.stagelibs.blacklist</p></entry>
+                                <entry>Use one list to limit the third-party stage libraries that
+                                    can be used in <ph
+                                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                    />. Do not use both.</entry>
+                            </row>
+                        </tbody>
+                    </tgroup>
+                </table></p></context>
     </taskbody>
+    <related-links>
+        <link href="DCEnvironmentConfig.dita#concept_rng_qym_qr" type="topic"/>
+    </related-links>
 </task>

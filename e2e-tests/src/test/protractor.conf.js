@@ -28,7 +28,6 @@ exports.config = {
       'restAPI/infoResource.js',
       'restAPI/logoutResource.js',
       'restAPI/configurationResource.js',
-      'restAPI/helpResource.js',
       'restAPI/jmx.js',
       'restAPI/stageLibraryResource.js',
       'restAPI/pipelineStoreResource.js'
@@ -43,7 +42,7 @@ exports.config = {
       'ui/logPage.js'
     ],
     single: [
-      'ui/pipelineHomePage.js'
+      'restAPI/createTestPipelines.js'
     ]
   },
 

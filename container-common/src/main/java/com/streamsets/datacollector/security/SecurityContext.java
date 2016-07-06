@@ -23,7 +23,6 @@ import com.google.common.base.Joiner;
 import com.streamsets.datacollector.main.RuntimeInfo;
 import com.streamsets.datacollector.util.Configuration;
 import com.streamsets.pipeline.api.impl.Utils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +32,6 @@ import javax.security.auth.kerberos.KerberosTicket;
 import javax.security.auth.login.AppConfigurationEntry;
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
-
 import java.io.File;
 import java.security.Principal;
 import java.util.ArrayList;
@@ -57,6 +55,7 @@ import java.util.concurrent.TimeUnit;
 public class SecurityContext {
   private static final Logger LOG = LoggerFactory.getLogger(SecurityContext.class);
   private static final long THIRTY_SECONDS_MS = TimeUnit.SECONDS.toMillis(30);
+
   private final RuntimeInfo runtimeInfo;
   private final SecurityConfiguration securityConfiguration;
   private final Random random;
@@ -142,6 +141,7 @@ public class SecurityContext {
       }
       if (renewalThread == null) {
         renewalThread = new Thread() {
+          @Override
           public void run() {
             while (true) {
               try {
@@ -160,8 +160,10 @@ public class SecurityContext {
                 LOG.info("Interrupted, exiting renewal thread");
                 return;
               } catch (Exception exception) {
-                LOG.error("Exception in renewal thread: " + exception, exception);
-              } catch (Throwable throwable) {
+                LOG.error("Stopping renewal thread because of exception: " + exception, exception);
+                return;
+              }
+              catch (Throwable throwable) {
                 LOG.error("Error in renewal thread: " + throwable, throwable);
                 return;
               }
@@ -225,8 +227,16 @@ public class SecurityContext {
       principals.add(new KerberosPrincipal(principalName));
       subject = new Subject(false, principals, new HashSet<>(), new HashSet<>());
     }
-    LoginContext context = new LoginContext("", subject, null, new KeytabKerberosConfiguration(runtimeInfo,
-        principalName, new File(securityConfiguration.getKerberosKeytab()), true));
+    LoginContext context = new LoginContext(
+        "",
+        subject,
+        null,
+        new KeytabKerberosConfiguration(
+            principalName,
+            new File(securityConfiguration.getKerberosKeytab()),
+            true
+        )
+    );
     context.login();
     return context;
   }
@@ -237,13 +247,11 @@ public class SecurityContext {
   }
 
   private static class KeytabKerberosConfiguration extends javax.security.auth.login.Configuration {
-    private RuntimeInfo runtimeInfo;
     private String principal;
     private String keytab;
     private boolean isInitiator;
 
-    public KeytabKerberosConfiguration(RuntimeInfo runtimeInfo, String principal, File keytab, boolean client) {
-      this.runtimeInfo = runtimeInfo;
+    public KeytabKerberosConfiguration(String principal, File keytab, boolean client) {
       this.principal = principal;
       this.keytab = keytab.getAbsolutePath();
       this.isInitiator = client;
@@ -257,18 +265,13 @@ public class SecurityContext {
       options.put("useKeyTab", "true");
       options.put("storeKey", "true");
       options.put("doNotPrompt", "true");
-      options.put("useTicketCache", "true");
-      options.put("renewTGT", "true");
       options.put("refreshKrb5Config", "true");
       options.put("isInitiator", Boolean.toString(isInitiator));
-      String ticketCache = System.getenv("KRB5CCNAME");
-      if (ticketCache != null) {
-        options.put("ticketCache", ticketCache);
-      } else {
-        options.put("ticketCache", new File(runtimeInfo.getDataDir(), "krb5.ticketCache").getAbsolutePath());
-      }
-      options.put("debug", System.getProperty("sun.security.krb5.debug", "false"));
-
+      options.put("debug", System.getProperty("sun.security.krb5.debug", "true"));
+      // Do not store/use ticket in/from cache. SecurityContext does not renew it by doing something like "kinit -R"
+      // Instead a new ticket is requested during the renewal.
+      // Credentials are explicitly saved into credential cache ${SDC_DATA}/sdc-krb5.ticketCache for services like
+      // Kafka to pick up.
       return new AppConfigurationEntry[]{
           new AppConfigurationEntry(getJvmKrb5LoginModuleName(), AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
                                     options)};

@@ -24,18 +24,21 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
+import com.streamsets.datacollector.security.HadoopSecurityUtil;
 import com.streamsets.pipeline.api.Batch;
-import com.streamsets.pipeline.api.ErrorCode;
 import com.streamsets.pipeline.api.Record;
 import com.streamsets.pipeline.api.StageException;
 import com.streamsets.pipeline.api.base.BaseTarget;
 import com.streamsets.pipeline.api.base.OnRecordErrorException;
-import com.streamsets.pipeline.api.impl.Utils;
 import com.streamsets.pipeline.config.DataFormat;
 import com.streamsets.pipeline.config.JsonMode;
 import com.streamsets.pipeline.lib.generator.DataGenerator;
 import com.streamsets.pipeline.lib.generator.DataGeneratorFactory;
 import com.streamsets.pipeline.lib.generator.DataGeneratorFactoryBuilder;
+import com.streamsets.pipeline.stage.common.DefaultErrorRecordHandler;
+import com.streamsets.pipeline.stage.common.ErrorRecordHandler;
+import com.streamsets.pipeline.stage.lib.hive.Errors;
+import com.streamsets.pipeline.stage.lib.hive.Groups;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.HiveMetaStoreClient;
@@ -56,13 +59,14 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.security.auth.Subject;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.UndeclaredThrowableException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.security.AccessController;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -97,6 +101,7 @@ public class HiveTarget extends BaseTarget {
   private Map<String, String> partitionsToFields;
   private HiveConf hiveConf;
   private UserGroupInformation loginUgi;
+  private ErrorRecordHandler errorRecordHandler;
   private DataGeneratorFactory dataGeneratorFactory;
 
   private LoadingCache<HiveEndPoint, StreamingConnection> hiveConnectionPool;
@@ -115,7 +120,7 @@ public class HiveTarget extends BaseTarget {
     }
   }
 
-  class HiveConnectionRemovalListener implements RemovalListener<HiveEndPoint, StreamingConnection> {
+  static class HiveConnectionRemovalListener implements RemovalListener<HiveEndPoint, StreamingConnection> {
     @Override
     public void onRemoval(RemovalNotification<HiveEndPoint, StreamingConnection> notification) {
       LOG.debug("Evicting StreamingConnection from pool: {}", notification);
@@ -158,89 +163,83 @@ public class HiveTarget extends BaseTarget {
   @Override
   protected List<ConfigIssue> init() {
     List<ConfigIssue> issues = super.init();
+    errorRecordHandler = new DefaultErrorRecordHandler(getContext());
 
     partitionsToFields = new HashMap<>();
     columnsToFields = new HashMap<>();
 
     hiveConf = new HiveConf();
+
+    // either the hiveConfDir should be set and valid, or the metastore URL must be set. (it's possible both are true!)
     if (null != hiveConfDir && !hiveConfDir.isEmpty()) {
-      File hiveConfDir = new File(this.hiveConfDir);
-
-      if (!hiveConfDir.isAbsolute()) {
-        hiveConfDir = new File(getContext().getResourcesDirectory(), this.hiveConfDir).getAbsoluteFile();
-      }
-
-      if (hiveConfDir.exists()) {
-        File coreSite = new File(hiveConfDir.getAbsolutePath(), "core-site.xml");
-        File hiveSite = new File(hiveConfDir.getAbsolutePath(), "hive-site.xml");
-        File hdfsSite = new File(hiveConfDir.getAbsolutePath(), "hdfs-site.xml");
-
-        if (!coreSite.exists()) {
-          issues.add(getContext().createConfigIssue(
-                  Groups.HIVE.name(),
-                  "hiveConfDir",
-                  Errors.HIVE_06,
-                  coreSite.getName(),
-                  this.hiveConfDir)
-          );
-        } else {
-          hiveConf.addResource(new Path(coreSite.getAbsolutePath()));
-        }
-
-        if (!hdfsSite.exists()) {
-          issues.add(getContext().createConfigIssue(
-                  Groups.HIVE.name(),
-                  "hiveConfDir",
-                  Errors.HIVE_06,
-                  hdfsSite.getName(),
-                  this.hiveConfDir)
-          );
-        } else {
-          hiveConf.addResource(new Path(hdfsSite.getAbsolutePath()));
-        }
-
-        if (!hiveSite.exists()) {
-          issues.add(getContext().createConfigIssue(
-                  Groups.HIVE.name(),
-                  "hiveConfDir",
-                  Errors.HIVE_06,
-                  hiveSite.getName(),
-                  this.hiveConfDir)
-          );
-        } else {
-          hiveConf.addResource(new Path(hiveSite.getAbsolutePath()));
-        }
-      } else {
-        issues.add(getContext().createConfigIssue(Groups.HIVE.name(), "hiveConfDir", Errors.HIVE_07, this.hiveConfDir));
-      }
+      initHiveConfDir(issues);
     } else if (hiveThriftUrl == null || hiveThriftUrl.isEmpty()) {
       issues.add(getContext().createConfigIssue(Groups.HIVE.name(), "hiveThriftUrl", Errors.HIVE_13));
     }
 
-    // Specified URL overrides what's in the Hive Conf
-    hiveConf.set(HIVE_METASTORE_URI, hiveThriftUrl);
+    // Specified URL overrides what's in the Hive Conf iff it's present
+    if (hiveThriftUrl != null && !hiveThriftUrl.isEmpty()) {
+      hiveConf.set(HIVE_METASTORE_URI, hiveThriftUrl);
+    }
+
+    if (!validateHiveThriftUrl(issues)) {
+      return issues;
+    }
+
     // Add any additional hive conf overrides
     for (Map.Entry<String, String> entry : additionalHiveProperties.entrySet()) {
       hiveConf.set(entry.getKey(), entry.getValue());
     }
 
+    captureLoginUGI(issues);
+    initHiveMetaStoreClient(issues);
+    applyCustomMappings(issues);
+
+    dataGeneratorFactory = createDataGeneratorFactory();
+
+    // Note that cleanup is done synchronously by default while servicing .get
+    hiveConnectionPool = CacheBuilder.newBuilder()
+        .maximumSize(10)
+        .expireAfterAccess(10, TimeUnit.MINUTES)
+        .removalListener(new HiveConnectionRemovalListener())
+        .build(new HiveConnectionLoader());
+
+    recordWriterPool = CacheBuilder.newBuilder()
+        .maximumSize(10)
+        .expireAfterAccess(10, TimeUnit.MINUTES)
+        .build(new HiveRecordWriterLoader());
+
+    LOG.debug("Total issues: {}", issues.size());
+    return issues;
+  }
+
+  private void applyCustomMappings(List<ConfigIssue> issues) {
+    // Now apply any custom mappings
+    if (validColumnMappings(issues)) {
+      for (FieldMappingConfig mapping : columnMappings) {
+        LOG.debug("Custom mapping field {} to column {}", mapping.field, mapping.columnName);
+        if (columnsToFields.containsKey(mapping.columnName)) {
+          LOG.debug("Mapping field {} to column {}", mapping.field, mapping.columnName);
+          columnsToFields.put(mapping.columnName, mapping.field);
+        } else if (partitionsToFields.containsKey(mapping.columnName)) {
+          LOG.debug("Mapping field {} to partition {}", mapping.field, mapping.columnName);
+          partitionsToFields.put(mapping.columnName, mapping.field);
+        }
+      }
+    }
+  }
+
+  private void captureLoginUGI(List<ConfigIssue> issues) {
     try {
       // forcing UGI to initialize with the security settings from the stage
-      UserGroupInformation.setConfiguration(hiveConf);
-      Subject subject = Subject.getSubject(AccessController.getContext());
-      if (UserGroupInformation.isSecurityEnabled()) {
-        loginUgi = UserGroupInformation.getUGIFromSubject(subject);
-      } else {
-        UserGroupInformation.loginUserFromSubject(subject);
-        loginUgi = UserGroupInformation.getLoginUser();
-      }
-      LOG.info("Subject = {}, Principals = {}, Login UGI = {}", subject,
-        subject == null ? "null" : subject.getPrincipals(), loginUgi);
+      loginUgi = HadoopSecurityUtil.getLoginUser(hiveConf);
       // Proxy users are not currently supported due to: https://issues.apache.org/jira/browse/HIVE-11089
-    } catch (IOException e) {
+    } catch (Exception e) {
       issues.add(getContext().createConfigIssue(Groups.HIVE.name(), null, Errors.HIVE_11, e.getMessage()));
     }
+  }
 
+  private void initHiveMetaStoreClient(List<ConfigIssue> issues) {
     try {
       issues.addAll(loginUgi.doAs(
           new PrivilegedExceptionAction<List<ConfigIssue>>() {
@@ -293,37 +292,76 @@ public class HiveTarget extends BaseTarget {
           getContext().createConfigIssue(Groups.HIVE.name(), "", Errors.HIVE_01, e.getUndeclaredThrowable().toString())
       );
     }
+  }
 
-    // Now apply any custom mappings
-    if (validColumnMappings(issues)) {
-      for (FieldMappingConfig mapping : columnMappings) {
-        LOG.debug("Custom mapping field {} to column {}", mapping.field, mapping.columnName);
-        if (columnsToFields.containsKey(mapping.columnName)) {
-          LOG.debug("Mapping field {} to column {}", mapping.field, mapping.columnName);
-          columnsToFields.put(mapping.columnName, mapping.field);
-        } else if (partitionsToFields.containsKey(mapping.columnName)) {
-          LOG.debug("Mapping field {} to partition {}", mapping.field, mapping.columnName);
-          partitionsToFields.put(mapping.columnName, mapping.field);
-        }
-      }
+  private void initHiveConfDir(List<ConfigIssue> issues) {
+    File hiveConfDir = new File(this.hiveConfDir);
+
+    if (!hiveConfDir.isAbsolute()) {
+      hiveConfDir = new File(getContext().getResourcesDirectory(), this.hiveConfDir).getAbsoluteFile();
     }
 
-    dataGeneratorFactory = createDataGeneratorFactory();
+    if (hiveConfDir.exists()) {
+      File coreSite = new File(hiveConfDir.getAbsolutePath(), "core-site.xml");
+      File hiveSite = new File(hiveConfDir.getAbsolutePath(), "hive-site.xml");
+      File hdfsSite = new File(hiveConfDir.getAbsolutePath(), "hdfs-site.xml");
 
-    // Note that cleanup is done synchronously by default while servicing .get
-    hiveConnectionPool = CacheBuilder.newBuilder()
-        .maximumSize(10)
-        .expireAfterAccess(10, TimeUnit.MINUTES)
-        .removalListener(new HiveConnectionRemovalListener())
-        .build(new HiveConnectionLoader());
+      if (!coreSite.exists()) {
+        issues.add(getContext().createConfigIssue(
+                Groups.HIVE.name(),
+                "hiveConfDir",
+                Errors.HIVE_06,
+                coreSite.getName(),
+                this.hiveConfDir)
+        );
+      } else {
+        hiveConf.addResource(new Path(coreSite.getAbsolutePath()));
+      }
 
-    recordWriterPool = CacheBuilder.newBuilder()
-        .maximumSize(10)
-        .expireAfterAccess(10, TimeUnit.MINUTES)
-        .build(new HiveRecordWriterLoader());
+      if (!hdfsSite.exists()) {
+        issues.add(getContext().createConfigIssue(
+                Groups.HIVE.name(),
+                "hiveConfDir",
+                Errors.HIVE_06,
+                hdfsSite.getName(),
+                this.hiveConfDir)
+        );
+      } else {
+        hiveConf.addResource(new Path(hdfsSite.getAbsolutePath()));
+      }
 
-    LOG.debug("Total issues: {}", issues.size());
-    return issues;
+      if (!hiveSite.exists()) {
+        issues.add(getContext().createConfigIssue(
+                Groups.HIVE.name(),
+                "hiveConfDir",
+                Errors.HIVE_06,
+                hiveSite.getName(),
+                this.hiveConfDir)
+        );
+      } else {
+        hiveConf.addResource(new Path(hiveSite.getAbsolutePath()));
+      }
+    } else {
+      issues.add(getContext().createConfigIssue(Groups.HIVE.name(), "hiveConfDir", Errors.HIVE_07, this.hiveConfDir));
+    }
+  }
+
+  private boolean validateHiveThriftUrl(List<ConfigIssue> issues) {
+    // by this point in execution, the metastore ui was either provided in conf or overridden from UI.
+    String[] uriStrings = hiveConf.get(HIVE_METASTORE_URI).split(",");
+    for (String uriString : uriStrings) {
+      try {
+        URI uri = new URI(uriString);
+        if (uri.getHost() == null || uri.getPort() == -1) {
+          issues.add(getContext().createConfigIssue(Groups.HIVE.name(), "hiveUrl", Errors.HIVE_14, uriString));
+          return false;
+        }
+      } catch (URISyntaxException e) {
+        issues.add(getContext().createConfigIssue(Groups.HIVE.name(), "hiveUrl", Errors.HIVE_14, uriString));
+        return false;
+      }
+    }
+    return true;
   }
 
   private boolean validColumnMappings(List<ConfigIssue> issues) {
@@ -342,8 +380,10 @@ public class HiveTarget extends BaseTarget {
 
   @Override
   public void destroy() {
-    for (Map.Entry<HiveEndPoint, StreamingConnection> entry : hiveConnectionPool.asMap().entrySet()) {
-      entry.getValue().close();
+    if (hiveConnectionPool != null) {
+      for (Map.Entry<HiveEndPoint, StreamingConnection> entry : hiveConnectionPool.asMap().entrySet()) {
+        entry.getValue().close();
+      }
     }
     super.destroy();
   }
@@ -409,11 +449,23 @@ public class HiveTarget extends BaseTarget {
           LOG.error("Error processing batch: {}", e.getCause().toString(), e);
           throw new StageException(Errors.HIVE_01, e.getCause().toString(), e);
         } catch (OnRecordErrorException e) {
-          handleError(record, e.getErrorCode(), e.getParams());
+          errorRecordHandler.onError(
+              new OnRecordErrorException(
+                  record,
+                  e.getErrorCode(),
+                  e.getParams()
+              )
+          );
         }
       } else {
         if (missingPartitions.size() != 0) {
-          handleError(record, Errors.HIVE_08, StringUtils.join(",", missingPartitions));
+          errorRecordHandler.onError(
+              new OnRecordErrorException(
+                  record,
+                  Errors.HIVE_08,
+                  StringUtils.join(",", missingPartitions)
+              )
+          );
         }
       }
     }
@@ -465,20 +517,5 @@ public class HiveTarget extends BaseTarget {
       throw new OnRecordErrorException(Errors.HIVE_12, e.toString(), e);
     }
     return endPoint;
-  }
-
-  private void handleError(Record record, ErrorCode errorCode, Object... params) throws StageException {
-    switch (getContext().getOnErrorRecord()) {
-      case DISCARD:
-        break;
-      case TO_ERROR:
-        getContext().toError(record, errorCode, params);
-        break;
-      case STOP_PIPELINE:
-        throw new StageException(errorCode, params);
-      default:
-        throw new IllegalStateException(Utils.format("Unknown OnError value '{}'",
-            getContext().getOnErrorRecord()));
-    }
   }
 }

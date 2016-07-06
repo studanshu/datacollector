@@ -29,17 +29,16 @@ angular
     'splitterDirectives',
     'tabDirectives',
     'pipelineGraphDirectives',
-    'dataCollectorApp.commonDirectives',
+    'commonUI.commonDirectives',
+    'commonUI.filters',
+    'commonUI.codemirrorDirectives',
     'ui.bootstrap',
     'angularMoment',
     'nvd3',
-    'dataCollectorApp.filters',
-    'ngSanitize',
     'ui.select',
     'showLoadingDirectives',
     'recordTreeDirectives',
-    'ui.bootstrap.datetimepicker',
-    'dataCollectorApp.codemirrorDirectives'
+    'ui.bootstrap.datetimepicker'
   ])
   .constant('amTimeAgoConfig', {
     withoutSuffix: true

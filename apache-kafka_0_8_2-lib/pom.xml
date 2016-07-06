@@ -21,18 +21,20 @@
   <parent>
     <groupId>com.streamsets</groupId>
     <artifactId>streamsets-datacollector-root-lib</artifactId>
-    <version>1.2.0-SNAPSHOT</version>
+    <version>1.6.0.0-SNAPSHOT</version>
     <relativePath>../root-lib</relativePath>
   </parent>
   <groupId>com.streamsets</groupId>
   <artifactId>streamsets-datacollector-apache-kafka_0_8_2-lib</artifactId>
-  <version>1.2.0-SNAPSHOT</version>
-  <description>StreamSets Data Collector Apache Kafka 0.8.2.1 Lib</description>
-  <name>StreamSets Data Collector Apache Kafka 0.8.2.1 Lib</name>
+  <version>1.6.0.0-SNAPSHOT</version>
+  <description>StreamSets Data Collector Apache Kafka 0.8.2.2 Lib</description>
+  <name>StreamSets Data Collector Apache Kafka 0.8.2.2 Lib</name>
   <packaging>jar</packaging>
 
   <properties>
-    <kafka.version>0.8.2.1</kafka.version>
+    <kafka.version>0.8.2.2</kafka.version>
+    <bouncycastle.version>1.46</bouncycastle.version>
+    <h2.version>1.4.187</h2.version>
   </properties>
 
   <dependencies>
@@ -77,10 +79,9 @@
       <artifactId>mockito-core</artifactId>
       <scope>test</scope>
     </dependency>
-
     <dependency>
       <groupId>com.streamsets</groupId>
-      <artifactId>streamsets-datacollector-kafka_source-protolib</artifactId>
+      <artifactId>streamsets-datacollector-sdc-kafka-08</artifactId>
       <version>${project.version}</version>
       <scope>compile</scope>
       <exclusions>
@@ -93,6 +94,12 @@
           <artifactId>zkclient</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.streamsets</groupId>
+      <artifactId>streamsets-datacollector-cluster-kafka-protolib</artifactId>
+      <version>${project.version}</version>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.streamsets</groupId>
@@ -122,6 +129,19 @@
       <artifactId>kafka_2.11</artifactId>
       <version>${kafka.version}</version>
       <classifier>test</classifier>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-jdk16</artifactId>
+      <version>${bouncycastle.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <version>${h2.version}</version>
       <scope>test</scope>
     </dependency>
 

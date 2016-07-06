@@ -21,12 +21,12 @@
   <parent>
     <groupId>com.streamsets</groupId>
     <artifactId>streamsets-datacollector-root-proto</artifactId>
-    <version>1.2.0-SNAPSHOT</version>
+    <version>1.6.0.0-SNAPSHOT</version>
     <relativePath>../root-proto</relativePath>
   </parent>
   <groupId>com.streamsets</groupId>
   <artifactId>streamsets-datacollector-root-lib</artifactId>
-  <version>1.2.0-SNAPSHOT</version>
+  <version>1.6.0.0-SNAPSHOT</version>
   <description>StreamSets Data Collector Root Libraries POM</description>
   <name>StreamSets Data Collector Root Libraries POM</name>
   <packaging>pom</packaging>
@@ -54,6 +54,13 @@
       </dependency>
       <dependency>
         <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-commonlib</artifactId>
+        <version>${project.version}</version>
+        <type>test-jar</type>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
         <artifactId>streamsets-datacollector-cluster-common</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -62,7 +69,20 @@
         <artifactId>streamsets-datacollector-spark-bootstrap</artifactId>
         <version>${project.version}</version>
       </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-mesos-bootstrap</artifactId>
+        <version>${project.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
+  <dependencies>
+    <dependency>
+      <groupId>com.streamsets</groupId>
+      <artifactId>streamsets-testing</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 </project>

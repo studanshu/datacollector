@@ -19,9 +19,18 @@
   <topicref href="../Processors/Processors_overview.dita" chunk="to-content">
    <topicmeta><shortdesc></shortdesc></topicmeta>
   </topicref>
+  <topicref href="../Processors/Base64Decoder.dita" chunk="to-content">
+   <topicmeta><shortdesc></shortdesc></topicmeta>
+   <topicref href="../Processors/Base64Decoder-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Processors/Base64Encoder.dita" chunk="to-content">
+   <topicmeta><shortdesc></shortdesc></topicmeta>
+   <topicref href="../Processors/Base64Encoder-Configuring.dita"/>
+  </topicref>
   <topicref href="../Processors/Expression.dita" chunk="to-content">
    <topicmeta><shortdesc></shortdesc></topicmeta>
    <topicref href="../Processors/Expression-OutputField.dita"/>
+   <topicref href="../Processors/Expression-HeaderAttributeExp.dita"/>
    <topicref href="../Processors/Expression-Configuring.dita"/>
   </topicref>
   <topicref href="../Processors/FieldConverter.dita" chunk="to-content">
@@ -33,6 +42,8 @@
   </topicref>
   <topicref href="../Processors/FieldHasher.dita" chunk="to-content">
    <topicmeta><shortdesc></shortdesc></topicmeta>
+   <topicref href="../Processors/FieldHasher-Methods.dita"/>
+   <topicref href="../Processors/FieldHasher-ListMapFields.dita"/>
    <topicref href="../Processors/FieldHasher-Configuring.dita"/>
   </topicref>
   <topicref href="../Processors/FieldMasker.dita" chunk="to-content">
@@ -50,6 +61,7 @@
   </topicref>
   <topicref href="../Processors/FieldRenamer.dita" chunk="to-content">
    <topicmeta><shortdesc></shortdesc></topicmeta>
+   <topicref href="../Processors/FieldRenamer-SetsofFields.dita"/>
    <topicref href="../Processors/FieldRenamer-Configuring.dita"/></topicref>
   <topicref href="../Processors/FieldSplitter.dita" chunk="to-content">
    <topicmeta><shortdesc></shortdesc></topicmeta>
@@ -61,10 +73,53 @@
   </topicmeta>
    <topicref href="../Processors/GeoIP-DatabaseFileLocation.dita"/>
    <topicref href="../Processors/GeoIP-Configuring.dita"/></topicref>
+  <topicref href="../Processors/Groovy.dita" chunk="to-content">
+   <topicmeta><shortdesc></shortdesc></topicmeta>
+   <topicref href="../Processors/Groovy_ProcessingMode.dita"/>
+   <topicref href="../Processors/Groovy-ScriptingObjects.dita"/>
+   <topicref href="../Processors/Groovy-DelimData.dita"/>
+   <topicref href="../Processors/Groovy-Configuring.dita"/>
+   </topicref>
+  <topicref href="../Processors/HBaseLookup.dita" chunk="to-content">
+   <topicmeta>
+    <shortdesc/>
+   </topicmeta>
+   <topicref href="../Processors/HBaseLookup-Key.dita"/>
+   <topicref href="../Processors/HBaseLookup-Cache.dita"/>
+   <topicref href="../Processors/HBaseLookup-Kerberos.dita"/>
+   <topicref href="../Processors/HBaseLookup-HBaseUser.dita"/>
+   <topicref href="../Processors/HBaseLookup-HBaseProperties.dita"/>
+   <topicref href="../Processors/HBaseLookup-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Processors/HiveMetadata.dita" chunk="to-content">
+   <topicmeta>
+    <shortdesc/>
+   </topicmeta>
+   <topicref href="../Processors/HiveMeta-OutputStreams.dita"/>
+   <topicref href="../Processors/HiveMeta-MRecordStageAtts.dita"/>
+   <topicref href="../Processors/HiveMeta-DBtablePartition.dita"/>
+   <topicref href="../Processors/HiveMeta-TimeBasis.dita"/>
+   <topicref href="../Processors/HiveMeta-Cache.dita">
+    <topicref href="../Reusable_Content/HiveMeta-CacheEvict.dita"/>
+   </topicref>
+   <topicref href="../Processors/HiveMeta-Kerberos.dita"/>
+   <topicref href="../Processors/HiveMeta-ConfigFiles.dita"/>
+   <topicref href="../Processors/HiveMeta-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Processors/HTTPClient.dita" chunk="to-content">
+   <topicmeta><shortdesc></shortdesc></topicmeta>
+   <topicref href="../Processors/HTTPClient-Methods.dita">
+    <topicref href="../Processors/HTTPClient-ExpressionMethod.dita"/>
+   </topicref>
+   <topicref href="../Processors/HTTPClient-ParallelRequests.dita"/>
+   <topicref href="../Processors/HTTPClient-DataFormats.dita"/>
+   <topicref href="../Processors/HTTPClient-Configuring.dita"/>
+  </topicref>
   <topicref href="../Processors/JavaScript.dita" chunk="to-content"> 
    <topicmeta><shortdesc></shortdesc></topicmeta>
-   <topicref href="../Processors/JavaScript_ProcessingMode.dita"/>
+   <topicref href="../Processors/JavaScript-ProcessingMode.dita"/>
    <topicref href="../Processors/JavaScript-ScriptingObjects.dita"/>
+   <topicref href="../Processors/JavaScript-DelimData.dita"/>
    <topicref href="../Processors/JavaScript-TypeHandling.dita"/>
    <topicref href="../Processors/JavaScript-Configuring.dita"/>
   </topicref>
@@ -74,8 +129,9 @@
   </topicref>
   <topicref href="../Processors/Jython.dita" chunk="to-content">
    <topicmeta><shortdesc></shortdesc></topicmeta>
-   <topicref href="../Processors/Jython_ProcessingMode.dita"/>
+   <topicref href="../Processors/Jython-ProcessingMode.dita"/>
    <topicref href="../Processors/Jython-ScriptingObjects.dita"/>
+   <topicref href="../Processors/Jython-DelimData.dita"/>
    <topicref href="../Processors/Jython-TypeHandling.dita"/>
    <topicref href="../Processors/Jython-Configuring.dita"/>
   </topicref>
@@ -93,6 +149,20 @@
    <topicref href="../Processors/RDeduplicator-ComparisonWindow.dita"/>
    <topicref href="../Processors/RDeduplicator-Configuring.dita"/>
   </topicref>
+  <topicref href="../Processors/RedisLookup.dita" chunk="to-content">
+   <topicmeta>
+    <shortdesc/>
+   </topicmeta>
+   <topicref href="../Processors/RedisLookup-Datatypes.dita"/>
+   <topicref href="../Processors/RedisLookup-Cache.dita"/>
+   <topicref href="../Processors/RedisLookup-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Processors/StaticLookup.dita" chunk="to-content">
+   <topicmeta>
+    <shortdesc/>
+   </topicmeta>
+   <topicref href="../Processors/StaticLookup-Configuring.dita"/>
+  </topicref>
   <topicref href="../Processors/StreamSelector.dita" chunk="to-content">
    <topicmeta><shortdesc></shortdesc></topicmeta>
    <topicref href="../Processors/StreamSelector-DefaultStream.dita"/>
@@ -102,6 +172,15 @@
   <topicref href="../Processors/ValueReplacer.dita" chunk="to-content">
    <topicmeta><shortdesc></shortdesc></topicmeta>
    <topicref href="../Processors/ValueReplacer-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Processors/XMLFlattener.dita" chunk="to-content">
+   <topicmeta><shortdesc></shortdesc></topicmeta>
+   <topicref href="../Processors/XMLFlattener-RecordDelimiter.dita"/>
+   <topicref href="../Processors/XMLFlattener-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Processors/XMLParser.dita" chunk="to-content">
+   <topicmeta><shortdesc></shortdesc></topicmeta>
+   <topicref href="../Processors/XMLParser-Configuring.dita"/>
   </topicref>
  </topicref>
 </map>

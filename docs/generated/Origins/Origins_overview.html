@@ -2,7 +2,7 @@
 <!DOCTYPE html
   SYSTEM "about:legacy-compat">
 <html xml:lang="en-us" lang="en-us">
-<head><meta name="description" content="An origin stage represents the source for the pipeline. You can use a single origin stage in a pipeline. You can use different origins based on the execution mode of the pipeline. In standalone ..."></meta><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><meta name="copyright" content="(C) Copyright 2005"></meta><meta name="DC.rights.owner" content="(C) Copyright 2005"></meta><meta name="DC.Type" content="concept"></meta><meta name="DC.Title" content="Origins"></meta><meta name="abstract" content="An origin stage represents the source for the pipeline. You can use a single origin stage in a pipeline."></meta><meta name="description" content="An origin stage represents the source for the pipeline. You can use a single origin stage in a pipeline."></meta><meta name="DC.Relation" scheme="URI" content="../Origins/Origins_title.html"></meta><meta name="DC.Format" content="XHTML"></meta><meta name="DC.Identifier" content="concept_hpr_twm_jq"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/commonltr.css"><!----></link><title>Origins</title><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/webhelp_topic.css"><!----></link><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/skins/skin.css"><!----></link><link rel="stylesheet" type="text/css" href="../skin.css"></link><script type="text/javascript"><!--
+<head><meta name="description" content="An origin stage represents the source for the pipeline. You can use a single origin stage in a pipeline. You can use different origins based on the execution mode of the pipeline. In standalone ..."></meta><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><meta name="copyright" content="(C) Copyright 2005"></meta><meta name="DC.rights.owner" content="(C) Copyright 2005"></meta><meta name="DC.Type" content="concept"></meta><meta name="DC.Title" content="Origins"></meta><meta name="abstract" content="An origin stage represents the source for the pipeline. You can use a single origin stage in a pipeline."></meta><meta name="description" content="An origin stage represents the source for the pipeline. You can use a single origin stage in a pipeline."></meta><meta name="DC.Relation" scheme="URI" content="../Origins/Origins_title.html"></meta><meta name="DC.Format" content="XHTML"></meta><meta name="DC.Identifier" content="concept_hpr_twm_jq"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/commonltr.css"><!----></link><title>Origins</title><!--  Generated with Oxygen version 17.1, build number 2016020417.  --><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/webhelp_topic.css"><!----></link><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/skins/skin.css"><!----></link><link rel="stylesheet" type="text/css" href="../skin.css"></link><script type="text/javascript"><!--
           
           var prefix = "../index.html";
           
@@ -49,6 +49,8 @@
         <li class="li">File Tail - Reads lines of data from an active file after reading related archived files
           in the directory. </li>
 
+        <li class="li">Hadoop FS - Reads data from the Hadoop Distributed File System (HDFS). </li>
+
         <li class="li">HTTP Client - Reads data from a streaming HTTP resource URL.</li>
 
         <li class="li">JDBC Consumer - Reads database data through a JDBC connection.</li>
@@ -57,13 +59,21 @@
 
         <li class="li">Kafka Consumer - Reads messages from Kafka.</li>
 
-        <li class="li">Kinesis Consumer - Reads data from Kinesis.</li>
+        <li class="li">Kinesis Consumer - Reads data from Kinesis Streams.</li>
+
+        <li class="li">MapR Streams Consumer - Reads messages from MapR Streams.</li>
 
         <li class="li">MongoDB - Reads documents from MongoDB.</li>
 
         <li class="li">Omniture - Reads web usage reports from the Omniture reporting API.</li>
 
+        <li class="li">RabbitMQ Consumer - Reads messages from RabbitMQ.</li>
+
+        <li class="li">Redis Consumer - Reads messages from Redis.</li>
+
         <li class="li">SDC RPC - Reads data from an SDC RPC destination in an SDC RPC pipeline.</li>
+
+        <li class="li">SFTP/FTP Client - Reads files from an SFTP or FTP server.</li>
 
         <li class="li">UDP Source - Reads messages from one or more UDP ports. </li>
 
@@ -78,9 +88,63 @@
       </ul>
 </div>
 
+    <div class="p">To help create or test pipelines, you can use the following development origins:<ul class="ul" id="concept_hpr_twm_jq__ul_nr2_c1p_qv">
+        <li class="li">Dev Data Generator </li>
+
+        <li class="li">Dev Random Source</li>
+
+        <li class="li">Dev Raw Data Source </li>
+
+      </ul>
+</div>
+
+    <p class="p">For more information, see <a class="xref" href="../Pipeline_Design/DevStages.html#concept_czx_ktn_ht">Development Stages</a>.</p>
+
  </div>
 
 <div class="related-links"></div>
+<div class="topic concept nested1" id="concept_tck_jzv_mv">
+ <h2 class="title topictitle2">AWS Credentials</h2>
+
+ 
+ <div class="body conbody"><p class="shortdesc">When <span class="ph">Data
+                  Collector</span> reads data from an Amazon S3 or Kinesis Consumer origin, it must pass credentials to
+        Amazon Web Services.</p>
+
+  <div class="p">Use one of the following
+            methods to pass AWS credentials:<dl class="dl">
+                
+                    <dt class="dt dlterm">IAM roles</dt>
+
+                    <dd class="dd">When <span class="ph">Data
+                  Collector</span> runs on an Amazon EC2 instance, you can use the AWS Management Console to
+                        configure an IAM role for the EC2 instance. <span class="ph">Data
+                  Collector</span> uses the IAM instance profile credentials to automatically connect to
+                        AWS. </dd>
+
+                    <dd class="dd">When you use IAM roles, you do not need to specify the <span class="ph uicontrol">Access Key
+                            ID</span> and <span class="ph uicontrol">Secret Access Key</span> properties
+                        in the origin.</dd>
+
+                    <dd class="dd">For more information about assigning an IAM role to an EC2 instance, see the
+                        Amazon EC2 documentation.</dd>
+
+                
+                
+                    <dt class="dt dlterm">AWS access key pairs</dt>
+
+                    <dd class="dd">When <span class="ph">Data
+                  Collector</span> does not run on an Amazon EC2 instance or when the EC2 instance doesn’t
+                        have an IAM role, you must specify the <span class="ph uicontrol">Access Key ID</span>
+                        and <span class="ph uicontrol">Secret Access Key</span> properties in the origin.</dd>
+
+                
+            </dl>
+</div>
+
+ </div>
+
+</div>
 <div class="topic concept nested1" id="concept_ypd_vgr_5q">
  <h2 class="title topictitle2">Batch Size and Wait Time</h2>
 
@@ -103,6 +167,187 @@
    time to ensure all data is processed within a specified time frame or to make regular contact
    with pipeline destinations. Use the default or increase the wait time if you prefer not to
    process partial or empty batches.</p>
+
+ </div>
+
+</div>
+<div class="topic concept nested1" id="concept_uxr_g52_qs">
+ <h2 class="title topictitle2">File Compression Formats</h2>
+
+ 
+ <div class="body conbody"><p class="shortdesc">Origins that read files can read uncompressed, compressed files, archives, and
+    compressed archives. </p>
+
+  <p class="p">Hadoop
+      FS reads compressed files automatically. For all other file-based origins, you indicate the
+      compression format in the origin. </p>
+
+    <div class="p">The following table lists the supported file types by extension:
+<div class="tablenoborder"><table cellpadding="4" cellspacing="0" summary="" id="concept_uxr_g52_qs__table_fwr_k3s_b5" class="table" frame="border" border="1" rules="all">
+          
+          
+          <thead class="thead" align="left">
+            <tr class="row">
+              <th class="entry" valign="top" width="30%" id="d114000e282">Compression Format</th>
+
+              <th class="entry" valign="top" width="70%" id="d114000e285">Description</th>
+
+            </tr>
+
+          </thead>
+
+          <tbody class="tbody">
+            <tr class="row">
+              <td class="entry" valign="top" width="30%" headers="d114000e282 ">Uncompressed</td>
+
+              <td class="entry" valign="top" width="70%" headers="d114000e285 ">Processes uncompressed files of the configured data format.</td>
+
+            </tr>
+
+            <tr class="row">
+              <td class="entry" valign="top" width="30%" headers="d114000e282 ">Compressed</td>
+
+              <td class="entry" valign="top" width="70%" headers="d114000e285 ">Processes files compressed by the following compression formats: <ul class="ul" id="concept_uxr_g52_qs__ul_ctx_3ss_b5">
+                  <li class="li">gzip</li>
+
+                  <li class="li">bgzip2</li>
+
+                  <li class="li">xz</li>
+
+                  <li class="li">lzma</li>
+
+                  <li class="li">Pack200</li>
+
+                  <li class="li">DEFLATE</li>
+
+                  <li class="li">Z</li>
+
+                </ul>
+</td>
+
+            </tr>
+
+            <tr class="row">
+              <td class="entry" valign="top" width="30%" headers="d114000e282 ">Archive</td>
+
+              <td class="entry" valign="top" width="70%" headers="d114000e285 ">Processes files archived by the following archive formats: <ul class="ul" id="concept_uxr_g52_qs__ul_l1q_gsm_c5">
+                  <li class="li">7z</li>
+
+                  <li class="li">ar</li>
+
+                  <li class="li">arj</li>
+
+                  <li class="li">cpio</li>
+
+                  <li class="li">dump</li>
+
+                  <li class="li">tar</li>
+
+                  <li class="li">zip</li>
+
+                </ul>
+</td>
+
+            </tr>
+
+            <tr class="row">
+              <td class="entry" valign="top" width="30%" headers="d114000e282 ">Compressed Archive</td>
+
+              <td class="entry" valign="top" width="70%" headers="d114000e285 ">Processes files in compressed archives created by supported compression and
+                archive formats.</td>
+
+            </tr>
+
+          </tbody>
+
+        </table>
+</div>
+</div>
+
+ </div>
+
+</div>
+<div class="topic concept nested1" id="concept_ljn_2h3_yv">
+ <h2 class="title topictitle2">Record Header Attributes</h2>
+
+    
+ <div class="body conbody"><p class="shortdesc">The Directory, File Tail, and Kafka Consumer origins include record header attributes
+        for each record. To track the provenance of each record, you can use a function to include
+        this information in the records.</p>
+
+  <p class="p">The following table lists the additional record
+            header attributes that each origin includes:</p>
+
+        <div class="p">
+            
+<div class="tablenoborder"><table cellpadding="4" cellspacing="0" summary="" id="concept_ljn_2h3_yv__table_oww_wpv_jw" class="table" frame="border" border="1" rules="all">
+                    
+                    
+                    <thead class="thead" align="left">
+                        <tr class="row">
+                            <th class="entry" valign="top" width="33.33333333333333%" id="d114000e439">Origins</th>
+
+                            <th class="entry" valign="top" width="66.66666666666666%" id="d114000e442">Record Header Attributes</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody class="tbody">
+                        <tr class="row">
+                            <td class="entry" valign="top" width="33.33333333333333%" headers="d114000e439 ">Directory and File Tail</td>
+
+                            <td class="entry" valign="top" width="66.66666666666666%" headers="d114000e442 ">
+                                <ul class="ul" id="concept_ljn_2h3_yv__ul_ebj_1l3_yv">
+                                    <li class="li">filename - Provides the file name.</li>
+
+                                    <li class="li">file - Provides the file path and name. </li>
+
+                                    <li class="li">offset - Provides the offset in bytes.</li>
+
+                                </ul>
+
+                            </td>
+
+                        </tr>
+
+                        <tr class="row">
+                            <td class="entry" valign="top" width="33.33333333333333%" headers="d114000e439 ">Kafka Consumer</td>
+
+                            <td class="entry" valign="top" width="66.66666666666666%" headers="d114000e442 ">
+                                <ul class="ul" id="concept_ljn_2h3_yv__ul_i4q_2qv_jw">
+                                    <li class="li">offset - Provides the offset in bytes.</li>
+
+                                    <li class="li">partition - Provides the partition name.</li>
+
+                                    <li class="li">topic - Provides the topic name.</li>
+
+                                </ul>
+
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+</div>
+
+        </div>
+
+        <div class="p">To include these attributes in a record, you can use the following expressions in the
+            Expression
+            Evaluator:<pre class="pre codeblock">${record:attribute('filename')}
+${record:attribute('file')}
+${record:attribute('offset')}
+${record:attribute('partition')}
+${record:attribute('topic')}</pre>
+</div>
+
+        <p class="p">The following image shows an Expression Evaluator that adds the file and offset record
+            header attribute information to the record read by a Directory origin: </p>
+
+        <p class="p"><img class="image" id="concept_ljn_2h3_yv__image_prx_fn3_yv" src="../Graphics/Origins-EEval-headerattributes.png" height="289" width="588"></img></p>
 
  </div>
 
@@ -144,9 +389,9 @@
                             
                             <thead class="thead" align="left">
                                 <tr class="row">
-                                    <th class="entry" valign="top" width="22.22222222222222%" id="d43343e210">Kafka Raw Preview Property</th>
+                                    <th class="entry" valign="top" width="22.22222222222222%" id="d114000e588">Kafka Raw Preview Property</th>
 
-                                    <th class="entry" valign="top" width="77.77777777777779%" id="d43343e213">Description</th>
+                                    <th class="entry" valign="top" width="77.77777777777779%" id="d114000e591">Description</th>
 
                                 </tr>
 
@@ -154,38 +399,38 @@
 
                             <tbody class="tbody">
                                 <tr class="row">
-                                    <td class="entry" valign="top" width="22.22222222222222%" headers="d43343e210 ">Topic</td>
+                                    <td class="entry" valign="top" width="22.22222222222222%" headers="d114000e588 ">Topic</td>
 
-                                    <td class="entry" valign="top" width="77.77777777777779%" headers="d43343e213 ">Kafka topic to read.</td>
-
-                                </tr>
-
-                                <tr class="row">
-                                    <td class="entry" valign="top" width="22.22222222222222%" headers="d43343e210 ">Partition</td>
-
-                                    <td class="entry" valign="top" width="77.77777777777779%" headers="d43343e213 ">Partition to read.</td>
+                                    <td class="entry" valign="top" width="77.77777777777779%" headers="d114000e591 ">Kafka topic to read.</td>
 
                                 </tr>
 
                                 <tr class="row">
-                                    <td class="entry" valign="top" width="22.22222222222222%" headers="d43343e210 ">Broker Host</td>
+                                    <td class="entry" valign="top" width="22.22222222222222%" headers="d114000e588 ">Partition</td>
 
-                                    <td class="entry" valign="top" width="77.77777777777779%" headers="d43343e213 ">Broker host name. Use any broker associated with the
+                                    <td class="entry" valign="top" width="77.77777777777779%" headers="d114000e591 ">Partition to read.</td>
+
+                                </tr>
+
+                                <tr class="row">
+                                    <td class="entry" valign="top" width="22.22222222222222%" headers="d114000e588 ">Broker Host</td>
+
+                                    <td class="entry" valign="top" width="77.77777777777779%" headers="d114000e591 ">Broker host name. Use any broker associated with the
                                         partition.</td>
 
                                 </tr>
 
                                 <tr class="row">
-                                    <td class="entry" valign="top" width="22.22222222222222%" headers="d43343e210 ">Broker Port</td>
+                                    <td class="entry" valign="top" width="22.22222222222222%" headers="d114000e588 ">Broker Port</td>
 
-                                    <td class="entry" valign="top" width="77.77777777777779%" headers="d43343e213 ">Broker port number.</td>
+                                    <td class="entry" valign="top" width="77.77777777777779%" headers="d114000e591 ">Broker port number.</td>
 
                                 </tr>
 
                                 <tr class="row">
-                                    <td class="entry" valign="top" width="22.22222222222222%" headers="d43343e210 ">Max Wait Time (secs)</td>
+                                    <td class="entry" valign="top" width="22.22222222222222%" headers="d114000e588 ">Max Wait Time (secs)</td>
 
-                                    <td class="entry" valign="top" width="77.77777777777779%" headers="d43343e213 ">Maximum amount of time the preview waits to receive data
+                                    <td class="entry" valign="top" width="77.77777777777779%" headers="d114000e591 ">Maximum amount of time the preview waits to receive data
                                         from Kafka.</td>
 
                                 </tr>
@@ -209,6 +454,6 @@
 </div>
 </div>
 <div class="navfooter"><!---->
-<span class="navparent"><a class="link" href="../Origins/Origins_title.html" title="Origins"><span class="navheader_label">Parent topic</span><span class="navheader_separator">: </span><span class="navheader_linktext">Origins</span></a></span>  </div><div class="footer"></div>
+<span class="navparent"><a class="link" href="../Origins/Origins_title.html" title="Origins"><span class="navheader_label">Parent topic</span><span class="navheader_separator">: </span><span class="navheader_linktext">Origins</span></a></span>  </div>
 </body>
 </html>

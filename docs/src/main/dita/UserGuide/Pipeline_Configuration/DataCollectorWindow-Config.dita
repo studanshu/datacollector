@@ -14,15 +14,14 @@
 -->
 <!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
 <concept id="concept_izr_f2p_rq">
- <title><ph conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/>
-    Console - Edit Mode</title>
+ <title>Data Collector Console - Edit Mode</title>
  <conbody>
   <p><indexterm>Data Collector console<indexterm>edit mode</indexterm></indexterm>The following
       image shows the <ph
         conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/> console
       when you configure a pipeline:</p>
    <p>
-      <image href="../Graphics/CanvasConfig.png" id="image_u5b_1mb_rr" scale="80"/></p>
+      <image href="../Graphics/CanvasConfig.png" id="image_u5b_1mb_rr" scale="65"/></p>
     <simpletable frame="all" id="simpletable_xgh_gl3_ts" relcolwidth="1.0* 1.62* 5.08*">
       <sthead>
         <stentry>Area / Icon</stentry>

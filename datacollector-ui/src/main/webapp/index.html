@@ -1,4 +1,6 @@
 <!--
+  Copyright 2015 StreamSets Inc.
+
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
@@ -20,6 +22,12 @@
   <title ng-bind="common.title">StreamSets Data Collector</title>
 
   <script type="text/javascript">
+    function escapeHtml(str) {
+      var div = document.createElement('div');
+      div.appendChild(document.createTextNode(str));
+      return div.innerHTML;
+    }
+
     var baseHref = document.location.pathname,
       collectorIndex = baseHref.indexOf('/collector/');
 
@@ -27,7 +35,7 @@
       baseHref = baseHref.substr(0, collectorIndex + 1);
     }
 
-    document.write("<base href='" + baseHref + "' />");
+    document.write("<base href='" + escapeHtml(baseHref) + "' />");
   </script>
 
   <link rel="icon" type="image/png" href="assets/favicon.png">
@@ -43,13 +51,30 @@
 <body ng-keydown="common.bodyKeyEvent($event)">
 
 <div class="navbar navbar-default navbar-fixed-top" role="navigation">
-  <div class="header-container">
+  <div class="container-fluid">
     <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#sdc-header-navbar-collapse" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+
       <a class="logo" ng-href="{{common.baseHref}}">
         <img src="assets/logo.png" />
       </a>
+
+      <img class="pull-left remote-enabled-icon"
+           ng-if="common.remoteServerInfo.registrationStatus"
+           src="assets/cloud_done.svg"
+           title="{{'global.menu.remotelyControlled' | translate}}"/>
+
+      <div class="pull-left">
+        <span class="navbar-brand" ng-if="common.headerTitle">{{common.headerTitle}}</span>
+      </div>
+
     </div>
-    <div class="collapse navbar-collapse">
+    <div class="collapse navbar-collapse" id="sdc-header-navbar-collapse">
 
       <ul class="nav navbar-nav navbar-right" ng-cloak>
         <li>
@@ -59,6 +84,7 @@
              tooltip-trigger="mouseenter"
              tooltip-popup-delay="500">
             <i class="fa fa-home fa-lg"></i>
+            <span class="menu-label">{{'global.menu.home' | translate}}</span>
           </a>
         </li>
 
@@ -69,6 +95,7 @@
              tooltip-trigger="mouseenter"
              tooltip-popup-delay="500">
             <i class="fa fa-cloud fa-lg"></i>
+            <span class="menu-label">{{'global.menu.home' | translate}}</span>
           </a>
         </li>
 
@@ -80,6 +107,7 @@
              tooltip="{{'home.header.notifications' | translate}}"
              tooltip-trigger="mouseenter"
              tooltip-popup-delay="500">
+            <span class="menu-label">{{'home.header.notifications' | translate}}</span>
             <i class="fa fa-bell fa-11x"></i>
             <span class="badge"
                   ng-show="common.alertsTotalCount > 0"
@@ -104,7 +132,11 @@
                   <strong>{{alert.ruleDefinition.label}}: </strong> {{alert.gauge.value.exceptionMessage}}
                 </span>
 
-                <span ng-if="!alert.gauge.value.exceptionMessage" ng-bind="alert.ruleDefinition.alertText"></span>
+                <span ng-if="!alert.gauge.value.exceptionMessage && alert.ruleDefinition.family !== 'drift'" ng-bind="alert.ruleDefinition.alertText"></span>
+
+                <span ng-if="!alert.gauge.value.exceptionMessage && alert.ruleDefinition.family === 'drift' && alert.gauge.value.alertTexts">
+                  <span class="alert-text" ng-repeat="alertText in alert.gauge.value.alertTexts track by $index">{{alertText}}</span>
+                </span>
 
                 <button type="button" class="close" aria-label="Close"
                         ng-click="common.deleteTriggeredAlert(alert, $event)">
@@ -125,9 +157,8 @@
              tooltip="{{'global.menu.admin.main' | translate}}"
              tooltip-trigger="mouseenter"
              tooltip-popup-delay="500">
-            <span>
-                <i class="fa fa-cogs fa-lg"></i>
-            </span>
+            <i class="fa fa-cogs fa-lg"></i>
+            <span class="menu-label">{{'global.menu.admin.main' | translate}}</span>
           </a>
           <ul class="dropdown-menu">
             <li>
@@ -156,10 +187,25 @@
                 <span translate="global.menu.admin.logs">Logs</span>
               </a>
             </li>
+
+            <li ng-if="isAuthorized([userRoles.admin]) && !common.remoteServerInfo.registrationStatus">
+              <a href="javascript:;" ng-click="common.onEnableDPMClick()">
+                <i class="fa fa-file-text"></i>
+                <span translate="global.menu.admin.enableDPM">Enable DPM</span>
+              </a>
+            </li>
+
+
             <li ng-if="common.userName && isAuthorized([userRoles.admin]) && !common.isSlaveNode">
               <a href="javascript:;" ng-click="common.shutdownCollector()">
                 <i class="fa fa-stop"></i>
                 <span translate="global.menu.admin.shutdown">Shutdown</span>
+              </a>
+            </li>
+            <li ng-if="common.userName && isAuthorized([userRoles.admin]) && !common.isSlaveNode">
+              <a href="javascript:;" ng-click="common.restartCollector()">
+                <i class="glyphicon glyphicon-refresh"></i>
+                <span translate="global.menu.admin.restart">Restart</span>
               </a>
             </li>
           </ul>
@@ -172,6 +218,7 @@
              tooltip-trigger="mouseenter"
              tooltip-popup-delay="500">
               <i class="fa fa-user fa-lg"></i>
+            <span class="menu-label">{{'global.menu.account.title' | translate}}</span>
           </a>
           <ul class="dropdown-menu">
 
@@ -193,7 +240,7 @@
 
             <li role="presentation" class="divider"></li>
 
-            <li ng-if="common.authenticationType === 'form'">
+            <li ng-if="common.authenticationType === 'form' || common.isDPMEnabled">
               <a href="javascript:;" ng-click="common.logout()">
                 <span class="glyphicon glyphicon-log-out"></span>
                 <span translate="global.menu.account.logout">Logout</span>
@@ -208,9 +255,7 @@
              tooltip-placement="bottom"
              tooltip="{{'global.menu.help.main' | translate}}"
              tooltip-trigger="mouseenter"
-             tooltip-popup-delay="500">
-              <i class="fa fa-question-circle fa-15x"></i>
-          </a>
+             tooltip-popup-delay="500"><i class="fa fa-question-circle fa-15x"></i><span class="menu-label">{{'global.menu.help.main' | translate}}</span></a>
           <ul class="dropdown-menu">
 
             <li>
@@ -239,7 +284,7 @@
             <li>
               <a href="javascript:;" ng-click="common.showSettings()">
                 <span class="fa fa-gear"></span>
-                <span translate="sdcSettings.title">Settings</span>
+                <span translate="global.menu.help.settings">Settings</span>
               </a>
             </li>
 

@@ -19,13 +19,16 @@
  */
 package com.streamsets.datacollector.restapi;
 
+import com.streamsets.datacollector.util.ContainerError;
+import com.streamsets.datacollector.util.PipelineException;
 import com.streamsets.pipeline.lib.log.LogConstants;
+
 import org.slf4j.MDC;
 
 public class RestAPIUtils {
+  private RestAPIUtils() {}
 
   static void injectPipelineInMDC(String pipeline) {
     MDC.put(LogConstants.ENTITY, pipeline);
   }
-
 }

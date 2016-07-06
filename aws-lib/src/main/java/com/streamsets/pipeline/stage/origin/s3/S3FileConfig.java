@@ -21,6 +21,7 @@ package com.streamsets.pipeline.stage.origin.s3;
 
 import com.streamsets.pipeline.api.ConfigDef;
 import com.streamsets.pipeline.api.Stage;
+import com.streamsets.pipeline.common.DataFormatConstants;
 import com.streamsets.pipeline.common.InterfaceAudience;
 import com.streamsets.pipeline.common.InterfaceStability;
 
@@ -31,17 +32,16 @@ import java.util.List;
 public class S3FileConfig {
 
   private static final int MIN_OVERRUN_LIMIT = 64 * 1024;
-  private static final int MAX_OVERRUN_LIMIT = 1024 * 1024;
 
   @ConfigDef(
     required = true,
     type = ConfigDef.Type.STRING,
-    label = "File Name Pattern",
-    description = "A glob or regular expression that defines the pattern of the file names in the directory",
+    label = "Prefix Pattern",
+    description = "An Ant-style path pattern that defines the remaining portion of prefix excluding the common prefix",
     displayPosition = 100,
     group = "#0"
   )
-  public String filePattern;
+  public String prefixPattern;
 
   @ConfigDef(
     required = true,
@@ -62,11 +62,11 @@ public class S3FileConfig {
 
   private void validate(Stage.Context context, List<Stage.ConfigIssue> issues) {
     overrunLimit = overrunLimit * 1024; //convert to KB
-    if (overrunLimit < MIN_OVERRUN_LIMIT || overrunLimit >= MAX_OVERRUN_LIMIT) {
-      issues.add(context.createConfigIssue(Groups.S3.name(), "overrunLimit", Errors.S3_SPOOLDIR_04));
+    if (overrunLimit < MIN_OVERRUN_LIMIT || overrunLimit >= DataFormatConstants.MAX_OVERRUN_LIMIT) {
+      issues.add(context.createConfigIssue(Groups.S3.name(), "overrunLimit", Errors.S3_SPOOLDIR_04, MIN_OVERRUN_LIMIT/1024 /* KB */, DataFormatConstants.MAX_OVERRUN_LIMIT/1024/1024 /* MB */));
     }
-    if(filePattern == null || filePattern.isEmpty()) {
-      issues.add(context.createConfigIssue(Groups.S3.name(), "filePattern", Errors.S3_SPOOLDIR_06));
+    if (prefixPattern == null || prefixPattern.isEmpty()) {
+      issues.add(context.createConfigIssue(Groups.S3.name(), "prefixPattern", Errors.S3_SPOOLDIR_06));
     }
   }
 }

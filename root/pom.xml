@@ -21,12 +21,12 @@
   <parent>
     <groupId>com.streamsets</groupId>
     <artifactId>streamsets-datacollector-root-proto</artifactId>
-    <version>1.2.0-SNAPSHOT</version>
+    <version>1.6.0.0-SNAPSHOT</version>
     <relativePath>../root-proto</relativePath>
   </parent>
   <groupId>com.streamsets</groupId>
   <artifactId>streamsets-datacollector-root</artifactId>
-  <version>1.2.0-SNAPSHOT</version>
+  <version>1.6.0.0-SNAPSHOT</version>
   <description>StreamSets Data Collector Root POM</description>
   <name>StreamSets Data Collector Root POM</name>
   <packaging>pom</packaging>
@@ -58,15 +58,17 @@
     <guava.version>18.0</guava.version>
     <dagger.version>1.2.2</dagger.version>
     <jackson.version>2.4.3</jackson.version>
-    <jersey.version>2.13</jersey.version>
-    <hk2-api.version>2.3.0-b10</hk2-api.version>
+    <jersey.version>2.22.2</jersey.version>
+    <hk2-api.version>2.4.0-b34</hk2-api.version>
     <jaxrpc.version>2.0.1</jaxrpc.version>
     <servlet.version>3.1.0</servlet.version>
-    <jetty.version>9.2.3.v20140905</jetty.version>
+    <jetty.version>9.2.17.v20160517</jetty.version>
     <javassist.version>3.19.0-GA</javassist.version>
-    <commons-codec.version>1.9</commons-codec.version>
+    <commons-codec.version>1.10</commons-codec.version>
     <commons-io.version>2.4</commons-io.version>
     <commons-cli.version>1.2</commons-cli.version>
+    <commons-configuration.version>2.0</commons-configuration.version>
+    <commons-beanutils.version>1.9.2</commons-beanutils.version>
     <jps-api.version>2.0</jps-api.version>
     <commons-el.version>1.0</commons-el.version>
     <javax.inject.version>1</javax.inject.version>
@@ -81,6 +83,7 @@
     <commons-pool.version>2.4.1</commons-pool.version>
     <jodatime.version>2.3</jodatime.version>
     <airlift.version>0.7</airlift.version>
+    <selma.version>0.13</selma.version>
   </properties>
 
   <dependencyManagement>
@@ -91,12 +94,32 @@
     <dependencies>
       <dependency>
         <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-utils</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-sso</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
         <artifactId>streamsets-datacollector-common</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>com.streamsets</groupId>
         <artifactId>streamsets-datacollector-container-common</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-json-dto</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-messaging-client</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -116,6 +139,16 @@
       </dependency>
       <dependency>
         <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-stats-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-omniture-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
         <artifactId>streamsets-datacollector-jdbc-lib</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -126,7 +159,17 @@
       </dependency>
       <dependency>
         <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-rabbitmq-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
         <artifactId>streamsets-datacollector-dev-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-ipc-kafka-apache-kafka_8_1-lib</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -141,12 +184,42 @@
       </dependency>
       <dependency>
         <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-cdh_5_4-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-cdh_5_5-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-cdh_5_7-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
         <artifactId>streamsets-datacollector-hdp_2_2-lib</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>com.streamsets</groupId>
         <artifactId>streamsets-datacollector-hdp_2_3-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-hdp_2_4-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-mapr_5_0-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-apache-kudu-0_7-lib</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -161,6 +234,11 @@
       </dependency>
       <dependency>
         <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-apache-kafka_0_9-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
         <artifactId>streamsets-datacollector-cdh_kafka_1_2-lib</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -171,7 +249,17 @@
       </dependency>
       <dependency>
         <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-cdh_kafka_2_0-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
         <artifactId>streamsets-datacollector-jython_2_7-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-groovy_2_4-lib</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -196,12 +284,42 @@
       </dependency>
       <dependency>
         <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-elasticsearch_2_0-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-elasticsearch_2_1-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-elasticsearch_2_2-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-elasticsearch_2_3-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
         <artifactId>streamsets-datacollector-cassandra_2-lib</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>com.streamsets</groupId>
         <artifactId>streamsets-datacollector-mongodb_3-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-influxdb_0_9-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-redis-lib</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -221,7 +339,7 @@
       </dependency>
       <dependency>
         <groupId>com.streamsets</groupId>
-        <artifactId>streamsets-datacollector-cdh_5_4-lib</artifactId>
+        <artifactId>streamsets-datacollector-mesos-bootstrap</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -232,6 +350,21 @@
       <dependency>
         <groupId>com.streamsets</groupId>
         <artifactId>streamsets-datacollector-cdh_5_4-cluster-cdh_kafka_1_3-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-cdh_5_5-cluster-cdh_kafka_1_3-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-cdh_5_7-cluster-cdh_kafka_2_0-lib</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.streamsets</groupId>
+        <artifactId>streamsets-datacollector-mapr_5_1-lib</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -327,6 +460,16 @@
       <dependency>
         <groupId>org.eclipse.jetty.websocket</groupId>
         <artifactId>websocket-servlet</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-jaas</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-webapp</artifactId>
         <version>${jetty.version}</version>
       </dependency>
       <dependency>
@@ -461,6 +604,16 @@
         <version>${commons-io.version}</version>
       </dependency>
       <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-configuration2</artifactId>
+        <version>${commons-configuration.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>commons-beanutils</groupId>
+        <artifactId>commons-beanutils</artifactId>
+        <version>${commons-beanutils.version}</version>
+      </dependency>
+      <dependency>
         <groupId>org.glassfish.jersey.media</groupId>
         <artifactId>jersey-media-json-jackson</artifactId>
         <version>${jersey.version}</version>
@@ -553,7 +706,16 @@
         <artifactId>commons-pool2</artifactId>
         <version>${commons-pool.version}</version>
       </dependency>
-
+      <dependency>
+        <groupId>fr.xebia.extras</groupId>
+        <artifactId>selma-processor</artifactId>
+        <version>${selma.version}</version>
+       </dependency>
+      <dependency>
+        <groupId>fr.xebia.extras</groupId>
+        <artifactId>selma</artifactId>
+        <version>${selma.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 

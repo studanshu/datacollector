@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!DOCTYPE task PUBLIC "-//OASIS//DTD DITA General Task//EN" "generalTask.dtd">
+<task id="task_bfz_gch_2v">
+    <title>Configuring a MapR Streams Consumer</title>
+    <shortdesc>Configure a MapR Streams Consumer to read messages from MapR Streams. </shortdesc>
+    <taskbody>
+        <context/>
+        <steps id="steps_i5h_xtl_2v">
+            <step
+                conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/1stStepErrorHandling">
+                <cmd/>
+            </step>
+            <step>
+                <cmd>On the <uicontrol>MapR Streams</uicontrol> tab, configure the following
+                    properties:</cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_ptq_myl_2v">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>MapR Streams Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Data Format <xref href="MapRStreamsCons-DataFormats.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                placement="inline" id="image_bmy_h5q_ds"
+                                        /></xref></entry>
+                                    <entry>Type of data to be read. Use one of the following
+                                        options: <ul
+                                            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/DataFormats-ALL"
+                                            id="ul_w5w_syl_2v">
+                                            <li/>
+                                        </ul></entry>
+                                </row>
+                                <row>
+                                    <entry>Consumer Group</entry>
+                                    <entry>Consumer group that the <ph
+                                            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                        /> belongs to.</entry>
+                                </row>
+                                <row>
+                                    <entry>Topic</entry>
+                                    <entry>Topic to be read. Use the following
+                                        format:<codeblock>&lt;path to stream>:&lt;topic></codeblock></entry>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/ProduceSingleRec">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/MaxBatchSize">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/BatchWaitTime">
+                                    <entry/>
+                                </row>
+                                <row>
+                                    <entry>MapR Streams Configuration <xref
+                                            href="MapRStreamsCons-AddProps.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_uht_pm4_2v"/></xref>
+                                    </entry>
+                                    <entry>Additional configuration properties to use. To add
+                                        properties, click <uicontrol>Add</uicontrol> and define the
+                                        property name and value. <p>Use the property names and
+                                            values as expected by MapR Streams.</p><p>You can use
+                                            MapR Streams properties and set of Kafka properties
+                                            supported by MapR Streams. </p></entry>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/MessagesCharset">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/IgnoreControlChars-row">
+                                    <entry/>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/O-AVRO-Mess">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/O-Binary">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/DelimFILE">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/JSON-2props">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/LogData_Log4j">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/O-PROTO-Mess">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/Text">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/XMLprops">
+                <cmd/>
+            </step>
+        </steps>
+    </taskbody>
+</task>

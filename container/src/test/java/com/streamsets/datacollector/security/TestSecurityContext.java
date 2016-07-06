@@ -21,9 +21,7 @@ package com.streamsets.datacollector.security;
 
 import com.google.common.collect.ImmutableMap;
 import com.streamsets.datacollector.main.RuntimeInfo;
-import com.streamsets.datacollector.security.SecurityContext;
 import com.streamsets.datacollector.util.Configuration;
-
 import org.apache.hadoop.minikdc.MiniKdc;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -32,7 +30,6 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import javax.security.auth.Subject;
-
 import java.io.File;
 import java.util.Map;
 import java.util.UUID;
@@ -127,6 +124,16 @@ public class TestSecurityContext {
     context.logout();
   }
 
+  @Test
+  public void loginFromAbsoluteKeytab() throws Exception {
+    loginFromKeytab(keytabFile.getAbsolutePath());
+  }
+
+  @Test
+  public void loginFromRelativeKeytab() throws Exception {
+    loginFromKeytab(keytabFile.getName());
+  }
+
   private void loginFromKeytab(String keytab) throws Exception {
     Configuration conf = new Configuration();
     conf.set(SecurityConfiguration.KERBEROS_ENABLED_KEY, true);
@@ -139,16 +146,6 @@ public class TestSecurityContext {
     Assert.assertNotNull(subject);
     System.out.println(subject);
     context.logout();
-  }
-
-  @Test
-  public void loginFromAbsoluteKeytab() throws Exception {
-    loginFromKeytab(keytabFile.getAbsolutePath());
-  }
-
-  @Test
-  public void loginFromRelativeKeytab() throws Exception {
-    loginFromKeytab(keytabFile.getName());
   }
 
 }

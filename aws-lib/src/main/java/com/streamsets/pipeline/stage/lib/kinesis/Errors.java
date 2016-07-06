@@ -25,10 +25,15 @@ import com.streamsets.pipeline.api.GenerateResourceBundle;
 @GenerateResourceBundle
 public enum Errors implements ErrorCode {
 
-  KINESIS_00("Failed to put record: {}. Cause: {}"),
+  KINESIS_00("Failed to put record: {}"),
   KINESIS_01("Specified stream name is not available. Ensure you've specified the correct AWS Region. Cause: {}"),
-  KINESIS_02("Unrecognized partition strategy: {}"),
+  KINESIS_02("Unsupported partition strategy: '{}'"),
   KINESIS_03("Failed to parse incoming Kinesis record w/ sequence number: {}"),
+  KINESIS_04("Failed to extract subSequenceNumber from offset: '{}'"),
+  KINESIS_05("Failed to serialize record: '{}' - {}"),
+  KINESIS_06("Error evaluating the partition expression '{}' for record '{}': {}"),
+  KINESIS_07("Error JSON Content - JSON array of objects not supported for Firehose Target"),
+  KINESIS_08("Serialized record is {} bytes, which is larger than the allowed 1MB"),
   ;
   private final String msg;
 

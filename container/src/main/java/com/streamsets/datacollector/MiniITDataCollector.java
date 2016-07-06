@@ -33,6 +33,7 @@ import com.streamsets.datacollector.main.LogConfigurator;
 import com.streamsets.datacollector.main.MainStandalonePipelineManagerModule;
 import com.streamsets.datacollector.main.PipelineTask;
 import com.streamsets.datacollector.main.RuntimeInfo;
+import com.streamsets.datacollector.main.ShutdownHandler;
 import com.streamsets.datacollector.restapi.bean.BeanHelper;
 import com.streamsets.datacollector.restapi.bean.PipelineConfigurationJson;
 import com.streamsets.datacollector.restapi.bean.RuleDefinitionsJson;
@@ -80,7 +81,7 @@ public class MiniITDataCollector implements DataCollector {
     StageLibraryTask stageLibrary = pipelineTask.getStageLibraryTask();
     PipelineStoreTask store = pipelineTask.getPipelineStoreTask();
     PipelineConfiguration tmpPipelineConfig =
-      store.create(user, pipelineName, desc);
+      store.create(user, pipelineName, desc, false);
     // we might want to add an import API as now to import have to create one then update it
     realPipelineConfig.setUuid(tmpPipelineConfig.getUuid());
     PipelineConfigurationValidator validator =
@@ -167,13 +168,7 @@ public class MiniITDataCollector implements DataCollector {
     };
     shutdownHookThread.setContextClassLoader(classLoader);
     Runtime.getRuntime().addShutdownHook(shutdownHookThread);
-    dagger.get(RuntimeInfo.class).setShutdownHandler(new Runnable() {
-      @Override
-      public void run() {
-        LOG.debug("Stopping, reason: requested");
-        task.stop();
-      }
-    });
+    dagger.get(RuntimeInfo.class).setShutdownHandler(new ShutdownHandler(LOG, task, new ShutdownHandler.ShutdownStatus()));
     task.run();
 
     // this thread waits until the pipeline is shutdown

@@ -21,12 +21,12 @@
   <parent>
     <groupId>com.streamsets</groupId>
     <artifactId>streamsets-datacollector-root</artifactId>
-    <version>1.2.0-SNAPSHOT</version>
+    <version>1.6.0.0-SNAPSHOT</version>
     <relativePath>../root</relativePath>
   </parent>
   <groupId>com.streamsets</groupId>
   <artifactId>streamsets-datacollector-container</artifactId>
-  <version>1.2.0-SNAPSHOT</version>
+  <version>1.6.0.0-SNAPSHOT</version>
   <description>StreamSets Data Collector Container</description>
   <name>StreamSets Data Collector Container</name>
   <packaging>jar</packaging>
@@ -41,6 +41,21 @@
       <groupId>com.streamsets</groupId>
       <artifactId>streamsets-datacollector-api</artifactId>
       <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.streamsets</groupId>
+      <artifactId>streamsets-datacollector-messaging-client</artifactId>
+      <scope>compile</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-core</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-databind</artifactId>
+         </exclusion>
+       </exclusions>
     </dependency>
     <dependency>
       <groupId>com.streamsets</groupId>
@@ -64,6 +79,17 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>com.streamsets</groupId>
+      <artifactId>streamsets-testing</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+      <version>2.0.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.javassist</groupId>
       <artifactId>javassist</artifactId>
       <scope>test</scope>
@@ -71,6 +97,18 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-module-junit4</artifactId>
+      <version>${powermock.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.powermock</groupId>
+      <artifactId>powermock-api-mockito</artifactId>
+      <version>${powermock.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -121,6 +159,11 @@
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-server</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-webapp</artifactId>
       <scope>compile</scope>
     </dependency>
     <dependency>
@@ -251,6 +294,16 @@
       <scope>compile</scope>
     </dependency>
     <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-configuration2</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>commons-beanutils</groupId>
+      <artifactId>commons-beanutils</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
       <groupId>javax.inject</groupId>
       <artifactId>javax.inject</artifactId>
       <scope>compile</scope>
@@ -265,11 +318,6 @@
           <artifactId>javax.inject</artifactId>
         </exclusion>
       </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>javax.mail</groupId>
-      <artifactId>mail</artifactId>
-      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.icegreen</groupId>
@@ -310,8 +358,23 @@
           <groupId>com.google.code.findbugs</groupId>
           <artifactId>annotations</artifactId>
         </exclusion>
+        <exclusion>
+          <groupId>org.glassfish.jersey.containers</groupId>
+          <artifactId>jersey-container-servlet-core</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.glassfish.jersey.media</groupId>
+          <artifactId>jersey-media-multipart</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
+    <!-- Include current Jersey artifacts -->
+    <dependency>
+      <groupId>org.glassfish.jersey.media</groupId>
+      <artifactId>jersey-media-multipart</artifactId>
+      <version>${jersey.version}</version>
+    </dependency>
+    <!-- End Jersey artifacts -->
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-pool2</artifactId>
@@ -322,6 +385,23 @@
       <artifactId>jsr305</artifactId>
       <version>3.0.0</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.directory.server</groupId>
+      <artifactId>apacheds-server-integ</artifactId>
+      <version>2.0.0-M15</version>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.directory.shared</groupId>
+          <artifactId>shared-ldap-schema</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.directory.api</groupId>
+          <artifactId>api-ldap-schema-data</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
   </dependencies>
 
   <build>
@@ -329,14 +409,14 @@
       <resource>
         <directory>${basedir}/src/main/resources</directory>
         <excludes>
-          <exclude>pipeline-container-build-info.properties</exclude>
+          <exclude>datacollector-buildinfo.properties</exclude>
         </excludes>
         <filtering>false</filtering>
       </resource>
       <resource>
         <directory>${basedir}/src/main/resources</directory>
         <includes>
-          <include>pipeline-container-build-info.properties</include>
+          <include>datacollector-buildinfo.properties</include>
         </includes>
         <filtering>true</filtering>
       </resource>
@@ -362,11 +442,113 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
+        <version>${surefire.version}</version>
         <configuration>
-           <argLine>-javaagent:${basedir}/../bootstrap/target/streamsets-datacollector-bootstrap-${project.version}.jar</argLine>
-            <systemPropertyVariables>
-              <streamsets.test.mode>true</streamsets.test.mode>
-            </systemPropertyVariables>
+          <!-- Sets the VM argument line used when unit tests are run. -->
+          <argLine>${surefireArgLine} -javaagent:${basedir}/../bootstrap/target/streamsets-datacollector-bootstrap-${project.version}.jar -Dsun.net.http.allowRestrictedHeaders=true</argLine>
+          <systemPropertyVariables>
+            <streamsets.test.mode>true</streamsets.test.mode>
+          </systemPropertyVariables>
+          <forkCount>1</forkCount>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <executions>
+          <!--
+              Prepares the property pointing to the JaCoCo runtime agent which
+              is passed as VM argument when Maven the Surefire plugin is executed.
+          -->
+          <execution>
+            <id>pre-unit-test</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+            <configuration>
+              <!-- Sets the path to the file which contains the execution data. -->
+              <destFile>${project.build.directory}/coverage-reports/jacoco-ut.exec</destFile>
+              <!--
+                  Sets the name of the property containing the settings
+                  for JaCoCo runtime agent.
+              -->
+              <propertyName>surefireArgLine</propertyName>
+            </configuration>
+          </execution>
+          <!--
+              Ensures that the code coverage report for unit tests is created after
+              unit tests have been run.
+          -->
+          <execution>
+            <id>post-unit-test</id>
+            <phase>test</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+            <configuration>
+              <!-- Sets the path to the file which contains the execution data. -->
+              <dataFile>${project.build.directory}/coverage-reports/jacoco-ut.exec</dataFile>
+              <!-- Sets the output directory for the code coverage report. -->
+              <outputDirectory>${project.reporting.outputDirectory}/jacoco-ut</outputDirectory>
+            </configuration>
+          </execution>
+          <!-- The Executions required by unit tests are omitted. -->
+          <!--
+              Prepares the property pointing to the JaCoCo runtime agent which
+              is passed as VM argument when Maven the Failsafe plugin is executed.
+          -->
+          <execution>
+            <id>pre-integration-test</id>
+            <phase>pre-integration-test</phase>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+            <configuration>
+              <!-- Sets the path to the file which contains the execution data. -->
+              <destFile>${project.build.directory}/coverage-reports/jacoco-it.exec</destFile>
+              <!--
+                  Sets the name of the property containing the settings
+                  for JaCoCo runtime agent.
+              -->
+              <propertyName>failsafeArgLine</propertyName>
+            </configuration>
+          </execution>
+          <!--
+              Ensures that the code coverage report for integration tests after
+              integration tests have been run.
+          -->
+          <execution>
+            <id>post-integration-test</id>
+            <phase>post-integration-test</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+            <configuration>
+              <!-- Sets the path to the file which contains the execution data. -->
+              <dataFile>${project.build.directory}/coverage-reports/jacoco-it.exec</dataFile>
+              <!-- Sets the output directory for the code coverage report. -->
+              <outputDirectory>${project.reporting.outputDirectory}/jacoco-it</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>${failsafe.version}</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+           <!--Sets the VM argument line used when integration tests are run.-->
+          <argLine>${failsafeArgLine}</argLine>
+          <forkCount>1</forkCount>
+          <reuseForks>false</reuseForks>
         </configuration>
       </plugin>
       <plugin>

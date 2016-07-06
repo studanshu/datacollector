@@ -35,11 +35,18 @@ public class RegexParser extends LogCharDataParser {
   private final Pattern pattern;
   private final Map<String, Integer> fieldToGroupMap;
 
-  public RegexParser(Stage.Context context, String readerId, OverrunReader reader, long readerOffset, int maxObjectLen,
-                     boolean retainOriginalText, Pattern pattern, Map<String, Integer> fieldToGroupMap)
-    throws IOException {
-
-    super(context, readerId, reader, readerOffset, maxObjectLen, retainOriginalText, -1);
+  public RegexParser(Stage.Context context,
+                     String readerId,
+                     OverrunReader reader,
+                     long readerOffset,
+                     int maxObjectLen,
+                     boolean retainOriginalText,
+                     Pattern pattern,
+                     Map<String, Integer> fieldToGroupMap,
+                     StringBuilder currentLine,
+                     StringBuilder previousLine
+  ) throws IOException {
+    super(context, readerId, reader, readerOffset, maxObjectLen, retainOriginalText, -1, currentLine, previousLine);
     this.fieldToGroupMap = fieldToGroupMap;
     this.pattern = pattern;
   }
@@ -51,9 +58,6 @@ public class RegexParser extends LogCharDataParser {
       if (!m.find()) {
         throw new DataParserException(Errors.LOG_PARSER_03, sb.toString(), "Regular Expression - " + pattern.pattern());
       }
-    }
-    for(int i = 1; i <= m.groupCount(); i++) {
-      System.out.println("Group : " + i + "= " + m.group() + ",  Value : " + m.group(i));
     }
 
     Map<String, Field> map = new HashMap<>();

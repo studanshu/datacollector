@@ -23,7 +23,7 @@ import com.streamsets.datacollector.log.LogStreamer;
 import com.streamsets.datacollector.log.LogUtils;
 import com.streamsets.datacollector.main.RuntimeInfo;
 import com.streamsets.datacollector.util.AuthzRole;
-
+import com.streamsets.pipeline.lib.parser.shaded.org.aicer.grok.util.Grok;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.Authorization;
@@ -37,16 +37,17 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.StreamingOutput;
-
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
-import java.io.OutputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -58,11 +59,13 @@ import java.util.Map;
 public class LogResource {
   public static final String X_SDC_LOG_PREVIOUS_OFFSET_HEADER = "X-SDC-LOG-PREVIOUS-OFFSET";
   private final String logFile;
+  private final Grok logFileGrok;
 
   @Inject
   public LogResource(RuntimeInfo runtimeInfo) throws RuntimeException {
     try {
       logFile = LogUtils.getLogFile(runtimeInfo);
+      logFileGrok = LogUtils.getLogGrok(runtimeInfo);
     } catch (Exception ex) {
       throw new RuntimeException(ex);
     }
@@ -72,20 +75,65 @@ public class LogResource {
   @Path("/logs")
   @ApiOperation(value= "Return latest log file contents")
   @Produces(MediaType.TEXT_PLAIN)
-  @RolesAllowed({AuthzRole.ADMIN, AuthzRole.CREATOR, AuthzRole.MANAGER})
-  public Response currentLog(@QueryParam("endingOffset") @DefaultValue("-1") long offset) throws IOException {
-    final LogStreamer streamer = new LogStreamer(logFile, offset, 50 * 1024);
-    StreamingOutput stream = new StreamingOutput() {
-      @Override
-      public void write(OutputStream output) throws IOException, WebApplicationException {
-        try {
-          streamer.stream(output);
-        } finally {
-          streamer.close();
+  @RolesAllowed({
+      AuthzRole.ADMIN,
+      AuthzRole.CREATOR,
+      AuthzRole.MANAGER,
+      AuthzRole.ADMIN_REMOTE,
+      AuthzRole.CREATOR_REMOTE,
+      AuthzRole.MANAGER_REMOTE
+  })
+  public Response currentLog(@QueryParam("endingOffset") @DefaultValue("-1") long offset,
+                             @QueryParam("extraMessage") String extraMessage,
+                             @QueryParam("pipeline") String pipeline,
+                             @QueryParam("severity") String severity) throws IOException {
+
+    List<Map<String, String>> logData = new ArrayList<>();
+
+    LogStreamer streamer = new LogStreamer(logFile, offset, 50 * 1024);
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    streamer.stream(outputStream);
+
+    if(extraMessage != null) {
+      outputStream.write(extraMessage.getBytes(StandardCharsets.UTF_8));
+    }
+
+    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(
+        new ByteArrayInputStream(outputStream.toByteArray()), StandardCharsets.UTF_8));
+
+    fetchLogData(bufferedReader, logData, pipeline, severity);
+
+
+    if((severity != null || pipeline != null) && logData.size() < 50) {
+      //For filtering try to fetch more log data until it we get at least 50 lines of log data or it reaches top
+      offset = streamer.getNewEndingOffset();
+      while (offset != 0 && logData.size() < 50) {
+        streamer = new LogStreamer(logFile, offset, 50 * 1024);
+        outputStream = new ByteArrayOutputStream();
+        streamer.stream(outputStream);
+
+        //merge last message if it is part of new messages
+        if(logData.size() > 0 && logData.get(0).get("timestamp") == null && logData.get(0).get("exception") != null) {
+          outputStream.write(logData.get(0).get("exception").getBytes(StandardCharsets.UTF_8));
+          logData.remove(0);
         }
+
+        bufferedReader = new BufferedReader(new InputStreamReader(
+            new ByteArrayInputStream(outputStream.toByteArray())));
+
+        List<Map<String, String>> tempLogData = new ArrayList<>();
+        fetchLogData(bufferedReader, tempLogData, pipeline, severity);
+
+        //Add newly fetched log data to the beginning of the list
+        tempLogData.addAll(logData);
+        logData = tempLogData;
+
+        offset = streamer.getNewEndingOffset();
       }
-    };
-    return Response.ok(stream).header(X_SDC_LOG_PREVIOUS_OFFSET_HEADER, streamer.getNewEndingOffset()).build();
+    }
+
+    return Response.ok().type(MediaType.APPLICATION_JSON).entity(logData).
+        header(X_SDC_LOG_PREVIOUS_OFFSET_HEADER, streamer.getNewEndingOffset()).build();
   }
 
   private File[] getLogFiles() throws IOException {
@@ -105,7 +153,14 @@ public class LogResource {
   @ApiOperation(value = "Returns all available SDC Log files", response = Map.class, responseContainer = "List",
     authorizations = @Authorization(value = "basic"))
   @Produces(MediaType.APPLICATION_JSON)
-  @RolesAllowed({AuthzRole.ADMIN, AuthzRole.CREATOR, AuthzRole.MANAGER})
+  @RolesAllowed({
+      AuthzRole.ADMIN,
+      AuthzRole.CREATOR,
+      AuthzRole.MANAGER,
+      AuthzRole.ADMIN_REMOTE,
+      AuthzRole.CREATOR_REMOTE,
+      AuthzRole.MANAGER_REMOTE
+  })
   @SuppressWarnings("unchecked")
   public Response listLogFiles() throws IOException {
     File[] logFiles = getLogFiles();
@@ -124,7 +179,14 @@ public class LogResource {
   @ApiOperation(value = "Returns SDC Log File Content", response = String.class,
     authorizations = @Authorization(value = "basic"))
   @Produces(MediaType.TEXT_PLAIN)
-  @RolesAllowed({AuthzRole.ADMIN, AuthzRole.CREATOR, AuthzRole.MANAGER})
+  @RolesAllowed({
+      AuthzRole.ADMIN,
+      AuthzRole.CREATOR,
+      AuthzRole.MANAGER,
+      AuthzRole.ADMIN_REMOTE,
+      AuthzRole.CREATOR_REMOTE,
+      AuthzRole.MANAGER_REMOTE
+  })
   public Response getLogFile(@PathParam("logName") String logName,
                              @QueryParam("attachment") @DefaultValue("false") Boolean attachment) throws IOException {
     Response response;
@@ -136,17 +198,55 @@ public class LogResource {
       }
     }
     if (logFile != null) {
+      FileInputStream logStream = new FileInputStream(logFile);
       if(attachment) {
         return Response.ok().
-          header("Content-Disposition", "attachment; filename=" + logName).entity(new FileInputStream(logFile)).build();
+            header("Content-Disposition", "attachment; filename=" + logName).entity(logStream).build();
       } else {
-        response = Response.ok(new FileInputStream(logFile)).build();
+        response = Response.ok(logStream).build();
       }
-
     } else {
       response = Response.status(Response.Status.NOT_FOUND).build();
     }
     return response;
+  }
+
+  private void fetchLogData(BufferedReader bufferedReader, List<Map<String, String>> logData, String pipeline,
+                            String severity) throws IOException {
+    String thisLine;
+    boolean lastMessageFiltered = false;
+    while ((thisLine = bufferedReader.readLine()) != null) {
+      Map<String, String> namedGroupToValuesMap = logFileGrok.extractNamedGroups(thisLine);
+      if(namedGroupToValuesMap != null) {
+        if(severity != null && !severity.equals(namedGroupToValuesMap.get("severity"))) {
+          lastMessageFiltered = true;
+          continue;
+        }
+
+        if(pipeline != null && !pipeline.equals(namedGroupToValuesMap.get("s-entity"))) {
+          lastMessageFiltered = true;
+          continue;
+        }
+
+        lastMessageFiltered = false;
+        logData.add(namedGroupToValuesMap);
+      } else if(!lastMessageFiltered) {
+        if(logData.size() > 0) {
+          Map<String, String> lastLogData = logData.get(logData.size() - 1);
+
+          if(lastLogData.containsKey("exception")) {
+            lastLogData.put("exception", lastLogData.get("exception") + "\n" + thisLine);
+          } else {
+            lastLogData.put("exception", thisLine);
+          }
+        } else {
+          //First incomplete line
+          Map<String, String> lastLogData = new HashMap<>();
+          lastLogData.put("exception", thisLine);
+          logData.add(lastLogData);
+        }
+      }
+    }
   }
 
 }

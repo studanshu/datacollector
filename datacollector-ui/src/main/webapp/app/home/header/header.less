@@ -1,4 +1,6 @@
 /**
+ * Copyright 2015 StreamSets Inc.
+ *
  * Licensed under the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -58,8 +60,41 @@
         padding-right: @defaultPadding;
       }
 
+      .version-text {
+        opacity: 0.4;
+      }
+
+      .all-pipelines-link {
+        color: rgba(0,0,0,0.3);
+      }
+
+      .pipeline-status {
+        margin-top: 6px;
+        margin-left: 10px;
+        display: inline-block;
+        color: white;
+        padding: 2px 5px;
+        border-radius: 6px;
+        font-size: 0.9em;
+
+        &.RUNNING,
+        &.STARTING,
+        &.FINISHING,
+        &.CONNECTING {
+          background: @brand-success;
+        }
+
+        &.STOPPING,
+        &.START_ERROR,
+        &.RUNNING_ERROR,
+        &.RETRY,
+        &.DISCONNECTING,
+        &.CONNECT_ERROR {
+          background: @brand-danger;
+        }
+      }
+
       i {
-        padding-top: @smallPadding*.5;
         margin-left: @defaultPadding;
 
         &.green-color {

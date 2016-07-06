@@ -72,6 +72,27 @@
                                     <entry>Optional message selector to limit the messages read by
                                         the origin. By default, reads all messages. </entry>
                                 </row>
+                                <row>
+                                    <entry>JMS Destination Type</entry>
+                                    <entry>Optional destination type. </entry>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/Charset">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/IgnoreControlChars-row">
+                                    <entry/>
+                                </row>
+                                <row>
+                                    <entry>Additional JMS Configuration Properties</entry>
+                                    <entry><p>Additional JMS or JNDI configuration properties to use. To add properties, click
+                                                <uicontrol>Add</uicontrol> and define the JMS or
+                                            JNDI property name and value. </p>
+                                        <p>When you add a configuration property, enter the exact
+                                            property name and value. JMS Consumer does not validate
+                                            the property names or values. </p></entry>
+                                </row>
                                 <row
                                     conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/MaxBatchSize">
                                     <entry/>
@@ -84,31 +105,8 @@
                                     <entry>Use Credentials</entry>
                                     <entry>Uses JMS credentials.</entry>
                                 </row>
-                                <row>
-                                    <entry>Data Format <xref href="JMS-DataFormats.dita">
-                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
-                                                placement="inline" id="image_bmy_h5q_ds"
-                                        /></xref></entry>
-                                    <entry>Type of data to be read. Use one of the following
-                                            options:<ul id="ul_qgm_tjw_yq">
-                                            <li>Text</li>
-                                            <li>JSON</li>
-                                            <li>Delimited</li>
-                                            <li>XML</li>
-                                            <li>SDC Record <xref
-                                                  href="../Pipeline_Design/SDCRecordFormat.dita#concept_qkk_mwk_br">
-                                                  <image href="../Graphics/icon_moreInfo.png"
-                                                  scale="11" id="image_wjh_ycl_br"/></xref></li>
-                                            <li>Log</li>
-                                            <li>Avro</li>
-                                        </ul></entry>
-                                </row>
                                 <row
-                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/Charset">
-                                    <entry/>
-                                </row>
-                                <row
-                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/IgnoreControlChars-row">
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/S3DataFormat">
                                     <entry/>
                                 </row>
                                 <row>
@@ -151,6 +149,21 @@
                     </table>
                 </info>
             </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/O-AVRO-Mess">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/DelimFILE">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/JSON-2props">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/LogData_Log4j">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/O-PROTO-Mess">
+                <cmd/>
+            </step>
             <step>
                 <cmd>For text data, on the <wintitle>Text</wintitle> tab, configure the following
                     property:</cmd>
@@ -179,19 +192,7 @@
                     </table>
                 </info>
             </step>
-            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/JSON-2props">
-                <cmd/>
-            </step>
-            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/DelimFILE">
-                <cmd/>
-            </step>
             <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/XMLprops">
-                <cmd/>
-            </step>
-            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/LogData_Log4j">
-                <cmd/>
-            </step>
-            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/O-AVRO-Mess">
                 <cmd/>
             </step>
         </steps>

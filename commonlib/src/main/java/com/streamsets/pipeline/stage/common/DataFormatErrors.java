@@ -26,14 +26,27 @@ import com.streamsets.pipeline.api.GenerateResourceBundle;
 public enum DataFormatErrors implements ErrorCode {
   // Configuration errors
   DATA_FORMAT_01("Max data object length cannot be less than 1"),
-  DATA_FORMAT_02("XML delimiter element cannot be empty"),
   DATA_FORMAT_03("Invalid XML element name '{}'"),
   DATA_FORMAT_04("Unsupported data format '{}'"),
   DATA_FORMAT_05("Unsupported charset '{}'"),
   DATA_FORMAT_06("Cannot create the parser factory: {}"),
+  DATA_FORMAT_07("Protobuf Descriptor File (.desc) location must be specified. It must be relative to the resources directory"),
+  DATA_FORMAT_08("Message type must be specified"),
+  DATA_FORMAT_09("Protobuf Descriptor File '{}' does not exist"),
+  DATA_FORMAT_10("Error getting descriptor for message '{}' using protobuf descriptor file '{}', reason: {}"),
 
   DATA_FORMAT_200("Field cannot be empty"),
   DATA_FORMAT_201("Cannot create the parser factory: {}"),
+
+  DATA_FORMAT_300("Error validating avro schema : {}"),
+  DATA_FORMAT_301("Error getting default values from avro schema : {}"),
+
+  DATA_FORMAT_302("Input data is not Base64 for record: {}"),
+
+  DATA_FORMAT_303("Could not parse XML object '{}'"),
+
+  DATA_FORMAT_400("collectd Types DB '{}' not found"),
+  DATA_FORMAT_401("collectd Auth File '{}' not found"),
 
   ;
   private final String msg;

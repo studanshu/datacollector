@@ -19,8 +19,8 @@
         you can start the pipeline. </shortdesc>
     <taskbody>
         <context>
-            <p><indexterm>pipelines<indexterm>configuring</indexterm></indexterm>A pipeline can
-                include the following stages:<ul id="ul_eyy_b2w_kq">
+            <p><indexterm>pipelines<indexterm>configuring</indexterm></indexterm><indexterm>pipelines<indexterm>labels</indexterm></indexterm><indexterm>labels<indexterm>pipelines</indexterm></indexterm>A
+                pipeline can include the following stages:<ul id="ul_eyy_b2w_kq">
                     <li>A single origin stage</li>
                     <li>Multiple processor stages</li>
                     <li>Multiple destination stages</li>
@@ -51,6 +51,14 @@
                                     <entry>Optional description of the pipeline.</entry>
                                 </row>
                                 <row>
+                                    <entry>Labels</entry>
+                                    <entry>Optional labels to assign to the pipeline. Enter new or
+                                        existing label names.<p>Use labels to group similar
+                                            pipelines. For example, you might want to group
+                                            pipelines by database schema or by the test or
+                                            production environment.</p></entry>
+                                </row>
+                                <row>
                                     <entry>Execution Mode <xref href="../Cluster_Mode/ClusterPipelines.dita"
                                                 ><image href="../Graphics/icon_moreInfo.png"
                                                 scale="10" id="image_zfp_n5g_cs"/>
@@ -59,11 +67,21 @@
                                             <li>Standalone - A single <ph
                                                   conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
                                                 /> process runs the pipeline.</li>
-                                            <li>Cluster - Additional <ph
+                                            <li>Cluster Batch - <ph
                                                   conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                                /> workers are spawned as needed to process data.
-                                                Limits the origins that you can use in the
-                                                pipeline.</li>
+                                                /> spawns additional workers as needed to process
+                                                data in HDFS. Processes all available data and then
+                                                stops the pipeline.</li>
+                                            <li>Cluster Yarn Streaming - <ph
+                                                  conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                                /> spawns additional workers as needed to process
+                                                data. Use to stream data from a Kafka cluster that
+                                                uses Spark Streaming on YARN.</li>
+                                            <li>Cluster Mesos Streaming - <ph
+                                                  conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                                /> spawns additional workers as needed to process
+                                                data. Use to stream data from a Kafka cluster that
+                                                uses Spark Streaming on Mesos.</li>
                                         </ul></entry>
                                 </row>
                                 <row>
@@ -71,7 +89,7 @@
                                             href="../Pipeline_Design/DeliveryGuarantee.dita#concept_ffz_hhw_kq">
                                             <image href="../Graphics/icon_moreInfo.png" scale="10"
                                                 id="image_rtg_yfm_zs"/></xref></entry>
-                                    <entry>Determines how the <ph
+                                    <entry>Determines how <ph
                                             conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
                                         /> handles data after an unexpected event causes the
                                         pipeline to stop running:<ul id="ul_b4v_51m_sq">
@@ -89,9 +107,7 @@
                                                 ><image href="../Graphics/icon_moreInfo.png"
                                                 scale="10" id="image_wms_qvz_2t"/>
                                         </xref></entry>
-                                    <entry>Retries the pipeline upon error. <p>This option is not
-                                            supported for cluster mode pipelines at this time.
-                                        </p></entry>
+                                    <entry>Retries the pipeline upon error. </entry>
                                 </row>
                                 <row>
                                     <entry>Retry Attempts</entry>
@@ -108,9 +124,9 @@
                                         </xref></entry>
                                     <entry>Maximum amount of memory for the pipeline to use. You can
                                         enter a numeric value or edit the default expression to use
-                                        a percentage of the Java heap size defined for the <ph
+                                        a percentage of the <ph
                                             conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                        />. <p>Default is 65% of the <ph
+                                        /> Java heap size. <p>Default is 65% of the <ph
                                                 conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
                                             /> Java heap
                                             size:<codeblock> ${jvm:maxMemoryMB() * 0.65}</codeblock></p></entry>
@@ -142,6 +158,17 @@
                                     <entry>Email addresses to receive notification about pipeline
                                         state changes. </entry>
                                 </row>
+                                <row>
+                                    <entry>Rate Limit (records / sec)
+                                        <xref
+                                            href="PipelineRateLimit.dita"
+                                            ><image href="../Graphics/icon_moreInfo.png"
+                                                scale="10" id="image_lgk_s6g_cs"/>
+                                        </xref></entry>
+                                    <entry>Maximum number of records that the pipeline can read in a
+                                        second. Use 0 or no value to set no rate limit.<p>Default is
+                                            0.</p></entry>
+                                </row>
                             </tbody>
                         </tgroup>
                     </table>
@@ -168,136 +195,28 @@
                             </thead>
                             <tbody>
                                 <row>
-                                    <entry>Error Record Handling <xref
-                                            href="ErrorHandling.dita#concept_pm4_txm_vq">
+                                    <entry>Error Records <xref
+                                            href="../Pipeline_Design/ErrorHandling.dita#concept_pm4_txm_vq">
                                             <image href="../Graphics/icon_moreInfo.png" scale="10"
                                             /></xref></entry>
                                     <entry>Determines how to handle records that cannot be processed
                                         as expected. Use one of the following options:<ul
                                             id="ul_ayr_y22_br">
                                             <li>Discard - Discards error records.</li>
-                                            <li>Write to File - Writes error records to a file in
-                                                the specified directory. </li>
                                             <li>Write to Another Pipeline - Writes error records to
-                                                another  pipeline. To use this option, you need an
+                                                another pipeline. To use this option, you need an
                                                 SDC RPC destination pipeline to process the error
                                                 records. </li>
+                                            <li>Write to Elasticsearch - Writes error records to the
+                                                specified Elasticsearch cluster.</li>
+                                            <li>Write to File - Writes error records to a file in
+                                                the specified directory. </li>
                                             <li>Write to Kafka - Writes error records to the
                                                 specified Kafka cluster.</li>
+                                            <li>Write to MapR Streams - Writes error records to the
+                                                specified MapR cluster.</li>
                                         </ul><p>For cluster mode, Write to File is not supported at
                                             this time. </p></entry>
-                                </row>
-                            </tbody>
-                        </tgroup>
-                    </table>
-                </info>
-            </step>
-            <step>
-                <cmd>When writing error records to file, click the <wintitle>Error Records - Write
-                        to File</wintitle> tab and configure the following properties:</cmd>
-                <info>
-                    <table frame="all" rowsep="1" colsep="1" id="table_gy3_1y4_1r">
-                        <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
-                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
-                            <thead>
-                                <row>
-                                    <entry>Write to File Property</entry>
-                                    <entry>Description</entry>
-                                </row>
-                            </thead>
-                            <tbody>
-                                <row>
-                                    <entry>Directory</entry>
-                                    <entry>Local directory for error record files. </entry>
-                                </row>
-                                <row>
-                                    <entry>File Prefix</entry>
-                                    <entry>Prefix used for error record files. Use to differentiate
-                                        error record files from other files in the directory.<p>Uses
-                                            the prefix sdc-${sdc:id()} by default. The prefix
-                                            evaluates to sdc-&lt;<ph
-                                                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                            /> ID>. This provides default differentiation in case
-                                            several <ph
-                                                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                            />s write to the same directory. </p><p>The <ph
-                                                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                            /> ID is stored in the following file:
-                                                <filepath>&lt;SDCinstalldir>/data/sdc.id</filepath>.</p></entry>
-                                </row>
-                                <row>
-                                    <entry>File Wait Time (secs)</entry>
-                                    <entry>Number of seconds the <ph
-                                            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                        /> waits for error records. After that time, it creates a
-                                        new error record file. <p>You can enter a number of seconds
-                                            or use the default expression to enter the time in
-                                            minutes. </p></entry>
-                                </row>
-                                <row>
-                                    <entry>Max File Size (MB)</entry>
-                                    <entry>Maximum size for error files. Exceeding this size creates
-                                        a new error file. <p>Use 0 to write to avoid using this
-                                            property.</p></entry>
-                                </row>
-                            </tbody>
-                        </tgroup>
-                    </table>
-                </info>
-            </step>
-            <step>
-                <cmd>When writing error records to Kafka, click the <wintitle>Error Records - Write
-                        to Kafka</wintitle> tab and configure the following properties:</cmd>
-                <info>
-                    <draft-comment author="Loretta">Table rows from Kafka Producer, Kafka tab of
-                        reusablesteps.dita - no data format &amp; charset.</draft-comment>
-                    <table frame="all" rowsep="1" colsep="1" id="table_lb5_svh_ms">
-                        <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1.25*"/>
-                            <colspec colname="c2" colnum="2" colwidth="3.25*"/>
-                            <thead>
-                                <row>
-                                    <entry>Write to Kafka Property</entry>
-                                    <entry>Description</entry>
-                                </row>
-                            </thead>
-                            <tbody>
-                                <row
-                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPBrokerURI">
-                                    <entry/>
-                                </row>
-                                <row
-                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPRuntimeTopic">
-                                    <entry/>
-                                </row>
-                                <row
-                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPTopicEx">
-                                    <entry/>
-                                </row>
-                                <row
-                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPTopicWList">
-                                    <entry/>
-                                </row>
-                                <row
-                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPTopic">
-                                    <entry/>
-                                </row>
-                                <row
-                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPPartStrategy">
-                                    <entry/>
-                                </row>
-                                <row
-                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPPartExpr">
-                                    <entry/>
-                                </row>
-                                <row
-                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPOneMessPBatch">
-                                    <entry/>
-                                </row>
-                                <row
-                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPKConfigs">
-                                    <entry/>
                                 </row>
                             </tbody>
                         </tgroup>
@@ -366,16 +285,183 @@
                 </info>
             </step>
             <step>
-                <cmd>When using the cluster execution mode, click the <uicontrol>Cluster</uicontrol>
-                    tab and configure the following properties:</cmd>
+                <cmd>When writing error records to Elasticsearch, click the <uicontrol>Error Records
+                        - Write to Elasticsearch</uicontrol> tab and configure the following
+                    properties:</cmd>
+                <info
+                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/ElasticProps-Info"/>
+                <info>If you enabled Shield, configure the following Shield properties:</info>
+                <info
+                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/ElasticSHIELD-Info"
+                />
+            </step>
+            <step>
+                <cmd>When writing error records to file, click the <wintitle>Error Records - Write
+                        to File</wintitle> tab and configure the following properties:</cmd>
                 <info>
-                    <table frame="all" rowsep="1" colsep="1" id="table_mkj_kdr_wr">
+                    <table frame="all" rowsep="1" colsep="1" id="table_gy3_1y4_1r">
                         <tgroup cols="2">
                             <colspec colname="c1" colnum="1" colwidth="1*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
-                                    <entry>Cluster Property</entry>
+                                    <entry>Write to File Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Directory</entry>
+                                    <entry>Local directory for error record files. </entry>
+                                </row>
+                                <row>
+                                    <entry>File Prefix</entry>
+                                    <entry>Prefix used for error record files. Use to differentiate
+                                        error record files from other files in the directory.<p>Uses
+                                            the prefix sdc-${sdc:id()} by default. The prefix
+                                            evaluates to sdc-&lt;<ph
+                                                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                            /> ID>. This provides default differentiation in case
+                                            several <ph
+                                                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                            />s write to the same directory. </p><p>The <ph
+                                                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                            /> ID is stored in the following file:
+                                                <filepath>$SDC_DATA/sdc.id</filepath> file. For more information about environment variables, see <xref
+                                                    href="../Install_Config/DCEnvironmentConfig.dita#concept_rng_qym_qr"/>.
+                                        </p></entry>
+                                </row>
+                                <row>
+                                    <entry>File Wait Time (secs)</entry>
+                                    <entry>Number of seconds <ph
+                                            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                        /> waits for error records. After that time, it creates a
+                                        new error record file. <p>You can enter a number of seconds
+                                            or use the default expression to enter the time in
+                                            minutes. </p></entry>
+                                </row>
+                                <row>
+                                    <entry>Max File Size (MB)</entry>
+                                    <entry>Maximum size for error files. Exceeding this size creates
+                                        a new error file. <p>Use 0 to avoid using this
+                                        property.</p></entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step>
+                <cmd>When writing error records to Kafka, click the <wintitle>Error Records - Write
+                        to Kafka</wintitle> tab and configure the following properties:</cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_lb5_svh_ms">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.25*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.25*"/>
+                            <thead>
+                                <row>
+                                    <entry>Write to Kafka Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPBrokerURI">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPRuntimeTopic">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPTopicEx">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPTopicWList">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPTopic">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPPartStrategy">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPPartExpr">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPOneMessPBatch">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPKConfigs">
+                                    <entry/>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step>
+                <cmd>When writing data to a MapR Streams cluster, click the <wintitle>Error Records
+                        - Write to MapR Streams</wintitle> tab and configure the following
+                    properties:</cmd>
+                <info
+                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/MapRStreams-Info"
+                />
+            </step>
+            <step>
+                <cmd>When using the cluster execution mode, click the <uicontrol>Cluster</uicontrol>
+                    tab and configure the following properties:</cmd>
+                <info>For Spark Streaming on Mesos, configure the following properties:<table
+                        frame="all" rowsep="1" colsep="1" id="table_vb1_dsj_f5">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Mesos Cluster Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Dispatcher URL</entry>
+                                    <entry>Master URL of the Mesos dispatcher. For example,
+                                        mesos://dispatcher:7077.</entry>
+                                </row>
+                                <row>
+                                    <entry>Hadoop/S3 Checkpoint Configuration Directory <xref
+                                            href="../Cluster_Mode/CheckpointStorage.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                            /></xref></entry>
+                                    <entry>Location of the HDFS configuration files that specify
+                                        whether to write checkpoint metadata to HDFS or Amazon
+                                            S3.<p>Use a directory or symlink within the <ph
+                                                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                            /> resources directory.</p><p>The directory should
+                                            include the following files:<ul
+                                                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/HDFSfiles_HDFSdest"
+                                                id="ul_qnc_jtt_bt">
+                                                <li/>
+                                            </ul></p></entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table></info>
+                <info>For Spark Streaming or MapReduce on YARN, configure the following properties.
+                        <table frame="all" rowsep="1" colsep="1" id="table_mkj_kdr_wr">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Yarn Cluster Property</entry>
                                     <entry>Description</entry>
                                 </row>
                             </thead>
@@ -412,8 +498,7 @@
                                 </row>
                             </tbody>
                         </tgroup>
-                    </table>
-                </info>
+                    </table></info>
             </step>
             <step>
                 <cmd>Use the <uicontrol>Stage Library</uicontrol> to add an origin stage. In the
@@ -442,14 +527,14 @@
             <step>
                 <cmd>Optionally, you can create metric or data alerts to track details about a
                     pipeline run and create threshold alerts. For more information, see <xref
-                        href="../Alerts/Alerts_title.dita#concept_pgk_brx_rr"/>.</cmd>
+                        href="../Alerts/RulesAlerts_title.dita#concept_pgk_brx_rr"/>.</cmd>
             </step>
             <step>
                 <cmd>When the pipeline is complete, use the <uicontrol>Start</uicontrol> icon to run
                     the pipeline. </cmd>
             </step>
         </steps>
-        <result>When the <ph
+        <result>When <ph
                 conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/>
             starts the pipeline, the Monitor console displays real-time statistics for the pipeline.
             For more information about monitoring, see <xref

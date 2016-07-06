@@ -30,6 +30,8 @@ public enum Groups implements Label {
   DELIMITED("Delimited"),
   AVRO("Avro"),
   BINARY("Binary"),
+  PROTOBUF("Protobuf"),
+  DATAGRAM("Datagram")
 
   ;
 
@@ -39,6 +41,7 @@ public enum Groups implements Label {
     this.label = label;
   }
 
+  @Override
   public String getLabel() {
     return this.label;
   }

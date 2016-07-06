@@ -42,41 +42,27 @@
                                 </row>
                             </thead>
                             <tbody>
-                                <row>
-                                    <entry>Data Format <xref
-                                            href="Directory-DataFormat.dita#concept_gz5_dqw_yq">
-                                            <image href="../Graphics/icon_moreInfo.png" scale="10"/>
-                                        </xref></entry>
-                                    <entry>Data format for source files. Use one of the following
-                                            formats:<ul id="ul_y1t_wql_5q">
-                                            <li>Text</li>
-                                            <li>JSON</li>
-                                            <li>Delimited</li>
-                                            <li>XML</li>
-                                            <li>SDC Record <xref
-                                                  href="../Pipeline_Design/SDCRecordFormat.dita#concept_qkk_mwk_br">
-                                                  <image href="../Graphics/icon_moreInfo.png"
-                                                  scale="10" id="image_wjh_ycl_br"
-                                                  placement="inline" /></xref></li>
-                                            <li>Log</li>
-                                            <li>Avro</li>
-                                        </ul></entry>
-                                </row>
-                                <row>
-                                    <entry>Files Charset</entry>
-                                    <entry>Character encoding of the data to be processed. <p>Not
-                                            used for the SDC Record or Avro data
-                                        formats.</p></entry>
-                                </row>
                                 <row
-                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/IgnoreControlChars-row">
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/S3DataFormat">
                                     <entry/>
                                 </row>
                                 <row>
                                     <entry>Files Directory</entry>
-                                    <entry>A directory local to the <ph
+                                    <entry>A directory local to <ph
                                             conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
                                         /> where source files are stored.</entry>
+                                </row>
+                                <row>
+                                    <entry>Allow Late Directory  <xref
+                                            href="Directory-LateDir.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                placement="inline" id="image_wkt_wk1_4v"
+                                        /></xref></entry>
+                                    <entry>
+                                        <p>Allows reading files from a directory that appears after
+                                            the pipeline starts. When enabled, the origin does not
+                                            validate the file path.</p>
+                                    </entry>
                                 </row>
                                 <row>
                                     <entry>Buffer Limit (KB) <xref
@@ -110,6 +96,24 @@
                                         empty batch.</entry>
                                 </row>
                                 <row>
+                                    <entry>Read Order <xref
+                                            href="Directory-ReadOrder.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                placement="inline" id="image_f2g_d54_xv"
+                                        /></xref></entry>
+                                    <entry>The order to use when reading files:<ul
+                                            id="ul_i3b_k54_xv">
+                                            <li>Last-Modified Timestamp - Reads files in ascending
+                                                order based on the last-modified timestamp. When
+                                                files have matching timestamps, reads files in
+                                                lexicographically ascending order based on file
+                                                names.</li>
+                                            <li>Lexicographically Ascending File Names - Reads files
+                                                in lexicographically ascending order based on file
+                                                name.</li>
+                                        </ul></entry>
+                                </row>
+                                <row>
                                     <entry>File Name Pattern</entry>
                                     <entry>Regular expression that describes the pattern of the file
                                         names to process.<p>You can use UNIX-style wildcards, such
@@ -117,7 +121,7 @@
                                 </row>
                                 <row>
                                     <entry>First File to Process <xref
-                                        href="Directory_FileProcessing.dita#concept_ltv_r3l_5q">
+                                        href="Directory-FirstFile.dita#concept_ltv_r3l_5q">
                                             <image href="../Graphics/icon_moreInfo.png" scale="10" placement="inline"
                                                 id="image_tcz_pj2_br"/></xref>
                                     </entry>
@@ -134,16 +138,17 @@
                                             directory contains more files, the pipeline fails.</p>
                                     </entry>
                                 </row>
-                                <row>
-                                    <entry>File Compression</entry>
-                                    <entry>The compression type of the files:<ul id="ul_vph_jp2_qs">
-                                            <li>Uncompressed - Processes only uncompressed
-                                                files.</li>
-                                            <li>Zip - Processes only Zip compressed files.</li>
-                                            <li>GZip - Processes only GZip compressed files.</li>
-                                            <li>By Extension - Processes uncompressed, Zip and GZip
-                                                compressed files. </li>
-                                        </ul></entry>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/Charset">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/IgnoreControlChars-row">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/Origin-FileCompression">
+                                    <entry/>
                                 </row>
                             </tbody>
                         </tgroup>
@@ -201,48 +206,25 @@
                     </table>
                 </info>
             </step>
-            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/Text">
-                <cmd/>
-            </step>
-            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/JSON-2props">
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/O-AVRO-FILE">
                 <cmd/>
             </step>
             <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/DelimFILE">
                 <cmd/>
             </step>
-            <step>
-                <cmd>For XML data, on the <uicontrol>XML</uicontrol> tab, configure the following
-                    properties:</cmd>
-                <info>
-                    <table frame="all" rowsep="1" colsep="1" id="table_b5x_nbw_yq">
-                        <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
-                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
-                            <thead>
-                                <row>
-                                    <entry>XML Property</entry>
-                                    <entry>Description</entry>
-                                </row>
-                            </thead>
-                            <tbody>
-                                <row>
-                                    <entry>Delimiter Element</entry>
-                                    <entry>XML element that acts as a record delimiter. </entry>
-                                </row>
-                                <row>
-                                    <entry>Maximum Record Length (chars)</entry>
-                                    <entry>Maximum number of characters for a record. Longer records
-                                        are diverted to the pipeline for error handling.</entry>
-                                </row>
-                            </tbody>
-                        </tgroup>
-                    </table>
-                </info>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/JSON-2props">
+                <cmd/>
             </step>
             <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/LogData_Log4j">
                 <cmd/>
             </step>
-            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/O-AVRO-FILE">
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/O-PROTO-File">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/Text">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/XMLprops">
                 <cmd/>
             </step>
         </steps>

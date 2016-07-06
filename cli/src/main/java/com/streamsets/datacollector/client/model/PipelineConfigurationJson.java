@@ -19,22 +19,21 @@
  */
 package com.streamsets.datacollector.client.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.streamsets.datacollector.client.StringUtil;
-import com.streamsets.datacollector.client.model.IssuesJson;
-import com.streamsets.datacollector.client.model.StageConfigurationJson;
-import com.streamsets.datacollector.client.model.PipelineInfoJson;
-import com.streamsets.datacollector.client.model.ConfigConfigurationJson;
-import java.util.*;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-
-
-import io.swagger.annotations.*;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-
 @ApiModel(description = "")
-@javax.annotation.Generated(value = "class io.swagger.codegen.languages.JavaClientCodegen", date = "2015-09-11T14:51:29.367-07:00")
+@javax.annotation.Generated(
+    value = "class io.swagger.codegen.languages.JavaClientCodegen",
+    date = "2015-09-11T14:51:29.367-07:00"
+)
 public class PipelineConfigurationJson   {
 
   private Integer schemaVersion = null;
@@ -49,7 +48,8 @@ public class PipelineConfigurationJson   {
   private IssuesJson issues = null;
   private Boolean valid = null;
   private Boolean previewable = null;
-
+  private StageConfigurationJson statsAggregatorStage = null;
+  private Map<String, Object> metadata = new HashMap<String, Object>();
 
   /**
    **/
@@ -62,7 +62,6 @@ public class PipelineConfigurationJson   {
     this.schemaVersion = schemaVersion;
   }
 
-
   /**
    **/
   @ApiModelProperty(value = "")
@@ -73,7 +72,6 @@ public class PipelineConfigurationJson   {
   public void setVersion(Integer version) {
     this.version = version;
   }
-
 
   /**
    **/
@@ -86,7 +84,6 @@ public class PipelineConfigurationJson   {
     this.uuid = uuid;
   }
 
-
   /**
    **/
   @ApiModelProperty(value = "")
@@ -97,7 +94,6 @@ public class PipelineConfigurationJson   {
   public void setDescription(String description) {
     this.description = description;
   }
-
 
   /**
    **/
@@ -110,7 +106,6 @@ public class PipelineConfigurationJson   {
     this.configuration = configuration;
   }
 
-
   /**
    **/
   @ApiModelProperty(value = "")
@@ -121,7 +116,6 @@ public class PipelineConfigurationJson   {
   public void setUiInfo(Map<String, Object> uiInfo) {
     this.uiInfo = uiInfo;
   }
-
 
   /**
    **/
@@ -134,7 +128,6 @@ public class PipelineConfigurationJson   {
     this.stages = stages;
   }
 
-
   /**
    **/
   @ApiModelProperty(value = "")
@@ -145,7 +138,6 @@ public class PipelineConfigurationJson   {
   public void setErrorStage(StageConfigurationJson errorStage) {
     this.errorStage = errorStage;
   }
-
 
   /**
    **/
@@ -158,7 +150,6 @@ public class PipelineConfigurationJson   {
     this.info = info;
   }
 
-
   /**
    **/
   @ApiModelProperty(value = "")
@@ -169,7 +160,6 @@ public class PipelineConfigurationJson   {
   public void setIssues(IssuesJson issues) {
     this.issues = issues;
   }
-
 
   /**
    **/
@@ -182,7 +172,6 @@ public class PipelineConfigurationJson   {
     this.valid = valid;
   }
 
-
   /**
    **/
   @ApiModelProperty(value = "")
@@ -194,7 +183,27 @@ public class PipelineConfigurationJson   {
     this.previewable = previewable;
   }
 
+  /**
+   **/
+  @ApiModelProperty(value = "")
+  @JsonProperty("statsAggregatorStage")
+  public StageConfigurationJson getStatsAggregatorStage() {
+    return statsAggregatorStage;
+  }
+  public void setStatsAggregatorStage(StageConfigurationJson statsAggregatorStage) {
+    this.statsAggregatorStage = statsAggregatorStage;
+  }
 
+  /**
+   **/
+  @ApiModelProperty(value = "")
+  @JsonProperty("metadata")
+  public Map<String, Object> getMetadata() {
+    return metadata;
+  }
+  public void setMetadata(Map<String, Object> metadata) {
+    this.metadata = metadata;
+  }
 
   @Override
   public String toString()  {
@@ -213,6 +222,8 @@ public class PipelineConfigurationJson   {
     sb.append("    issues: ").append(StringUtil.toIndentedString(issues)).append("\n");
     sb.append("    valid: ").append(StringUtil.toIndentedString(valid)).append("\n");
     sb.append("    previewable: ").append(StringUtil.toIndentedString(previewable)).append("\n");
+    sb.append("    statsAggregatorStage: ").append(StringUtil.toIndentedString(statsAggregatorStage)).append("\n");
+    sb.append("    metadata: ").append(StringUtil.toIndentedString(metadata)).append("\n");
     sb.append("}");
     return sb.toString();
   }

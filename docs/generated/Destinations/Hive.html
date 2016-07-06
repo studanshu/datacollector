@@ -2,7 +2,7 @@
 <!DOCTYPE html
   SYSTEM "about:legacy-compat">
 <html xml:lang="en-us" lang="en-us">
-<head><meta name="description" content="The Hive Streaming destination writes data to Hive tables stored in the ORC (Optimized Row Columnar) file format. The Hive Streaming destination requires Hive version 0.13 or above. Before you use the ..."></meta><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><meta name="copyright" content="(C) Copyright 2005"></meta><meta name="DC.rights.owner" content="(C) Copyright 2005"></meta><meta name="DC.Type" content="concept"></meta><meta name="DC.Title" content="Hive Streaming"></meta><meta name="abstract" content="The Hive Streaming destination writes data to Hive tables stored in the ORC (Optimized Row Columnar) file format."></meta><meta name="description" content="The Hive Streaming destination writes data to Hive tables stored in the ORC (Optimized Row Columnar) file format."></meta><meta name="DC.Relation" scheme="URI" content="../Destinations/Destinations-title.html"></meta><meta name="DC.Format" content="XHTML"></meta><meta name="DC.Identifier" content="concept_kvs_3hh_ht"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/commonltr.css"><!----></link><title>Hive Streaming</title><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/webhelp_topic.css"><!----></link><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/skins/skin.css"><!----></link><link rel="stylesheet" type="text/css" href="../skin.css"></link><script type="text/javascript"><!--
+<head><meta name="description" content="The Hive Streaming destination writes data to Hive tables stored in the ORC (Optimized Row Columnar) file format. The Hive Streaming destination requires Hive version 0.13 or above. Before you use the ..."></meta><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><meta name="copyright" content="(C) Copyright 2005"></meta><meta name="DC.rights.owner" content="(C) Copyright 2005"></meta><meta name="DC.Type" content="concept"></meta><meta name="DC.Title" content="Hive Streaming"></meta><meta name="abstract" content="The Hive Streaming destination writes data to Hive tables stored in the ORC (Optimized Row Columnar) file format."></meta><meta name="description" content="The Hive Streaming destination writes data to Hive tables stored in the ORC (Optimized Row Columnar) file format."></meta><meta name="DC.Relation" scheme="URI" content="../Destinations/Destinations-title.html"></meta><meta name="DC.Format" content="XHTML"></meta><meta name="DC.Identifier" content="concept_kvs_3hh_ht"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/commonltr.css"><!----></link><title>Hive Streaming</title><!--  Generated with Oxygen version 17.1, build number 2016020417.  --><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/webhelp_topic.css"><!----></link><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/skins/skin.css"><!----></link><link rel="stylesheet" type="text/css" href="../skin.css"></link><script type="text/javascript"><!--
           
           var prefix = "../index.html";
           
@@ -50,6 +50,11 @@
   <p class="p">Hive Streaming writes data to the table based on the matching field names. You can defining
    custom field mappings that override the default field mappings. </p>
 
+  <p class="p">Before you use the Hive Streaming destination with the MapR
+                  library in a pipeline, you must perform additional steps to enable <span class="ph">Data
+                  Collector</span> to process MapR data. For more
+                  information, see <a class="xref" href="../Install_Config/MapR-Prerequisites.html#concept_jgs_qpg_2v">MapR Prerequisites</a>. </p>
+
  </div>
 
 <div class="related-links"></div>
@@ -73,17 +78,22 @@
             </ul>
 </dd>
 
-                    <dd class="dd">To use the configuration files: <ol class="ol" id="concept_xh5_y4d_br__ol_rb2_2nr_bt">
-                            <li class="li">Store the files or a symlink to the files the <span class="ph">Data
+                    <dd class="dd">To use the configuration files:<ol class="ol" id="concept_xh5_y4d_br__ol_ilw_sbs_dw">
+                        <li class="li">Store the files or a symlink to the files in the <span class="ph">Data
                   Collector</span> resources directory or elsewhere in a path local to the <span class="ph">Data
                   Collector</span>.</li>
 
-                            <li class="li">In the Hive Streaming destination, if the files are stored in the
-                                resource directory, specify a relative path to the files. If the
-                                files are stored outside of the resources directory, specify an
-                                absolute path to the files. </li>
+                        <li class="li">If the files are stored in the resources directory, specify a relative
+                              path to the files in the stage. If the files are stored outside of the
+                              resources directory, specify an absolute path to the files. <div class="note note"><span class="notetitle">Note:</span> For
+                                    a Cloudera Manager installation, <span class="ph">Data
+                  Collector</span> automatically creates a symlink to the files named
+                                          <samp class="ph codeph">hive-conf</samp>. Enter
+                                          <samp class="ph codeph">hive-conf</samp> for the location of the files
+                                    in the stage.</div>
+</li>
 
-                        </ol>
+                  </ol>
 </dd>
 
                 
@@ -94,7 +104,7 @@
                         Hive property, specify the exact property name and the value. The
                         destination does not validate the property names or values.<div class="note note"><span class="notetitle">Note:</span> Individual
                             properties override properties defined in the configuration files.
-                        </div>
+                            </div>
 </dd>
 
                 
@@ -116,46 +126,46 @@
                     following properties:</span>
                 <div class="itemgroup info">
                     
-<div class="tablenoborder"><table cellpadding="4" cellspacing="0" summary="" id="task_cx3_lhh_ht__d1001e1640" class="table" frame="border" border="1" rules="all">
+<div class="tablenoborder"><table cellpadding="4" cellspacing="0" summary="" id="task_cx3_lhh_ht__d1735e2849" class="table" frame="border" border="1" rules="all">
                             
                             
                             <thead class="thead" align="left">
                                 <tr class="row">
-                                    <th class="entry" valign="top" width="22.22222222222222%" id="d15467e154">General Property</th>
+                                    <th class="entry" valign="top" width="30%" id="d35920e177">General Property</th>
 
-                                    <th class="entry" valign="top" width="77.77777777777779%" id="d15467e157">Description</th>
+                                    <th class="entry" valign="top" width="70%" id="d35920e180">Description</th>
 
                                 </tr>
 
                             </thead>
 
                             <tbody class="tbody">
-                                <tr class="row">
-                                    <td class="entry" valign="top" width="22.22222222222222%" headers="d15467e154 ">Name</td>
+                                <tr id="task_cx3_lhh_ht__d1735e2871" class="row">
+                                    <td class="entry" valign="top" width="30%" headers="d35920e177 ">Name</td>
 
-                                    <td class="entry" valign="top" width="77.77777777777779%" headers="d15467e157 ">Stage name.</td>
+                                    <td class="entry" valign="top" width="70%" headers="d35920e180 ">Stage name.</td>
+
+                                </tr>
+
+                                <tr id="task_cx3_lhh_ht__d1735e2880" class="row">
+                                    <td class="entry" valign="top" width="30%" headers="d35920e177 ">Description</td>
+
+                                    <td class="entry" valign="top" width="70%" headers="d35920e180 ">Optional description.</td>
+
+                                </tr>
+
+                                <tr id="task_cx3_lhh_ht__d1735e2889" class="row">
+                                    <td class="entry" valign="top" width="30%" headers="d35920e177 ">Stage Library</td>
+
+                                    <td class="entry" valign="top" width="70%" headers="d35920e180 ">Library version that you want to use. </td>
 
                                 </tr>
 
                                 <tr class="row">
-                                    <td class="entry" valign="top" width="22.22222222222222%" headers="d15467e154 ">Description</td>
+                                    <td class="entry" valign="top" width="30%" headers="d35920e177 ">Required Fields <a class="xref" href="../Pipeline_Design/DroppingUnwantedRecords.html#concept_dnj_bkm_vq" title="A required field is a field that must exist in a record to allow it into the stage for processing. When a record does not include a required field, the record is diverted to the pipeline for error handling. You can define required fields for any processor and most destination stages.">
+                                            <img class="image" id="task_cx3_lhh_ht__d1735e2904" src="../Reusable_Content/../Graphics/icon_moreInfo.png" height="12" width="12"></img></a></td>
 
-                                    <td class="entry" valign="top" width="77.77777777777779%" headers="d15467e157 ">Optional description.</td>
-
-                                </tr>
-
-                                <tr class="row">
-                                    <td class="entry" valign="top" width="22.22222222222222%" headers="d15467e154 ">Stage Library</td>
-
-                                    <td class="entry" valign="top" width="77.77777777777779%" headers="d15467e157 ">Library version that you want to use. </td>
-
-                                </tr>
-
-                                <tr class="row">
-                                    <td class="entry" valign="top" width="22.22222222222222%" headers="d15467e154 ">Required Fields <a class="xref" href="../Pipeline_Design/DroppingUnwantedRecords.html#concept_dnj_bkm_vq" title="A required field is a field that must exist in a record to allow it into the stage for processing. When a record does not include a required field, the record is diverted to the pipeline for error handling. You can define required fields for any processor and most destination stages.">
-                                            <img class="image" id="task_cx3_lhh_ht__d1001e1695" src="../Reusable_Content/../Graphics/icon_moreInfo.png" height="12" width="12"></img></a></td>
-
-                                    <td class="entry" valign="top" width="77.77777777777779%" headers="d15467e157 ">Fields that must include data to be passed into the
+                                    <td class="entry" valign="top" width="70%" headers="d35920e180 ">Fields that must include data to be passed into the
                                         stage. <div class="note tip"><span class="tiptitle">Tip:</span> You might include
                                             fields that the stage uses.</div>
 </td>
@@ -163,20 +173,21 @@
                                 </tr>
 
                                 <tr class="row">
-                                    <td class="entry" valign="top" width="22.22222222222222%" headers="d15467e154 ">Preconditions <a class="xref" href="../Pipeline_Design/DroppingUnwantedRecords.html#concept_msl_yd4_fs" title="Preconditions are conditions that a record must satisfy to enter the stage for processing. Like required fields, if a record does not meet a precondition, it is diverted to the pipeline for error handling. You can define preconditions for any processor and most destination stages.">
-                                            <img class="image" id="task_cx3_lhh_ht__d1001e1709" src="../Reusable_Content/../Graphics/icon_moreInfo.png" height="12" width="12"></img></a></td>
+                                    <td class="entry" valign="top" width="30%" headers="d35920e177 ">Preconditions <a class="xref" href="../Pipeline_Design/DroppingUnwantedRecords.html#concept_msl_yd4_fs" title="Preconditions are conditions that a record must satisfy to enter the stage for processing. Like required fields, if a record does not meet a precondition, it is diverted to the pipeline for error handling. You can define preconditions for any processor and most destination stages.">
+                                            <img class="image" id="task_cx3_lhh_ht__d1735e2918" src="../Reusable_Content/../Graphics/icon_moreInfo.png" height="12" width="12"></img></a></td>
 
-                                    <td class="entry" valign="top" width="77.77777777777779%" headers="d15467e157 ">Conditions that must evaluate to TRUE to allow a record
+                                    <td class="entry" valign="top" width="70%" headers="d35920e180 ">Conditions that must evaluate to TRUE to allow a record
                                         to enter the stage for processing. Click
                                             <span class="ph uicontrol">Add</span> to create additional
                                         preconditions. </td>
 
                                 </tr>
 
-                                <tr class="row">
-                                    <td class="entry" valign="top" width="22.22222222222222%" headers="d15467e154 ">On Record Error</td>
+                                <tr id="task_cx3_lhh_ht__d1735e2928" class="row">
+                                    <td class="entry" valign="top" width="30%" headers="d35920e177 ">On Record Error <a class="xref" href="../Pipeline_Design/ErrorHandling.html#concept_atr_j4y_5r" title="Most stages include error record handling options. When an error occurs when processing a record, Data Collector processes records based on the On Record Error property for the stage.">
+                                            <img class="image" id="task_cx3_lhh_ht__d1735e2934" src="../Reusable_Content/../Graphics/icon_moreInfo.png" height="12" width="12"></img></a></td>
 
-                                    <td class="entry" valign="top" width="77.77777777777779%" headers="d15467e157 ">Error record handling for the stage: <ul class="ul" id="task_cx3_lhh_ht__d1001e1726">
+                                    <td class="entry" valign="top" width="70%" headers="d35920e180 ">Error record handling for the stage: <ul class="ul" id="task_cx3_lhh_ht__d1735e2938">
                                             <li class="li">Discard - Discards the record.</li>
 
                                             <li class="li">Send to Error - Sends the record to the pipeline for
@@ -205,9 +216,9 @@
                             
                             <thead class="thead" align="left">
                                 <tr class="row">
-                                    <th class="entry" valign="top" width="30%" id="d15467e276">Hive Property</th>
+                                    <th class="entry" valign="top" width="30%" id="d35920e309">Hive Property</th>
 
-                                    <th class="entry" valign="top" width="70%" id="d15467e279">Description</th>
+                                    <th class="entry" valign="top" width="70%" id="d35920e312">Description</th>
 
                                 </tr>
 
@@ -215,9 +226,9 @@
 
                             <tbody class="tbody">
                                 <tr class="row">
-                                    <td class="entry" valign="top" width="30%" headers="d15467e276 ">Hive Metastore Thrift URL</td>
+                                    <td class="entry" valign="top" width="30%" headers="d35920e309 ">Hive Metastore Thrift URL</td>
 
-                                    <td class="entry" valign="top" width="70%" headers="d15467e279 ">Thrift URI for the Hive metastore. Use the following
+                                    <td class="entry" valign="top" width="70%" headers="d35920e312 ">Thrift URI for the Hive metastore. Use the following
                                         format:
                                             <pre class="pre codeblock">thrift://&lt;host&gt;:&lt;port&gt;</pre>
 <p class="p">The
@@ -227,26 +238,27 @@
                                 </tr>
 
                                 <tr class="row">
-                                    <td class="entry" valign="top" width="30%" headers="d15467e276 ">Schema</td>
+                                    <td class="entry" valign="top" width="30%" headers="d35920e309 ">Schema</td>
 
-                                    <td class="entry" valign="top" width="70%" headers="d15467e279 ">Hive schema.</td>
-
-                                </tr>
-
-                                <tr class="row">
-                                    <td class="entry" valign="top" width="30%" headers="d15467e276 ">Table </td>
-
-                                    <td class="entry" valign="top" width="70%" headers="d15467e279 ">Bucketed Hive table stored in as an ORC file.</td>
+                                    <td class="entry" valign="top" width="70%" headers="d35920e312 ">Hive schema.</td>
 
                                 </tr>
 
                                 <tr class="row">
-                                    <td class="entry" valign="top" width="30%" headers="d15467e276 ">Hive Configuration Directory <a class="xref" href="Hive.html#concept_xh5_y4d_br">
+                                    <td class="entry" valign="top" width="30%" headers="d35920e309 ">Table </td>
+
+                                    <td class="entry" valign="top" width="70%" headers="d35920e312 ">Bucketed Hive table stored in as an ORC file.</td>
+
+                                </tr>
+
+                                <tr class="row">
+                                    <td class="entry" valign="top" width="30%" headers="d35920e309 ">Hive Configuration Directory <a class="xref" href="Hive.html#concept_xh5_y4d_br">
                                             <img class="image" id="task_cx3_lhh_ht__image_wjh_ycl_br" src="../Graphics/icon_moreInfo.png" height="12" width="12"></img></a></td>
 
-                                    <td class="entry" valign="top" width="70%" headers="d15467e279 ">
+                                    <td class="entry" valign="top" width="70%" headers="d35920e312 ">
                                         <p class="p">Absolute path to the directory containing the Hive and
-                                            Hadoop configuration files.</p>
+                                            Hadoop configuration files. For a Cloudera Manager
+                                            installation, enter <samp class="ph codeph">hive-conf</samp>. </p>
 
                                         <div class="p">The destination uses the following configuration
                                                 files:<ul class="ul" id="task_cx3_lhh_ht__ul_hgc_rjf_lt">
@@ -271,9 +283,9 @@
                                 </tr>
 
                                 <tr class="row">
-      <td class="entry" valign="top" width="30%" headers="d15467e276 ">Field to Column Mapping</td>
+      <td class="entry" valign="top" width="30%" headers="d35920e309 ">Field to Column Mapping</td>
 
-      <td class="entry" valign="top" width="70%" headers="d15467e279 ">
+      <td class="entry" valign="top" width="70%" headers="d35920e312 ">
        <p class="p">Use to override the default field to column mappings. </p>
 
        <p class="p">By default, fields are written to columns of the same name. </p>
@@ -283,9 +295,9 @@
      </tr>
 
                                 <tr class="row">
-                                    <td class="entry" valign="top" width="30%" headers="d15467e276 ">Auto Create Partitions</td>
+                                    <td class="entry" valign="top" width="30%" headers="d35920e309 ">Create Partitions</td>
 
-                                    <td class="entry" valign="top" width="70%" headers="d15467e279 ">Automatically creates partitions when needed. Used for
+                                    <td class="entry" valign="top" width="70%" headers="d35920e312 ">Automatically creates partitions when needed. Used for
                                         partitioned tables only.</td>
 
                                 </tr>
@@ -307,9 +319,9 @@
                             
                             <thead class="thead" align="left">
                                 <tr class="row">
-                                    <th class="entry" valign="top" width="30%" id="d15467e405">Advanced Property</th>
+                                    <th class="entry" valign="top" width="30%" id="d35920e441">Advanced Property</th>
 
-                                    <th class="entry" valign="top" width="70%" id="d15467e408">Description</th>
+                                    <th class="entry" valign="top" width="70%" id="d35920e444">Description</th>
 
                                 </tr>
 
@@ -317,9 +329,9 @@
 
                             <tbody class="tbody">
                                 <tr class="row">
-                                    <td class="entry" valign="top" width="30%" headers="d15467e405 ">Transaction Batch Size</td>
+                                    <td class="entry" valign="top" width="30%" headers="d35920e441 ">Transaction Batch Size</td>
 
-                                    <td class="entry" valign="top" width="70%" headers="d15467e408 ">The number of transactions to request in a batch for each
+                                    <td class="entry" valign="top" width="70%" headers="d35920e444 ">The number of transactions to request in a batch for each
                                         partition in the table. For more information, see the Hive
                                         documentation. <p class="p">Default is 1000 transactions.</p>
 </td>
@@ -327,9 +339,9 @@
                                 </tr>
 
                                 <tr class="row">
-                                    <td class="entry" valign="top" width="30%" headers="d15467e405 ">Buffer Limit (KB)</td>
+                                    <td class="entry" valign="top" width="30%" headers="d35920e441 ">Buffer Limit (KB)</td>
 
-                                    <td class="entry" valign="top" width="70%" headers="d15467e408 ">Maximum size of the record to be written to the
+                                    <td class="entry" valign="top" width="70%" headers="d35920e444 ">Maximum size of the record to be written to the
                                         destination. Increase the size to accommodate larger
                                         records. <p class="p">Records that exceed the limit are handled based
                                             on the error handling configured for the stage.
@@ -339,9 +351,9 @@
                                 </tr>
 
                                 <tr class="row">
-                                    <td class="entry" valign="top" width="30%" headers="d15467e405 ">Hive Configuration</td>
+                                    <td class="entry" valign="top" width="30%" headers="d35920e441 ">Hive Configuration</td>
 
-                                    <td class="entry" valign="top" width="70%" headers="d15467e408 ">
+                                    <td class="entry" valign="top" width="70%" headers="d35920e444 ">
                                         <p class="p">Additional Hive properties to use. Click the
                                                 <span class="ph uicontrol">Add</span> icon and define the
                                             property name and value. </p>
@@ -367,6 +379,6 @@
 </div>
 </div>
 <div class="navfooter"><!---->
-<span class="navparent"><a class="link" href="../Destinations/Destinations-title.html" title="Destinations"><span class="navheader_label">Parent topic</span><span class="navheader_separator">: </span><span class="navheader_linktext">Destinations</span></a></span>  </div><div class="footer"></div>
+<span class="navparent"><a class="link" href="../Destinations/Destinations-title.html" title="Destinations"><span class="navheader_label">Parent topic</span><span class="navheader_separator">: </span><span class="navheader_linktext">Destinations</span></a></span>  </div>
 </body>
 </html>

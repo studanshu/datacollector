@@ -33,10 +33,11 @@ import com.streamsets.pipeline.lib.el.TimeEL;
 
 @StageDef(
     version = 1,
-    label = "Write To File",
+    label = "Write to File",
     description = "Writes records to a local File System as SDC records",
     icon="",
-    execution = ExecutionMode.STANDALONE
+    execution = ExecutionMode.STANDALONE,
+    onlineHelpRefUrl = "index.html#Destinations/SDCRecordFiles.html#task_e33_3v5_1r"
 )
 @HideConfigs(preconditions = true, onErrorRecord = true)
 @ErrorStage

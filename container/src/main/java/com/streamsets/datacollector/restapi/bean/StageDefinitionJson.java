@@ -78,6 +78,14 @@ public class StageDefinitionJson {
     return stageDefinition.isErrorStage();
   }
 
+  public boolean isStatsAggregatorStage() {
+    return stageDefinition.isStatsAggregatorStage();
+  }
+
+  public boolean isOffsetCommitTrigger() {
+    return stageDefinition.isOffsetCommitTrigger();
+  }
+
   @JsonProperty("preconditions")
   public boolean hasRequiredFields() {
     return stageDefinition.hasPreconditions();
@@ -124,4 +132,7 @@ public class StageDefinitionJson {
     return stageDefinition.getExecutionModes();
   }
 
+  public String getOnlineHelpRefUrl() {
+    return stageDefinition.getOnlineHelpRefUrl();
+  }
 }

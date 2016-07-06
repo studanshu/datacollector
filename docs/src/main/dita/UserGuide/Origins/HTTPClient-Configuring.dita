@@ -18,11 +18,11 @@
     <taskbody>
         <context>
             <p><indexterm>HTTP Client origin<indexterm>configuring</indexterm></indexterm>Configure
-                an HTTP Client origin to read JSON data from an HTTP resource URL.</p>
+                an HTTP Client origin to read data from an HTTP resource URL.</p>
         </context>
         <steps id="steps_xmt_2lz_5r">
             <step
-                conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/1stStep-ClusterOrigin">
+                conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/1stStepErrorHandling">
                 <cmd/>
             </step>
             <step>
@@ -40,12 +40,14 @@
                             </thead>
                             <tbody>
                                 <row>
-                                    <entry>Data Format</entry>
-                                    <entry>HTTP Client reads JSON data.</entry>
-                                </row>
-                                <row>
                                     <entry>Resource URL</entry>
                                     <entry>URL where the data resides. </entry>
+                                </row>
+                                <row>
+                                    <entry>Headers</entry>
+                                    <entry>Optional headers to include in the request. Use the
+                                            <uicontrol>Add</uicontrol> icon to add additional
+                                        headers.</entry>
                                 </row>
                                 <row>
                                     <entry>HTTP Method</entry>
@@ -71,13 +73,46 @@
                                     <entry>Milliseconds the origin waits before checking for new
                                         data. Used in the polling mode only. </entry>
                                 </row>
-                                <row>
-                                    <entry>Use OAuth</entry>
-                                    <entry>Determines whether OAuth credentials are used to connect
-                                        to the server. </entry>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/HTTP-AuthType">
+                                    <entry/>
                                 </row>
                                 <row>
-                                    <entry>Batch Size (recs)</entry>
+                                    <entry>Data Format <xref
+                                            href="HTTPClient-DataFormats.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                placement="inline"/></xref></entry>
+                                    <entry>Format of data. Use one of the following options:<ul
+                                            id="ul_zbw_szg_j5">
+                                            <li>JSON</li>
+                                            <li>Text</li>
+                                            <li>XML</li>
+                                        </ul></entry>
+                                </row>
+                                <row>
+                                    <entry>HTTP Stream Delimiter</entry>
+                                    <entry>Delimiter characters that indicate the end of a stream.
+                                        Used to create records for JSON and text data. <p>For XML
+                                            data, you can also specify an XML delimiter element to
+                                            create records. For more information, see <xref
+                                                href="HTTPClient-DataFormats.dita"/>.</p><p>Default
+                                            is \r\n, representing a carriage return and line feed.
+                                        </p></entry>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/HTTP-UseProxy">
+                                    <entry/>
+                                </row>
+                                <row>
+                                    <entry>Charset</entry>
+                                    <entry>Character encoding of the data to be processed.</entry>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/IgnoreControlChars-row">
+                                    <entry/>
+                                </row>
+                                <row>
+                                    <entry>Max Batch Size (records)</entry>
                                     <entry>Maximum number of records to include in a batch and send
                                         through the pipeline at one time.</entry>
                                 </row>
@@ -95,44 +130,19 @@
                     </table>
                 </info>
             </step>
-            <step>
-                <cmd>When using OAuth, on the <wintitle>OAuth</wintitle> tab, configure the
-                    following properties:</cmd>
-                <info>
-                    <table frame="all" rowsep="1" colsep="1" id="table_c2b_f4z_5r">
-                        <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
-                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
-                            <thead>
-                                <row>
-                                    <entry>OAuth Property</entry>
-                                    <entry>Description</entry>
-                                </row>
-                            </thead>
-                            <tbody>
-                                <row>
-                                    <entry>Consumer Key</entry>
-                                    <entry>OAuth consumer key.</entry>
-                                </row>
-                                <row>
-                                    <entry>Consumer Secret</entry>
-                                    <entry>OAuth consumer secret.</entry>
-                                </row>
-                                <row>
-                                    <entry>Token</entry>
-                                    <entry>OAuth consumer token.</entry>
-                                </row>
-                                <row>
-                                    <entry>Token Secret</entry>
-                                    <entry>OAuth token secret.</entry>
-                                </row>
-                            </tbody>
-                        </tgroup>
-                    </table>
-                </info>
+            <step
+                conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/HTTPClient-Credentials">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/HTTPClient-Proxy">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/HTTPClient-SSLTLS">
+                <cmd/>
             </step>
             <step>
-                <cmd>On the <wintitle>JSON</wintitle> tab, configure the following properties:</cmd>
+                <cmd>For JSON data, on the <wintitle>JSON</wintitle> tab, configure the following
+                    properties:</cmd>
                 <info>
                     <table frame="all" rowsep="1" colsep="1" id="table_ymj_44z_5r">
                         <tgroup cols="2">
@@ -145,26 +155,20 @@
                                 </row>
                             </thead>
                             <tbody>
-                                <row>
-                                    <entry>JSON Content</entry>
-                                    <entry>Type of JSON content to be processed:<ul
-                                            id="ul_r32_q4z_5r">
-                                            <li>JSON Array of Objects - Use to process data in
-                                                polling mode. </li>
-                                            <li>Multiple JSON Objects - Use to process data in
-                                                streaming or polling mode.  </li>
-                                        </ul></entry>
-                                </row>
-                                <row>
-                                    <entry>Entity Delimiter</entry>
-                                    <entry>Delimiter to indicate the end of a JSON record, such as
-                                        \n or \r.  Used when processing multiple JSON objects.
-                                    </entry>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/ROW-MaxObject">
+                                    <entry/>
                                 </row>
                             </tbody>
                         </tgroup>
                     </table>
                 </info>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/Text">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/XMLprops">
+                <cmd/>
             </step>
         </steps>
     </taskbody>

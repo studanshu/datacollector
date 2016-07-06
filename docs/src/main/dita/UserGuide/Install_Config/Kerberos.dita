@@ -15,30 +15,46 @@
 <!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
 <concept id="concept_hnm_n4l_xs">
  <title>Enabling Kerberos Authentication</title>
- <shortdesc>You can use Kerberos authentication to connect to origin and destination systems, as
-  well as YARN clusters. </shortdesc>
+ <shortdesc>You can use Kerberos authentication to connect to external systems as well as YARN
+    clusters. </shortdesc>
  <conbody>
   <p><indexterm>Data Collector configuration file<indexterm>enabling Kerberos
-     authentication</indexterm></indexterm><indexterm>Kerberos authentication<indexterm>enabling for
-     the Data Collector</indexterm></indexterm>By default, the <ph
-    conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/> uses the user
-   account who started it to connect to external systems. When you enable Kerberos, it can use the
-   Kerberos principal to connect to external systems.</p>
+          authentication</indexterm></indexterm><indexterm>Kerberos
+          authentication<indexterm>enabling for the Data Collector</indexterm></indexterm>By
+      default, <ph conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/>
+      uses the user account who started it to connect to external systems. When you enable Kerberos,
+      it can use the Kerberos principal to connect to external systems.</p>
+    <p>You can configure Kerberos authentication for the following stages:<ul id="ul_u5p_x1f_55">
+        <li>Hadoop FS origin</li>
+        <li>Kafka Consumer, <ph
+            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/KafkaSecure"/>
+          only</li>
+        <li>HBase Lookup processor</li>
+        <li>Hive Metadata processor</li>
+        <li>Hadoop FS destination</li>
+        <li>HBase destination</li>
+        <li>Hive Metastore destination</li>
+        <li>Kafka Producer, <ph
+            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/KafkaSecure"/>
+          only</li>
+        <li>MapR DB destination</li>
+        <li>MapR FS destination</li>
+      </ul></p>
   <p>To enable Kerberos authentication, perform the following steps:<ol id="ol_rnb_rtl_xs">
-    <li>Configure the <ph
-      conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/> to use
-     Kerberos. <p>In the <ph
-       conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/>
-      configuration file, configure the Kerberos properties to enable Kerberos and define the
-      principal and keytab.</p></li>
-    <li>Configure the origin or destination stage to use Kerberos. <p>In the pipeline, you can
-      configure Kerberos authentication for the following stages:<ul id="ul_mwv_prl_xs">
-       <li>Hadoop FS origin</li>
-       <li>Hadoop FS destination</li>
-       <li>HBase destination</li>
-      </ul></p></li>
-   </ol><note>Cluster pipelines automatically use Kerberos authentication if the YARN cluster
-    requires it, and if Kerberos is enabled for the <ph
-     conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/>. </note></p>
+        <li>Configure <ph
+            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/> to use
+          Kerberos. <p>In the <ph
+              conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/>
+            configuration file, <codeph>$SDC_CONF/sdc.properties</codeph>, configure the following
+            Kerberos properties to enable Kerberos and define the principal and keytab:<ul
+              conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/ul-KERBprops"
+              id="ul_w1d_hpf_55">
+              <li/>
+            </ul></p></li>
+        <li>Configure the stage to use Kerberos. </li>
+      </ol><note>Cluster pipelines automatically use Kerberos authentication if the YARN cluster
+        requires it and if <ph
+          conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/> has
+        Kerberos enabled. </note></p>
  </conbody>
 </concept>

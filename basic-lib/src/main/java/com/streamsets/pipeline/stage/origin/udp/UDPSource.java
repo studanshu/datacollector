@@ -26,16 +26,21 @@ import com.streamsets.pipeline.api.StageException;
 import com.streamsets.pipeline.api.base.BaseSource;
 import com.streamsets.pipeline.api.base.OnRecordErrorException;
 import com.streamsets.pipeline.api.impl.Utils;
-import com.streamsets.pipeline.lib.parser.AbstractParser;
-import com.streamsets.pipeline.lib.parser.ParserConfig;
-import com.streamsets.pipeline.lib.parser.collectd.CollectdParser;
-import com.streamsets.pipeline.lib.parser.netflow.NetflowParser;
-import com.streamsets.pipeline.lib.parser.syslog.SyslogParser;
+import com.streamsets.pipeline.lib.parser.udp.AbstractParser;
+import com.streamsets.pipeline.lib.parser.udp.ParserConfig;
+import com.streamsets.pipeline.lib.parser.udp.collectd.CollectdParser;
+import com.streamsets.pipeline.lib.parser.udp.netflow.NetflowParser;
+import com.streamsets.pipeline.lib.parser.udp.syslog.SyslogParser;
+import com.streamsets.pipeline.lib.udp.UDPConsumingServer;
+import com.streamsets.pipeline.stage.common.DefaultErrorRecordHandler;
+import com.streamsets.pipeline.stage.common.ErrorRecordHandler;
+import com.streamsets.pipeline.config.DatagramMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.net.InetSocketAddress;
+import java.net.SocketException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.charset.UnsupportedCharsetException;
@@ -48,11 +53,11 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import static com.streamsets.pipeline.lib.parser.ParserConfigKey.AUTH_FILE_PATH;
-import static com.streamsets.pipeline.lib.parser.ParserConfigKey.CHARSET;
-import static com.streamsets.pipeline.lib.parser.ParserConfigKey.CONVERT_TIME;
-import static com.streamsets.pipeline.lib.parser.ParserConfigKey.EXCLUDE_INTERVAL;
-import static com.streamsets.pipeline.lib.parser.ParserConfigKey.TYPES_DB_PATH;
+import static com.streamsets.pipeline.lib.parser.udp.ParserConfigKey.AUTH_FILE_PATH;
+import static com.streamsets.pipeline.lib.parser.udp.ParserConfigKey.CHARSET;
+import static com.streamsets.pipeline.lib.parser.udp.ParserConfigKey.CONVERT_TIME;
+import static com.streamsets.pipeline.lib.parser.udp.ParserConfigKey.EXCLUDE_INTERVAL;
+import static com.streamsets.pipeline.lib.parser.udp.ParserConfigKey.TYPES_DB_PATH;
 
 
 public class UDPSource extends BaseSource {
@@ -65,16 +70,18 @@ public class UDPSource extends BaseSource {
   private final long maxWaitTime;
   private final List<InetSocketAddress> addresses;
   private final ParserConfig parserConfig;
-  private final UDPDataFormat dataFormat;
+  private final DatagramMode dataFormat;
   private long recordCount;
   private UDPConsumingServer udpServer;
   private AbstractParser parser;
+  private ErrorRecordHandler errorRecordHandler;
   private BlockingQueue<ParseResult> incomingQueue;
+  private boolean privilegedPortUsage = false;
 
   public UDPSource(
       List<String> ports,
       ParserConfig parserConfig,
-      UDPDataFormat dataFormat,
+      DatagramMode dataFormat,
       int maxBatchSize,
       long maxWaitTime
   ) {
@@ -90,6 +97,8 @@ public class UDPSource extends BaseSource {
   @Override
   protected List<ConfigIssue> init() {
     List<ConfigIssue> issues = new ArrayList<>();
+    errorRecordHandler = new DefaultErrorRecordHandler(getContext());
+
     this.recordCount = 0;
     this.incomingQueue = new ArrayBlockingQueue<>(this.maxBatchSize * 10);
     if (ports.isEmpty()) {
@@ -99,7 +108,10 @@ public class UDPSource extends BaseSource {
       for (String candidatePort : ports) {
         try {
           int port = Integer.parseInt(candidatePort.trim());
-          if (port > 1023 && port < 65536) {
+          if (port > 0 && port < 65536) {
+            if (port < 1024) {
+              privilegedPortUsage = true; // only for error handling purposes
+            }
             addresses.add(new InetSocketAddress(port));
           } else {
             issues.add(getContext().createConfigIssue(Groups.UDP.name(), "ports",
@@ -111,21 +123,18 @@ public class UDPSource extends BaseSource {
         }
       }
     }
+
     Charset charset;
-    try {
-      charset = Charset.forName(parserConfig.getString(CHARSET));
-    } catch (UnsupportedCharsetException ex) {
-      charset = StandardCharsets.UTF_8;
-      issues.add(getContext().createConfigIssue(Groups.SYSLOG.name(), "charset", Errors.UDP_04, charset));
-    }
     switch (dataFormat) {
       case NETFLOW:
         parser = new NetflowParser(getContext());
         break;
       case SYSLOG:
+        charset = validateCharset(Groups.SYSLOG.name(), issues);
         parser = new SyslogParser(getContext(), charset);
         break;
       case COLLECTD:
+        charset = validateCharset(Groups.COLLECTD.name(), issues);
         checkCollectdParserConfigs(issues);
         if (issues.size() == 0) {
           parser = new CollectdParser(
@@ -153,11 +162,28 @@ public class UDPSource extends BaseSource {
         } catch (Exception ex) {
           udpServer.destroy();
           udpServer = null;
-          issues.add(getContext().createConfigIssue(null, null, Errors.UDP_00, addresses.toString(), ex.toString(), ex));
+
+          if (ex instanceof SocketException && privilegedPortUsage) {
+            issues.add(getContext().createConfigIssue(Groups.UDP.name(), "ports", Errors.UDP_07, ports, ex));
+          } else {
+            LOG.debug("Caught exception while starting up UDP server: {}", ex);
+            issues.add(getContext().createConfigIssue(null, null, Errors.UDP_00, addresses.toString(), ex.toString(), ex));
+          }
         }
       }
     }
     return issues;
+  }
+
+  private Charset validateCharset(String groupName, List<ConfigIssue> issues) {
+    Charset charset;
+    try {
+      charset = Charset.forName(parserConfig.getString(CHARSET));
+    } catch (UnsupportedCharsetException ex) {
+      charset = StandardCharsets.UTF_8;
+      issues.add(getContext().createConfigIssue(groupName, "charset", Errors.UDP_04, charset));
+    }
+    return charset;
   }
 
   private void checkCollectdParserConfigs(List<ConfigIssue> issues) {
@@ -215,18 +241,7 @@ public class UDPSource extends BaseSource {
               }
               overrunQueue.addAll(records);
             } catch (OnRecordErrorException ex) {
-              switch (getContext().getOnErrorRecord()) {
-                case DISCARD:
-                  break;
-                case TO_ERROR:
-                  getContext().reportError(ex);
-                  break;
-                case STOP_PIPELINE:
-                  throw ex;
-                default:
-                  throw new IllegalStateException(Utils.format("Unknown OnError value '{}'",
-                    getContext().getOnErrorRecord(), ex));
-              }
+              errorRecordHandler.onError(ex.getErrorCode(), ex.getParams());
             }
           }
         } catch (InterruptedException e) {

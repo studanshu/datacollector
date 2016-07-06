@@ -25,6 +25,8 @@ public class Constants {
   public static final int REFRESH_INTERVAL_PROPERTY_DEFAULT = 2000;
   public static final String CALLBACK_SERVER_URL_KEY = "callback.server.url";
   public static final String CALLBACK_SERVER_URL_DEFAULT = null;
+  public static final String MASTER_SDC_ID_SEPARATOR = ":";
+  public static final String SDC_ID = "sdc.id";
   public static final String PIPELINE_CLUSTER_TOKEN_KEY = "pipeline.cluster.token";
   public static final String MAX_BATCH_SIZE_KEY = "production.maxBatchSize";
   public static final int MAX_BATCH_SIZE_DEFAULT = 1000;
@@ -45,6 +47,13 @@ public class Constants {
   public static final String SAMPLED_RECORDS_MAX_CACHE_SIZE_KEY = "observer.sampled.records.cache.size";
   public static final String MAX_OBSERVER_REQUEST_OFFER_WAIT_TIME_MS_KEY = "observer.queue.offer.max.wait.time.ms";
   public static final int MAX_OBSERVER_REQUEST_OFFER_WAIT_TIME_MS_DEFAULT = 1000;
+  public static final String MESOS_JAR_URL = "mesos.jar.url";
+  public static final String STATS_AGGREGATOR_QUEUE_SIZE_KEY = "stats.queue.size";
+  public static final int STATS_AGGREGATOR_QUEUE_SIZE_DEFAULT = 1000;
+  public static final String MAX_STATS_REQUEST_OFFER_WAIT_TIME_MS_KEY = "stats.queue.offer.max.wait.time.ms";
+  public static final int MAX_STATS_REQUEST_OFFER_WAIT_TIME_MS_DEFAULT = 0;
 
   public static final String STOP_PIPELINE_MESSAGE = "Requested via REST API";
+
+  private Constants() {}
 }

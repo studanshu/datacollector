@@ -35,6 +35,7 @@ import java.util.Iterator;
 
 public class CsvParser implements Closeable, AutoCloseable {
   private long currentPos;
+  private long skipLinesPosCorrection;
   private final CSVParser parser;
   private final CountingReader reader;
   private final int maxObjectLen;
@@ -44,20 +45,31 @@ public class CsvParser implements Closeable, AutoCloseable {
   private boolean closed;
 
   public CsvParser(Reader reader, CSVFormat format, int maxObjectLen) throws IOException {
-    this(new CountingReader(reader), format, maxObjectLen, 0);
+    this(new CountingReader(reader), format, maxObjectLen, 0, 0);
   }
 
   @SuppressWarnings("unchecked")
-  public CsvParser(CountingReader reader, CSVFormat format, int maxObjectLen, long initialPosition) throws IOException {
+  public CsvParser(
+      CountingReader reader,
+      CSVFormat format,
+      int maxObjectLen,
+      long initialPosition,
+      int skipStartLines
+  ) throws IOException {
     Utils.checkNotNull(reader, "reader");
     Utils.checkNotNull(reader.getPos() == 0,
                        "reader must be in position zero, the CsvParser will fast-forward to the initialPosition");
     Utils.checkNotNull(format, "format");
     Utils.checkArgument(initialPosition >= 0, "initialPosition must be greater or equal than zero");
+    Utils.checkArgument(skipStartLines >= 0, "skipStartLines must be greater or equal than zero");
     this.reader = reader;
     currentPos = initialPosition;
     this.maxObjectLen = maxObjectLen;
     if (initialPosition == 0) {
+      if (skipStartLines > 0) {
+        skipLinesPosCorrection = skipLines(reader, skipStartLines);
+        currentPos = skipLinesPosCorrection;
+      }
       if (format.getSkipHeaderRecord()) {
         format = format.withSkipHeaderRecord(false);
         parser = new CSVParser(reader, format, 0, 0);
@@ -83,6 +95,23 @@ public class CsvParser implements Closeable, AutoCloseable {
         headers = null;
       }
     }
+  }
+
+  private long skipLines(Reader reader, int lines) throws IOException {
+    int count = 0;
+    int skipped = 0;
+    while (skipped < lines) {
+      int c = reader.read();
+      if (c == -1) {
+        throw new IOException(Utils.format("Could not skip '{}' lines, reached EOF", lines));
+      }
+      // this is enough to handle \n and \r\n EOL files
+      if (c == '\n') {
+        skipped++;
+      }
+      count++;
+    }
+    return count;
   }
 
   protected Reader getReader() {
@@ -114,7 +143,7 @@ public class CsvParser implements Closeable, AutoCloseable {
       nextRecord = nextRecord();
     }
     long prevPos = currentPos;
-    currentPos = (nextRecord != null) ? nextRecord.getCharacterPosition() : reader.getPos();
+    currentPos = (nextRecord != null) ? nextRecord.getCharacterPosition() + skipLinesPosCorrection : reader.getPos();
     if (maxObjectLen > -1) {
       if (currentPos - prevPos > maxObjectLen) {
         ExceptionUtils.throwUndeclared(new ObjectLengthException(Utils.format(

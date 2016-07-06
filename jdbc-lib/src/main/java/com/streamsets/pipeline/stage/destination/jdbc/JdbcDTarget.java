@@ -40,11 +40,12 @@ import java.util.List;
 @HideConfigs(value = {"hikariConfigBean.readOnly"})
 @GenerateResourceBundle
 @StageDef(
-    version = 4,
+    version = 5,
     label = "JDBC Producer",
     description = "Writes data to a JDBC destination.",
     upgrader = JdbcTargetUpgrader.class,
-    icon = "rdbms.png"
+    icon = "rdbms.png",
+    onlineHelpRefUrl = "index.html#Destinations/JDBCProducer.html#task_cx3_lhh_ht"
 )
 @ConfigGroups(value = Groups.class)
 public class JdbcDTarget extends DTarget {
@@ -110,6 +111,20 @@ public class JdbcDTarget extends DTarget {
   )
   public boolean useMultiRowInsert;
 
+  @ConfigDef(
+      required = true,
+      type = ConfigDef.Type.NUMBER,
+      defaultValue = "-1",
+      label = "Statement Parameter Limit",
+      description = "The maximum number of prepared statement parameters allowed in each batch insert statement when " +
+          "using multi-row inserts. Set to -1 to disable limit.",
+      dependsOn = "useMultiRowInsert",
+      triggeredByValue = "true",
+      displayPosition = 60,
+      group = "JDBC"
+  )
+  public int maxPrepStmtParameters;
+
   @ConfigDefBean()
   public HikariPoolConfigBean hikariConfigBean;
 
@@ -120,6 +135,7 @@ public class JdbcDTarget extends DTarget {
         columnNames,
         rollbackOnError,
         useMultiRowInsert,
+        maxPrepStmtParameters,
         changeLogFormat,
         hikariConfigBean
     );

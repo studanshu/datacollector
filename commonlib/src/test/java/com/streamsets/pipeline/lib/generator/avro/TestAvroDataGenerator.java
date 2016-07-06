@@ -29,6 +29,7 @@ import com.streamsets.pipeline.lib.generator.DataGenerator;
 import com.streamsets.pipeline.lib.generator.DataGeneratorException;
 import com.streamsets.pipeline.lib.generator.DataGeneratorFactoryBuilder;
 import com.streamsets.pipeline.lib.generator.DataGeneratorFormat;
+import com.streamsets.pipeline.lib.util.AvroTypeUtil;
 import com.streamsets.pipeline.lib.util.JsonUtil;
 import com.streamsets.pipeline.sdk.ContextInfoCreator;
 import com.streamsets.pipeline.sdk.RecordCreator;
@@ -37,6 +38,7 @@ import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.SeekableByteArrayInput;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.util.Utf8;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -44,10 +46,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class TestAvroDataGenerator {
@@ -59,13 +65,61 @@ public class TestAvroDataGenerator {
     +" {\"name\": \"name\", \"type\": \"string\"},\n"
     +" {\"name\": \"age\", \"type\": \"int\"},\n"
     +" {\"name\": \"emails\", \"type\": {\"type\": \"array\", \"items\": \"string\"}},\n"
-    +" {\"name\": \"boss\", \"type\": [\"null\", \"Employee\"]}\n"
+    +" {\"name\": \"boss\", \"type\": [\"null\", \"Employee\"], \"default\" : null}\n"
     +"]}";
+
+  private static final Schema SCHEMA = new Schema.Parser().parse(AVRO_SCHEMA);
+
+  private static final String DECIMAL_AVRO_SCHEMA = "{\n"
+    +"\"type\": \"record\",\n"
+    +"\"name\": \"WithDecimal\",\n"
+    +"\"fields\": [\n"
+    +" {\"name\": \"decimal\", \"type\": \"bytes\", \"logicalType\": \"decimal\", \"precision\": 2, \"scale\": 1}"
+    +"]}";
+  private static final Schema DECIMAL_SCHEMA = new Schema.Parser().parse(DECIMAL_AVRO_SCHEMA);
+
+  private static final String DATE_AVRO_SCHEMA = "{\n"
+    +"\"type\": \"record\",\n"
+    +"\"name\": \"WithDate\",\n"
+    +"\"fields\": [\n"
+    +" {\"name\": \"d\", \"type\": \"int\", \"logicalType\": \"date\"}"
+    +"]}";
+  private static final Schema DATE_SCHEMA = new Schema.Parser().parse(DATE_AVRO_SCHEMA);
+
+
+  private static final String INVALID_SCHEMA = "{\n"
+    +"\"type\": \"record\",\n"
+    +"\"name\": \"Employee\",\n"
+    +"\"fields\": [\n"
+    +" {\"name\": \"name\", \"type\": \"string\"},\n"
+    +" {\"name\": \"age\"},\n"
+    +"]}";
+
+  private static final String INVALID_SCHEMA_DEFAULTS = "{\n"
+    +"\"type\": \"record\",\n"
+    +"\"name\": \"Employee\",\n"
+    +"\"fields\": [\n"
+    +" {\"name\": \"name\", \"type\": \"string\"},\n"
+    +" {\"name\": \"age\", \"type\" : [\"null\", \"string\"], \"default\" : \"hello\"},\n"
+    +"]}";
+
+  private static final String RECORD_SCHEMA = "{\n"
+    +"  \"type\": \"record\",\n"
+    +"  \"name\": \"Employee\",\n"
+    +"  \"fields\": [\n"
+    +"    {\"name\": \"name\", \"type\": \"string\", \"default\": \"Hello\"},\n"
+    +"    {\"name\": \"age\", \"type\": \"int\", \"default\": 25},\n"
+    +"    {\"name\": \"resident\", \"type\": \"boolean\", \"default\": false},\n"
+    +"    {\"name\": \"enum\",\"type\":{\"type\":\"enum\",\"name\":\"Suit\",\"symbols\":[\"SPADES\",\"HEARTS\",\"DIAMONDS\",\"CLUBS\"]}, \"default\": \"DIAMONDS\"},\n"
+    +"    {\"name\": \"emails\", \"type\": {\"type\": \"array\", \"items\": \"string\"}, \"default\" : [\"SPADES\",\"HEARTS\",\"DIAMONDS\",\"CLUBS\"]},\n"
+    +"    {\"name\": \"phones\", \"type\": {\"type\": \"map\", \"values\": \"long\"}, \"default\" : {\"home\" : 8675309, \"mobile\" : 8675308}},\n"
+    +"    {\"name\": \"boss\", \"type\": [\"null\", \"Employee\"], \"default\" : null}\n"
+    +"  ]" +
+    " }";
 
   @Test
   public void testFactory() throws Exception {
     Stage.Context context = ContextInfoCreator.createTargetContext("i", false, OnRecordError.TO_ERROR);
-
     DataFactory dataFactory = new DataGeneratorFactoryBuilder(context, DataGeneratorFormat.AVRO)
       .setCharset(Charset.forName("UTF-16")).setConfig(AvroDataGeneratorFactory.SCHEMA_KEY, AVRO_SCHEMA).build();
     Assert.assertTrue(dataFactory instanceof AvroDataGeneratorFactory);
@@ -81,13 +135,19 @@ public class TestAvroDataGenerator {
 
   @Test
   public void testGenerate() throws Exception {
+
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    DataGenerator gen = new AvroDataOutputStreamGenerator(baos, AVRO_SCHEMA);
+    DataGenerator gen = new AvroDataOutputStreamGenerator(
+      false,
+      baos,
+      AvroDataGeneratorFactory.COMPRESSION_CODEC_DEFAULT,
+      SCHEMA,
+      AvroTypeUtil.getDefaultValuesFromSchema(SCHEMA, new HashSet<String>())
+    );
     Record record = createRecord();
     gen.write(record);
     gen.close();
 
-    Schema schema = new Schema.Parser().parse(AVRO_SCHEMA);
     //reader schema must be extracted from the data file
     GenericDatumReader<GenericRecord> reader = new GenericDatumReader<>(null);
     DataFileReader<GenericRecord> dataFileReader = new DataFileReader<>(
@@ -100,10 +160,58 @@ public class TestAvroDataGenerator {
     Assert.assertFalse(dataFileReader.hasNext());
   }
 
+  private void testGenerateCompressed(String codecName) throws Exception {
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    DataGenerator gen = new AvroDataOutputStreamGenerator(
+        false,
+        baos,
+        codecName,
+        SCHEMA,
+        AvroTypeUtil.getDefaultValuesFromSchema(SCHEMA, new HashSet<String>())
+    );
+    Record record = createRecord();
+    gen.write(record);
+    gen.close();
+
+    //reader schema must be extracted from the data file
+    GenericDatumReader<GenericRecord> reader = new GenericDatumReader<>(null);
+    DataFileReader<GenericRecord> dataFileReader = new DataFileReader<>(
+        new SeekableByteArrayInput(baos.toByteArray()), reader);
+    Assert.assertEquals(codecName, dataFileReader.getMetaString("avro.codec"));
+    Assert.assertTrue(dataFileReader.hasNext());
+    GenericRecord readRecord = dataFileReader.next();
+
+    Assert.assertEquals("hari", readRecord.get("name").toString());
+    Assert.assertEquals(3100, readRecord.get("age"));
+    Assert.assertFalse(dataFileReader.hasNext());
+  }
+
+  @Test
+  public void testGenerateSnappy() throws Exception {
+    testGenerateCompressed("snappy");
+  }
+
+  @Test
+  public void testGenerateDeflate() throws Exception {
+    testGenerateCompressed("deflate");
+  }
+
+  @Test
+  public void testGenerateBzip2() throws Exception {
+    testGenerateCompressed("bzip2");
+  }
+
   @Test
   public void testClose() throws Exception {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    DataGenerator gen = new AvroDataOutputStreamGenerator(baos, AVRO_SCHEMA);
+    DataGenerator gen = new AvroDataOutputStreamGenerator(
+      false,
+      baos,
+      AvroDataGeneratorFactory.COMPRESSION_CODEC_DEFAULT,
+      SCHEMA,
+      AvroTypeUtil.getDefaultValuesFromSchema(SCHEMA, new HashSet<String>())
+    );
     Record record = createRecord();
     gen.write(record);
     gen.close();
@@ -113,7 +221,13 @@ public class TestAvroDataGenerator {
   @Test(expected = IOException.class)
   public void testWriteAfterClose() throws Exception {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    DataGenerator gen = new AvroDataOutputStreamGenerator(baos, AVRO_SCHEMA);
+    DataGenerator gen = new AvroDataOutputStreamGenerator(
+        false,
+        baos,
+        AvroDataGeneratorFactory.COMPRESSION_CODEC_DEFAULT,
+        SCHEMA,
+        new HashMap<String, Object>()
+    );
     Record record = createRecord();
     gen.close();
     gen.write(record);
@@ -122,7 +236,13 @@ public class TestAvroDataGenerator {
   @Test(expected = IOException.class)
   public void testFlushAfterClose() throws Exception {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    DataGenerator gen = new AvroDataOutputStreamGenerator(baos, AVRO_SCHEMA);
+    DataGenerator gen = new AvroDataOutputStreamGenerator(
+        false,
+        baos,
+        AvroDataGeneratorFactory.COMPRESSION_CODEC_DEFAULT,
+        SCHEMA,
+        new HashMap<String, Object>()
+    );
     gen.close();
     gen.flush();
   }
@@ -134,7 +254,13 @@ public class TestAvroDataGenerator {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     Record r = createRecord();
 
-    DataGenerator dataGenerator = new AvroDataOutputStreamGenerator(baos, AVRO_SCHEMA);
+    DataGenerator dataGenerator = new AvroDataOutputStreamGenerator(
+        false,
+        baos,
+        AvroDataGeneratorFactory.COMPRESSION_CODEC_DEFAULT,
+        SCHEMA,
+        AvroTypeUtil.getDefaultValuesFromSchema(SCHEMA, new HashSet<String>())
+    );
     dataGenerator.write(r);
     dataGenerator.flush();
     dataGenerator.close();
@@ -154,7 +280,13 @@ public class TestAvroDataGenerator {
     record.set(listMapField);
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    DataGenerator gen = new AvroDataOutputStreamGenerator(baos, AVRO_SCHEMA);
+    DataGenerator gen = new AvroDataOutputStreamGenerator(
+        false,
+        baos,
+        AvroDataGeneratorFactory.COMPRESSION_CODEC_DEFAULT,
+        SCHEMA,
+        new HashMap<String, Object>()
+    );
     gen.write(record);
     gen.close();
 
@@ -180,6 +312,212 @@ public class TestAvroDataGenerator {
     Record r = RecordCreator.create();
     r.set(field);
     return r;
+  }
+
+  @Test
+  public void testGenerateWithDefaults() throws Exception {
+
+    Stage.Context context = ContextInfoCreator.createTargetContext("i", false, OnRecordError.TO_ERROR);
+
+    DataFactory dataFactory = new DataGeneratorFactoryBuilder(context, DataGeneratorFormat.AVRO)
+      .setCharset(Charset.forName("UTF-16"))
+      .setConfig(AvroDataGeneratorFactory.SCHEMA_KEY, RECORD_SCHEMA)
+      .setConfig(
+          AvroDataGeneratorFactory.DEFAULT_VALUES_KEY,
+          AvroTypeUtil.getDefaultValuesFromSchema(new Schema.Parser().parse(RECORD_SCHEMA), new HashSet<String>())
+      )
+      .build();
+    Assert.assertTrue(dataFactory instanceof AvroDataGeneratorFactory);
+    AvroDataGeneratorFactory factory = (AvroDataGeneratorFactory) dataFactory;
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    AvroDataOutputStreamGenerator gen = (AvroDataOutputStreamGenerator) factory.getGenerator(baos);
+    Assert.assertNotNull(gen);
+
+    Record record = RecordCreator.create();
+    Map<String, Field> employee = new HashMap<>();
+    record.set(Field.create(employee));
+
+    gen.write(record);
+    gen.close();
+
+    // reader schema must be extracted from the data file
+    GenericDatumReader<GenericRecord> reader = new GenericDatumReader<>(null);
+    DataFileReader<GenericRecord> dataFileReader = new DataFileReader<>(
+      new SeekableByteArrayInput(baos.toByteArray()), reader);
+    Assert.assertTrue(dataFileReader.hasNext());
+    GenericRecord result = dataFileReader.next();
+
+    Assert.assertEquals("Hello", result.get("name").toString());
+    Assert.assertEquals(25, result.get("age"));
+    Assert.assertEquals(false, result.get("resident"));
+    Assert.assertEquals("DIAMONDS", result.get("enum").toString());
+
+    List<Utf8> emails = (List<Utf8>) result.get("emails");
+    Assert.assertEquals(4, emails.size());
+    Assert.assertEquals("SPADES", emails.get(0).toString());
+    Assert.assertEquals("HEARTS", emails.get(1).toString());
+    Assert.assertEquals("DIAMONDS", emails.get(2).toString());
+    Assert.assertEquals("CLUBS", emails.get(3).toString());
+
+    Assert.assertEquals(null, result.get("boss"));
+
+    Map<String, Object> phones = (Map<String, Object>) result.get("phones");
+    Assert.assertEquals(8675309, (long)phones.get(new Utf8("home")));
+    Assert.assertEquals(8675308, (long)phones.get(new Utf8("mobile")));
+  }
+
+  @Test
+  public void testFactoryInvalidSchema() throws Exception {
+    // schema used is invalid as it does not define type for field "age"
+    Stage.Context context = ContextInfoCreator.createTargetContext("i", false, OnRecordError.TO_ERROR);
+    try {
+      new DataGeneratorFactoryBuilder(context, DataGeneratorFormat.AVRO)
+        .setCharset(Charset.forName("UTF-16"))
+        .setConfig(AvroDataGeneratorFactory.SCHEMA_KEY, INVALID_SCHEMA)
+        .build();
+      Assert.fail("Exception expected as schema is invalid");
+    } catch (Exception e) {
+      //Expected
+    }
+  }
+
+  @Test
+  public void testFactoryInvalidDefaultInSchema() throws Exception {
+    // schema has invalid default for field age.
+    Stage.Context context = ContextInfoCreator.createTargetContext("i", false, OnRecordError.TO_ERROR);
+
+    try {
+      new DataGeneratorFactoryBuilder(context, DataGeneratorFormat.AVRO)
+        .setCharset(Charset.forName("UTF-16"))
+        .setConfig(AvroDataGeneratorFactory.SCHEMA_KEY, INVALID_SCHEMA_DEFAULTS)
+        .build();
+      Assert.fail("Exception expected as schema is invalid");
+    } catch (Exception e) {
+      //Expected
+    }
+  }
+
+  @Test
+  public void testSchemaInHeader() throws Exception {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    DataGenerator gen = new AvroDataOutputStreamGenerator(
+      true,
+      baos,
+      AvroDataGeneratorFactory.COMPRESSION_CODEC_DEFAULT,
+      null,
+      null
+    );
+    Record record = createRecord();
+    record.getHeader().setAttribute(BaseAvroDataGenerator.AVRO_SCHEMA_HEADER, AVRO_SCHEMA);
+    gen.write(record);
+    gen.close();
+
+    GenericDatumReader<GenericRecord> reader = new GenericDatumReader<>(null);
+    DataFileReader<GenericRecord> dataFileReader = new DataFileReader<>(
+      new SeekableByteArrayInput(baos.toByteArray()), reader);
+    Assert.assertTrue(dataFileReader.hasNext());
+    GenericRecord readRecord = dataFileReader.next();
+
+    Assert.assertEquals("hari", readRecord.get("name").toString());
+    Assert.assertEquals(3100, readRecord.get("age"));
+    Assert.assertFalse(dataFileReader.hasNext());
+  }
+
+  @Test(expected = DataGeneratorException.class)
+  public void testSchemaInHeaderMissingHeader() throws Exception {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    DataGenerator gen = new AvroDataOutputStreamGenerator(
+      true,
+      baos,
+      AvroDataGeneratorFactory.COMPRESSION_CODEC_DEFAULT,
+      null,
+      null
+    );
+    Record record = createRecord();
+    gen.write(record);
+    gen.close();
+  }
+
+  @Test(expected = DataGeneratorException.class)
+  public void testSchemaInHeaderDifferentSchemaInHeader() throws Exception {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    DataGenerator gen = new AvroDataOutputStreamGenerator(
+      true,
+      baos,
+      AvroDataGeneratorFactory.COMPRESSION_CODEC_DEFAULT,
+      null,
+      null
+    );
+    Record record = createRecord();
+
+    // Write first record (initialize all internal structures)
+    record.getHeader().setAttribute(BaseAvroDataGenerator.AVRO_SCHEMA_HEADER, AVRO_SCHEMA);
+    gen.write(record);
+
+    // Second record with different schema should throw an exception
+    record.getHeader().setAttribute(BaseAvroDataGenerator.AVRO_SCHEMA_HEADER, RECORD_SCHEMA);
+    gen.write(record);
+
+    gen.close();
+  }
+
+  @Test
+  public void testAvroGeneratorDecimalType() throws Exception {
+    Map<String, Field> map = new LinkedHashMap<>();
+    map.put("decimal", Field.create(Field.Type.DECIMAL, BigDecimal.valueOf(1.5)));
+    Record record = RecordCreator.create();
+    record.set(Field.create(map));
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    DataGenerator gen = new AvroDataOutputStreamGenerator(
+      false,
+      baos,
+      AvroDataGeneratorFactory.COMPRESSION_CODEC_DEFAULT,
+      DECIMAL_SCHEMA,
+      new HashMap<String, Object>()
+    );
+    gen.write(record);
+    gen.close();
+
+    //reader schema must be extracted from the data file
+    GenericDatumReader<GenericRecord> reader = new GenericDatumReader<>(null);
+    DataFileReader<GenericRecord> dataFileReader = new DataFileReader<>(
+        new SeekableByteArrayInput(baos.toByteArray()), reader);
+    Assert.assertTrue(dataFileReader.hasNext());
+    GenericRecord readRecord = dataFileReader.next();
+
+    Assert.assertArrayEquals(new byte[] {0x0F}, ((ByteBuffer)readRecord.get("decimal")).array());
+    Assert.assertFalse(dataFileReader.hasNext());
+  }
+
+  @Test
+  public void testAvroGeneratorDateType() throws Exception {
+    Map<String, Field> map = new LinkedHashMap<>();
+    map.put("d", Field.create(Field.Type.DATE, new Date(116, 0, 1)));
+    Record record = RecordCreator.create();
+    record.set(Field.create(map));
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    DataGenerator gen = new AvroDataOutputStreamGenerator(
+      false,
+      baos,
+      AvroDataGeneratorFactory.COMPRESSION_CODEC_DEFAULT,
+      DATE_SCHEMA,
+      new HashMap<String, Object>()
+    );
+    gen.write(record);
+    gen.close();
+
+    //reader schema must be extracted from the data file
+    GenericDatumReader<GenericRecord> reader = new GenericDatumReader<>(null);
+    DataFileReader<GenericRecord> dataFileReader = new DataFileReader<>(
+        new SeekableByteArrayInput(baos.toByteArray()), reader);
+    Assert.assertTrue(dataFileReader.hasNext());
+    GenericRecord readRecord = dataFileReader.next();
+
+    Assert.assertEquals(16801, readRecord.get("d"));
+    Assert.assertFalse(dataFileReader.hasNext());
   }
 
 }

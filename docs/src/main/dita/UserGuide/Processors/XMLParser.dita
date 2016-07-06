@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="concept_dtt_q5q_k5">
+ <title>XML Parser</title>
+ <conbody>
+  <p><indexterm>XML Parser
+                    processor<indexterm>overview</indexterm></indexterm><indexterm>processors<indexterm>XML
+                    Parser</indexterm></indexterm>The XML Parser parses a valid XML document
+            embedded in a string field and passes the parsed data to an output field in the record. </p>
+        <p>The XML Parser creates records based on a user-defined delimiter element. When no
+            delimiter element is defined, it reads the entire contents of the field as a single
+            record.</p>
+ </conbody>
+</concept>

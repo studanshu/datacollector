@@ -31,10 +31,12 @@ angular.module('dataCollectorApp', [
   'templates-common',
   'dataCollectorApp.common',
   'dataCollectorApp.home',
-  'dataCollectorApp.sdcConfiguration',
-  'dataCollectorApp.jvmMetrics',
-  'dataCollectorApp.logs',
+  'commonUI.sdcConfiguration',
+  'commonUI.jvmMetrics',
+  'commonUI.logs',
   'dataCollectorApp.restapi',
   'ngStorage',
-  'angular-google-analytics'
+  'ngSanitize',
+  'angular-google-analytics',
+  'xeditable'
 ]);

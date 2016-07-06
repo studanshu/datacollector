@@ -1,4 +1,6 @@
 /**
+ * Copyright 2015 StreamSets Inc.
+ *
  * Licensed under the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -22,27 +24,50 @@
 @border-radius-base:        4px;
 
 .logs-page {
-  .download-btn-group {
-    padding-left: @defaultPadding;
+  .panel-heading {
+
+    .panel-title {
+      h3 {
+        padding-top: 3px;
+      }
+    }
+
+    .filter-toolbar {
+      padding-left: @defaultPadding * 6;
+      font-size: 16px;
+
+      .btn-group {
+        margin-top: -2px;
+      }
+
+      .severity-dropdown {
+        min-width: 80px;
+      }
+
+    }
+
+    .download-btn-group {
+      padding-left: @defaultPadding;
+    }
+
   }
 
-  .panel-body {
-    overflow: hidden;
-    .log-message {
-      word-wrap: normal;
-      height: 100%;
-      overflow: auto;
-      color: @pre-color;
-      background-color: @pre-bg;
-      border: 1px solid @pre-border-color;
-      border-radius: @border-radius-base;
-      padding: @defaultPadding;
 
-      span {
-        display: inline-block;
-        white-space: pre;
+  .panel-body {
+    overflow: auto;
+    .log-table {
+      white-space: nowrap;
+
+
+      .log-exception {
+        word-wrap: normal;
+        span {
+          display: inline-block;
+          white-space: pre;
+          padding-left: 50px;
+        }
       }
-      
+
     }
   }
 }

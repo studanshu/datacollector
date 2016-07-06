@@ -19,6 +19,7 @@
  */
 package com.streamsets.datacollector.main;
 
+import com.streamsets.datacollector.event.handler.dagger.EventHandlerModule;
 import com.streamsets.datacollector.execution.Manager;
 import com.streamsets.datacollector.execution.manager.slave.SlavePipelineManager;
 import com.streamsets.datacollector.execution.manager.slave.dagger.SlavePipelineManagerModule;
@@ -46,17 +47,17 @@ public class MainSlavePipelineManagerModule { //Need better name
   public MainSlavePipelineManagerModule() {
     ObjectGraph objectGraph = ObjectGraph.create(SlavePipelineManagerModule.class);
     Manager m = new SlavePipelineManager(objectGraph);
-    this.objectGraph = objectGraph.plus(new WebServerModule(m), PipelineTaskModule.class);
+    this.objectGraph = objectGraph.plus(new WebServerModule(m), EventHandlerModule.class, SlavePipelineTaskModule.class);
   }
 
   @Provides @Singleton
-  public Task providePipelineTask(PipelineTask agent) {
+  public Task providePipelineTask(SlavePipelineTask agent) {
     return agent;
   }
 
   @Provides @Singleton
-  public PipelineTask providePipelineTask() {
-    return objectGraph.get(PipelineTask.class);
+  public SlavePipelineTask providePipelineTask() {
+    return objectGraph.get(SlavePipelineTask.class);
   }
 
   @Provides @Singleton

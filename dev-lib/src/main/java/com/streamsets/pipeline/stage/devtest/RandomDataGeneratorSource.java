@@ -20,33 +20,37 @@
 package com.streamsets.pipeline.stage.devtest;
 
 import com.streamsets.pipeline.api.BatchMaker;
-import com.streamsets.pipeline.api.ListBeanModel;
 import com.streamsets.pipeline.api.ConfigDef;
 import com.streamsets.pipeline.api.ExecutionMode;
 import com.streamsets.pipeline.api.Field;
 import com.streamsets.pipeline.api.GenerateResourceBundle;
+import com.streamsets.pipeline.api.ListBeanModel;
 import com.streamsets.pipeline.api.Record;
 import com.streamsets.pipeline.api.StageDef;
 import com.streamsets.pipeline.api.StageException;
 import com.streamsets.pipeline.api.ValueChooserModel;
 import com.streamsets.pipeline.api.base.BaseSource;
-import com.streamsets.pipeline.lib.util.ThreadUtil;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
 @GenerateResourceBundle
 @StageDef(
-  version = 2,
+  version = 3,
   label="Dev Data Generator",
   description = "Generates records with the specified field names based on the selected data type. For development only.",
   execution = ExecutionMode.STANDALONE,
   icon= "dev.png",
-  upgrader = RandomDataGeneratorSourceUpgrader.class
+  upgrader = RandomDataGeneratorSourceUpgrader.class,
+    onlineHelpRefUrl = "index.html#Pipeline_Design/DevStages.html"
 )
 public class RandomDataGeneratorSource extends BaseSource {
 
@@ -65,21 +69,33 @@ public class RandomDataGeneratorSource extends BaseSource {
   @ValueChooserModel(RootTypeChooserValueProvider.class)
   public RootType rootFieldType;
 
+  @ConfigDef(
+    required = false,
+    type = ConfigDef.Type.MAP,
+    label = "Header Attributes",
+    description = "Attributes to be put in the generated record header"
+  )
+  public Map<String, String> headerAttributes;
+
   @Override
   public String produce(String lastSourceOffset, int maxBatchSize, BatchMaker batchMaker) throws StageException {
     for(int i =0; i < maxBatchSize; i++) {
       batchMaker.addRecord(createRecord(lastSourceOffset, i));
     }
-    ThreadUtil.sleep(500);
     return "random";
   }
 
   private Record createRecord(String lastSourceOffset, int batchOffset) {
     Record record = getContext().createRecord("random:" + batchOffset);
+    if(headerAttributes != null && !headerAttributes.isEmpty()) {
+      for (Map.Entry<String, String> e : headerAttributes.entrySet()) {
+        record.getHeader().setAttribute(e.getKey(), e.getValue());
+      }
+    }
     LinkedHashMap<String, Field> map = new LinkedHashMap<>();
     for(DataGeneratorConfig dataGeneratorConfig : dataGenConfigs) {
       map.put(dataGeneratorConfig.field, Field.create(getFieldType(dataGeneratorConfig.type),
-        generateRandomData(dataGeneratorConfig.type)));
+        generateRandomData(dataGeneratorConfig)));
     }
 
     switch (rootFieldType) {
@@ -104,24 +120,34 @@ public class RandomDataGeneratorSource extends BaseSource {
         return Field.Type.DOUBLE;
       case DATE:
         return Field.Type.DATE;
+      case DATETIME:
+        return Field.Type.DATETIME;
+      case TIME:
+        return Field.Type.TIME;
       case STRING:
         return Field.Type.STRING;
       case INTEGER:
         return Field.Type.INTEGER;
       case FLOAT:
         return Field.Type.FLOAT;
+      case DECIMAL:
+        return Field.Type.DECIMAL;
       case BYTE_ARRAY:
         return Field.Type.BYTE_ARRAY;
     }
     return Field.Type.STRING;
   }
 
-  private Object generateRandomData(Type type) {
-    switch(type) {
+  private Object generateRandomData(DataGeneratorConfig config) {
+    switch(config.type) {
       case BOOLEAN :
         return random.nextBoolean();
       case DATE:
         return getRandomDate();
+      case DATETIME:
+        return getRandomDateTime();
+      case TIME:
+        return getRandomTime();
       case DOUBLE:
         return random.nextDouble();
       case FLOAT:
@@ -132,18 +158,46 @@ public class RandomDataGeneratorSource extends BaseSource {
         return random.nextLong();
       case STRING:
         return UUID.randomUUID().toString();
+      case DECIMAL:
+        return new BigDecimal(BigInteger.valueOf(random.nextLong() % (long)Math.pow(10, config.precision)), config.scale);
       case BYTE_ARRAY:
-        return "StreamSets Inc, San Francisco".getBytes();
+        return "StreamSets Inc, San Francisco".getBytes(StandardCharsets.UTF_8);
     }
     return null;
   }
 
   public Date getRandomDate() {
     GregorianCalendar gc = new GregorianCalendar();
-    int year = randBetween(1990, 2010);
-    gc.set(gc.YEAR, year);
-    int dayOfYear = randBetween(1, gc.getActualMaximum(gc.DAY_OF_YEAR));
-    gc.set(gc.DAY_OF_YEAR, dayOfYear);
+    gc.set(
+      randBetween(1990, 2020),
+      randBetween(1, gc.getActualMaximum(gc.MONTH)),
+      randBetween(1, gc.getActualMaximum(gc.DAY_OF_MONTH)),
+      0, 0, 0
+    );
+    return gc.getTime();
+  }
+
+  public Date getRandomTime() {
+    GregorianCalendar gc = new GregorianCalendar();
+    gc.set(
+      1970, 0, 1,
+      randBetween(0, gc.getActualMaximum(gc.HOUR_OF_DAY)),
+      randBetween(0, gc.getActualMaximum(gc.MINUTE)),
+      randBetween(0, gc.getActualMaximum(gc.SECOND))
+    );
+    return gc.getTime();
+  }
+
+  public Date getRandomDateTime() {
+    GregorianCalendar gc = new GregorianCalendar();
+    gc.set(
+      randBetween(1990, 2020),
+      randBetween(1, gc.getActualMaximum(gc.MONTH)),
+      randBetween(1, gc.getActualMaximum(gc.DAY_OF_MONTH)),
+      randBetween(0, gc.getActualMaximum(gc.HOUR_OF_DAY)),
+      randBetween(0, gc.getActualMaximum(gc.MINUTE)),
+      randBetween(0, gc.getActualMaximum(gc.SECOND))
+    );
     return gc.getTime();
   }
 
@@ -162,6 +216,31 @@ public class RandomDataGeneratorSource extends BaseSource {
       defaultValue = "STRING")
     @ValueChooserModel(TypeChooserValueProvider.class)
     public Type type;
+
+    @ConfigDef(
+      required = true,
+      type = ConfigDef.Type.NUMBER,
+      defaultValue = "10",
+      label = "Precision",
+      description = "Precision of the generated decimal.",
+      min = 0,
+      dependsOn = "type",
+      triggeredByValue = "DECIMAL"
+    )
+    public long precision;
+
+    @ConfigDef(
+      required = true,
+      type = ConfigDef.Type.NUMBER,
+      defaultValue = "2",
+      label = "scale",
+      description = "Scale of the generated decimal.",
+      min = 0,
+      dependsOn = "type",
+      triggeredByValue = "DECIMAL"
+    )
+    public int scale;
+
   }
 
   enum Type {
@@ -171,7 +250,10 @@ public class RandomDataGeneratorSource extends BaseSource {
     FLOAT,
     DOUBLE,
     DATE,
+    DATETIME,
+    TIME,
     BOOLEAN,
+    DECIMAL,
     BYTE_ARRAY
   }
 

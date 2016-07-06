@@ -27,6 +27,7 @@ public interface Constants {
   String SNAPPY_COMPRESSION = "snappy";
   String CONTENT_TYPE_HEADER = "Content-Type";
   String APPLICATION_BINARY = "application/binary";
+  String X_SDC_JSON1_FRAGMENTABLE_HEADER = "X-SDC-JSON1-FRAGMENTABLE";
 
   String SSL_CERTIFICATE = "SunX509";
   String[] SSL_ENABLED_PROTOCOLS = {"TLSv1"};

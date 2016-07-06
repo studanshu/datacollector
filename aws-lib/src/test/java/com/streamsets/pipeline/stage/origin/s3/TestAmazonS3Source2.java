@@ -26,7 +26,6 @@ import com.amazonaws.services.s3.iterable.S3Objects;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.S3ObjectSummary;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.io.Resources;
 import com.streamsets.pipeline.api.BatchMaker;
 import com.streamsets.pipeline.api.Record;
@@ -37,6 +36,8 @@ import com.streamsets.pipeline.sdk.SourceRunner;
 import com.streamsets.pipeline.sdk.StageRunner;
 import com.streamsets.pipeline.stage.common.FakeS3;
 import com.streamsets.pipeline.stage.common.TestUtil;
+import com.streamsets.pipeline.stage.lib.aws.AWSConfig;
+import com.streamsets.pipeline.stage.lib.aws.ProxyConfig;
 import com.streamsets.pipeline.stage.origin.lib.BasicConfig;
 import com.streamsets.pipeline.stage.origin.lib.DataParserFormatConfig;
 import org.junit.AfterClass;
@@ -58,18 +59,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class TestAmazonS3Source2 {
-
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
   private static String fakeS3Root;
   private static ExecutorService executorService;
   private static FakeS3 fakeS3;
   private static AmazonS3Client s3client;
   private static final String BUCKET_NAME = "mybucket2";
   private static final String POSTPROCESS_BUCKET = "post-process-bucket2";
-  private static final String POSTPROCESS_FOLDER = "post-process-folder";
+  private static final String POSTPROCESS_PREFIX = "post-process-prefix";
   private static final String ERROR_BUCKET = "error-bucket2";
-  private static final String ERROR_FOLDER = "error-folder";
+  private static final String ERROR_PREFIX = "error-prefix";
   private static int port;
 
   @BeforeClass
@@ -306,31 +304,29 @@ public class TestAmazonS3Source2 {
     s3ConfigBean.dataFormatConfig.filePatternInArchive = "*";
 
     s3ConfigBean.errorConfig = new S3ErrorConfig();
-    s3ConfigBean.errorConfig.errorHandlingOption = PostProcessingOptions.NONE;
-    s3ConfigBean.errorConfig.errorFolder = ERROR_FOLDER;
-    s3ConfigBean.errorConfig.errorBucket = ERROR_BUCKET;
+    s3ConfigBean.errorConfig.errorHandlingOption = PostProcessingOptions.ARCHIVE;
+    s3ConfigBean.errorConfig.archivingOption = S3ArchivingOption.MOVE_TO_PREFIX;
+    s3ConfigBean.errorConfig.errorPrefix = ERROR_PREFIX;
 
     s3ConfigBean.postProcessingConfig = new S3PostProcessingConfig();
     s3ConfigBean.postProcessingConfig.archivingOption = S3ArchivingOption.MOVE_TO_BUCKET;
     s3ConfigBean.postProcessingConfig.postProcessing = PostProcessingOptions.ARCHIVE;
     s3ConfigBean.postProcessingConfig.postProcessBucket = POSTPROCESS_BUCKET;
-    s3ConfigBean.postProcessingConfig.postProcessFolder = POSTPROCESS_FOLDER;
+    s3ConfigBean.postProcessingConfig.postProcessPrefix = POSTPROCESS_PREFIX;
 
     s3ConfigBean.s3FileConfig = new S3FileConfig();
     s3ConfigBean.s3FileConfig.overrunLimit = 65;
-    s3ConfigBean.s3FileConfig.filePattern = "*/*/*.log";
+    s3ConfigBean.s3FileConfig.prefixPattern = "*/*/*.log";
 
     s3ConfigBean.s3Config = new S3Config();
     s3ConfigBean.s3Config.setEndPointForTest("http://localhost:" + port);
     s3ConfigBean.s3Config.bucket = BUCKET_NAME;
-    s3ConfigBean.s3Config.accessKeyId = "foo";
-    s3ConfigBean.s3Config.secretAccessKey = "bar";
-    s3ConfigBean.s3Config.folder = "";
+    s3ConfigBean.s3Config.awsConfig = new AWSConfig();
+    s3ConfigBean.s3Config.awsConfig.awsAccessKeyId = "foo";
+    s3ConfigBean.s3Config.awsConfig.awsSecretAccessKey = "bar";
+    s3ConfigBean.s3Config.commonPrefix = "";
     s3ConfigBean.s3Config.delimiter = "/";
-
-    s3ConfigBean.advancedConfig = new S3AdvancedConfig();
-    s3ConfigBean.advancedConfig.useProxy = false;
-
+    s3ConfigBean.advancedConfig = new ProxyConfig();
     return new AmazonS3Source(s3ConfigBean);
   }
 
@@ -354,7 +350,7 @@ public class TestAmazonS3Source2 {
 
     s3ConfigBean.s3FileConfig = new S3FileConfig();
     s3ConfigBean.s3FileConfig.overrunLimit = 65;
-    s3ConfigBean.s3FileConfig.filePattern = "*/*.zip";
+    s3ConfigBean.s3FileConfig.prefixPattern = "*/*.zip";
 
     s3ConfigBean.dataFormatConfig.compression = Compression.ARCHIVE;
     s3ConfigBean.dataFormatConfig.filePatternInArchive = "*/*.log";
@@ -362,14 +358,12 @@ public class TestAmazonS3Source2 {
     s3ConfigBean.s3Config = new S3Config();
     s3ConfigBean.s3Config.setEndPointForTest("http://localhost:" + port);
     s3ConfigBean.s3Config.bucket = BUCKET_NAME;
-    s3ConfigBean.s3Config.accessKeyId = "foo";
-    s3ConfigBean.s3Config.secretAccessKey = "bar";
-    s3ConfigBean.s3Config.folder = "";
+    s3ConfigBean.s3Config.awsConfig = new AWSConfig();
+    s3ConfigBean.s3Config.awsConfig.awsAccessKeyId = "foo";
+    s3ConfigBean.s3Config.awsConfig.awsSecretAccessKey = "bar";
+    s3ConfigBean.s3Config.commonPrefix = "";
     s3ConfigBean.s3Config.delimiter = "/";
-
-    s3ConfigBean.advancedConfig = new S3AdvancedConfig();
-    s3ConfigBean.advancedConfig.useProxy = false;
-
+    s3ConfigBean.advancedConfig = new ProxyConfig();
     return new AmazonS3Source(s3ConfigBean);
   }
 
@@ -393,7 +387,7 @@ public class TestAmazonS3Source2 {
 
     s3ConfigBean.s3FileConfig = new S3FileConfig();
     s3ConfigBean.s3FileConfig.overrunLimit = 65;
-    s3ConfigBean.s3FileConfig.filePattern = "*/logArchive*.tar.gz";
+    s3ConfigBean.s3FileConfig.prefixPattern = "*/logArchive*.tar.gz";
 
     s3ConfigBean.dataFormatConfig.compression = Compression.COMPRESSED_ARCHIVE;
     s3ConfigBean.dataFormatConfig.filePatternInArchive = "*/[!.]*.log";
@@ -401,14 +395,12 @@ public class TestAmazonS3Source2 {
     s3ConfigBean.s3Config = new S3Config();
     s3ConfigBean.s3Config.setEndPointForTest("http://localhost:" + port);
     s3ConfigBean.s3Config.bucket = BUCKET_NAME;
-    s3ConfigBean.s3Config.accessKeyId = "foo";
-    s3ConfigBean.s3Config.secretAccessKey = "bar";
-    s3ConfigBean.s3Config.folder = "";
+    s3ConfigBean.s3Config.awsConfig = new AWSConfig();
+    s3ConfigBean.s3Config.awsConfig.awsAccessKeyId = "foo";
+    s3ConfigBean.s3Config.awsConfig.awsSecretAccessKey = "bar";
+    s3ConfigBean.s3Config.commonPrefix = "";
     s3ConfigBean.s3Config.delimiter = "/";
-
-    s3ConfigBean.advancedConfig = new S3AdvancedConfig();
-    s3ConfigBean.advancedConfig.useProxy = false;
-
+    s3ConfigBean.advancedConfig = new ProxyConfig();
     return new AmazonS3Source(s3ConfigBean);
   }
 
@@ -432,7 +424,7 @@ public class TestAmazonS3Source2 {
 
     s3ConfigBean.s3FileConfig = new S3FileConfig();
     s3ConfigBean.s3FileConfig.overrunLimit = 65;
-    s3ConfigBean.s3FileConfig.filePattern = "*/testAvro*.tar.gz";
+    s3ConfigBean.s3FileConfig.prefixPattern = "*/testAvro*.tar.gz";
 
     s3ConfigBean.dataFormatConfig.compression = Compression.COMPRESSED_ARCHIVE;
     s3ConfigBean.dataFormatConfig.filePatternInArchive = "[!.]*.avro";
@@ -440,14 +432,12 @@ public class TestAmazonS3Source2 {
     s3ConfigBean.s3Config = new S3Config();
     s3ConfigBean.s3Config.setEndPointForTest("http://localhost:" + port);
     s3ConfigBean.s3Config.bucket = BUCKET_NAME;
-    s3ConfigBean.s3Config.accessKeyId = "foo";
-    s3ConfigBean.s3Config.secretAccessKey = "bar";
-    s3ConfigBean.s3Config.folder = "";
+    s3ConfigBean.s3Config.awsConfig = new AWSConfig();
+    s3ConfigBean.s3Config.awsConfig.awsAccessKeyId = "foo";
+    s3ConfigBean.s3Config.awsConfig.awsSecretAccessKey = "bar";
+    s3ConfigBean.s3Config.commonPrefix = "";
     s3ConfigBean.s3Config.delimiter = "/";
-
-    s3ConfigBean.advancedConfig = new S3AdvancedConfig();
-    s3ConfigBean.advancedConfig.useProxy = false;
-
+    s3ConfigBean.advancedConfig = new ProxyConfig();
     return new AmazonS3Source(s3ConfigBean);
   }
 

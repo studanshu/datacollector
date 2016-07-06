@@ -21,22 +21,48 @@
     <p><indexterm>processors<indexterm>overview</indexterm></indexterm>The <ph
         conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/> provides
       the following processors:<ul id="ul_mxz_jxm_jq">
-        <li>Expression Evaluator - Performs calculations and appends the results to the record.</li>
+        <li>Base64 Field Decoder - Decodes Base64 encoded data to binary data.</li>
+        <li>Base64 Field Encoder - Encodes binary data using Base64.</li>
+        <li>Expression Evaluator - Performs calculations on data. Can also add or modify record
+          header attributes.</li>
         <li>Field Converter - Converts the data type of a field.</li>
-        <li>Field Hasher - Uses an algorithm to encode sensitive string data.</li>
+        <li>Field Hasher - Uses an algorithm to encode sensitive data.</li>
         <li>Field Masker - Masks sensitive string data.</li>
         <li>Field Merger - Merges fields in complex lists or maps.</li>
         <li>Field Remover - Removes fields from a record.</li>
         <li>Field Renamer - Renames fields in a record. </li>
         <li>Field Splitter - Splits the string values in a field into different fields.</li>
         <li>Geo IP- Provides geographic location information based on an IP address. </li>
+        <li>Groovy Evaluator - Processes records based on custom Groovy code.</li>
+        <li>HBase Lookup - Performs key-value lookups in HBase.</li>
+        <li>Hive Metadata - Generates Hive metadata and write information for HDFS. </li>
+        <li>HTTP Client - The HTTP Client processor sends requests to an HTTP resource URL and
+          writes the results to a field.</li>
         <li>JavaScript Evaluator - Processes records based on custom JavaScript code.  </li>
         <li>JSON Parser - Parses a JSON object embedded in a string field.</li>
         <li>Jython Evaluator - Processes records based on custom Jython code.</li>
         <li>Log Parser - Parses log data in a field based on the specified log format.</li>
         <li>Record Deduplicator - Removes duplicate records.</li>
+        <li>Redis Lookup - Performs key-value lookups in Redis.</li>
+        <li>Static Lookup - Performs key-value lookups in local memory.</li>
         <li>Stream Selector - Routes data to different streams based on conditions.</li>
         <li>Value Replacer - Replaces null values or replaces values with nulls.</li>
+        <li>XML Flattener - Flattens XML data in a string field.</li>
+        <li>XML Parser - Parses XML data in a string field. </li>
       </ul></p>
+    <p>To help create or test pipelines, you can use the following development processors:<ul
+        id="ul_c3m_m1p_qv">
+        <li>
+          <p>Dev Identity</p>
+        </li>
+        <li>
+          <p>Dev Random Error</p>
+        </li>
+        <li>
+          <p>Dev Record Creator </p>
+        </li>
+      </ul></p>
+    <p>For more information, see <xref href="../Pipeline_Design/DevStages.dita#concept_czx_ktn_ht"
+      />.</p>
   </conbody>
 </concept>

@@ -25,11 +25,15 @@ import com.streamsets.datacollector.restapi.bean.BeanHelper;
 import com.streamsets.datacollector.util.AuthzRole;
 import com.streamsets.pipeline.api.impl.Utils;
 
+import org.glassfish.jersey.client.filter.CsrfProtectionFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
+import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.Invocation;
 import javax.ws.rs.core.Response;
 
 import java.util.Map;
@@ -45,6 +49,7 @@ public class CallbackServerMetricsEventListener implements MetricsEventListener 
   private final String callbackServerURL;
   private final String sdcClusterToken;
   private final String sdcSlaveToken;
+  private final Invocation.Builder request;
 
   public CallbackServerMetricsEventListener(String user, String name, String rev,
     RuntimeInfo runtimeInfo, String callbackServerURL, String sdcClusterToken, String sdcSlaveToken) {
@@ -57,6 +62,14 @@ public class CallbackServerMetricsEventListener implements MetricsEventListener 
     this.sdcClusterToken = sdcClusterToken;
     Utils.checkNotNull(sdcSlaveToken, "SDC Slave Token");
     this.sdcSlaveToken = sdcSlaveToken;
+    SSLContext sslContext = runtimeInfo.getSSLContext();
+    Client client;
+    if (sslContext == null) {
+      client = ClientBuilder.newClient();
+    } else {
+      client = ClientBuilder.newBuilder().sslContext(sslContext).build();
+    }
+    request = client.register(new CsrfProtectionFilter("CSRF")).target(callbackServerURL).request();
   }
 
   @Override
@@ -66,21 +79,17 @@ public class CallbackServerMetricsEventListener implements MetricsEventListener 
       CallbackInfo callbackInfo =
         new CallbackInfo(user, name, rev, sdcClusterToken, sdcSlaveToken, runtimeInfo.getBaseHttpUrl(),
           authenticationToken.get(AuthzRole.ADMIN), authenticationToken.get(AuthzRole.CREATOR),
-          authenticationToken.get(AuthzRole.MANAGER), authenticationToken.get(AuthzRole.GUEST), metrics);
+          authenticationToken.get(AuthzRole.MANAGER), authenticationToken.get(AuthzRole.GUEST), metrics, runtimeInfo
+            .getId());
       if (IS_TRACE_ENABLED) {
         LOG.trace("Calling back on " + callbackServerURL + " with the sdc url of " + runtimeInfo.getBaseHttpUrl());
       }
-      Response response = ClientBuilder
-        .newClient()
-        .target(callbackServerURL)
-        .request()
-        .post(Entity.json(BeanHelper.wrapCallbackInfo(callbackInfo)));
-
+      Response response = request.post(Entity.json(BeanHelper.wrapCallbackInfo(callbackInfo)));
       if (response.getStatus() != 200) {
         throw new RuntimeException("Failed : HTTP error code : "
           + response.getStatus());
       }
-    } catch (Exception ex) {
+    } catch (Throwable ex) { //TODO - check why jersey throws the following error org.glassfish.jersey.internal.ServiceConfigurationError ( java.util.zip.ZipException: error in opening zip file)
       LOG.warn("Error while calling callback to Callback Server , {}", ex.toString(), ex);
     }
   }

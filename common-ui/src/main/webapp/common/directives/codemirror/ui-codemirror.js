@@ -5,7 +5,7 @@
  * MIT License
  *
  */
-angular.module('dataCollectorApp.codemirrorDirectives')
+angular.module('commonUI.codemirrorDirectives')
   .constant('uiCodemirrorConfig', {})
   .directive('uiCodemirror', uiCodemirrorDirective);
 
@@ -116,7 +116,9 @@ function uiCodemirrorDirective($timeout, uiCodemirrorConfig) {
       if (angular.isUndefined(value) || value === null) {
         return '';
       } else if (angular.isObject(value) || angular.isArray(value)) {
-        throw new Error('ui-codemirror cannot use an object or an array as a model');
+        //throw new Error('ui-codemirror cannot use an object or an array as a model');
+
+        return JSON.stringify(value, null, "\t");
       }
       return value;
     });
@@ -129,11 +131,11 @@ function uiCodemirrorDirective($timeout, uiCodemirrorConfig) {
       //Although the formatter have already done this, it can be possible that another formatter returns undefined (for example the required directive)
       var safeViewValue = ngModel.$viewValue;
 
-      if(safeViewValue === null || safeViewValue === undefined) {
+      if (safeViewValue === null || safeViewValue === undefined) {
         safeViewValue = '';
       }
 
-      if(dataType === 'NUMBER' && !isNaN(safeViewValue)) {
+      if (dataType === 'NUMBER' && !isNaN(safeViewValue)) {
         safeViewValue = safeViewValue + '';
       }
 
@@ -145,19 +147,28 @@ function uiCodemirrorDirective($timeout, uiCodemirrorConfig) {
     codemirror.on('change', function(instance) {
       var newValue = instance.getValue();
 
-      if(dataType !== 'STRING' && newValue) {
+      if (newValue) {
         newValue = newValue.trim();
       }
 
-      if(dataType === 'NUMBER') {
-        if(newValue === '') {
+      if (dataType === 'NUMBER') {
+        if (newValue === '') {
           newValue = 0;
-        } else if(!isNaN(newValue)) {
+        } else if (!isNaN(newValue)) {
           newValue = parseFloat(newValue);
         }
       }
 
-      if (newValue !== ngModel.$viewValue) {
+      if (dataType === 'LIST') {
+        try {
+          newValue = JSON.parse(newValue);
+        } catch (e) {
+          //In case of parse exception return with out updating model value
+          return;
+        }
+      }
+
+      if (newValue !== ngModel.$viewValue || dataType === 'LIST') {
         scope.$evalAsync(function() {
           ngModel.$setViewValue(newValue);
         });

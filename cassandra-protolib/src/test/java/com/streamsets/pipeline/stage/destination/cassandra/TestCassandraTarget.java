@@ -39,6 +39,7 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,6 +49,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.Assert.fail;
+
+@Ignore
 public class TestCassandraTarget {
   private static final Logger LOG = LoggerFactory.getLogger(TestCassandraTarget.class);
 
@@ -407,5 +411,74 @@ public class TestCassandraTarget {
     Assert.assertEquals(3, row.getInt("time"));
     Assert.assertEquals(null, row.getBytesUnsafe("x"));
     Assert.assertEquals(5.0, row.getDouble("y"), EPSILON);
+  }
+
+  @Test(expected = StageException.class)
+  public void testMalformedTableName() throws Exception {
+    List<CassandraFieldMappingConfig> fieldMappings = ImmutableList.of(
+        new CassandraFieldMappingConfig("/driver", "driver_id"),
+        new CassandraFieldMappingConfig("/trip", "trip_id"),
+        new CassandraFieldMappingConfig("/time", "time"),
+        new CassandraFieldMappingConfig("/x", "x"),
+        new CassandraFieldMappingConfig("/y", "y")
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(CassandraDTarget.class)
+        .addConfiguration("contactNodes", ImmutableList.of("localhost"))
+        .addConfiguration("useCredentials", false)
+        .addConfiguration("compression", CassandraCompressionCodec.NONE)
+        .addConfiguration("qualifiedTableName", "tablename")
+        .addConfiguration("columnNames", fieldMappings)
+        .addConfiguration("port", CASSANDRA_NATIVE_PORT)
+        .build();
+    targetRunner.runInit();
+    fail("should have thrown a StageException!");
+  }
+
+  @Test
+  public void testInternalSubBatching() throws Exception {
+    final String tableName = "test.trips";
+    List<CassandraFieldMappingConfig> fieldMappings = ImmutableList.of(
+        new CassandraFieldMappingConfig("[0]", "driver_id"),
+        new CassandraFieldMappingConfig("[1]", "trip_id"),
+        new CassandraFieldMappingConfig("[2]", "time"),
+        new CassandraFieldMappingConfig("[3]", "x"),
+        new CassandraFieldMappingConfig("[4]", "y")
+    );
+
+    TargetRunner targetRunner = new TargetRunner.Builder(CassandraDTarget.class)
+        .addConfiguration("contactNodes", ImmutableList.of("localhost"))
+        .addConfiguration("useCredentials", false)
+        .addConfiguration("compression", CassandraCompressionCodec.NONE)
+        .addConfiguration("qualifiedTableName", tableName)
+        .addConfiguration("columnNames", fieldMappings)
+        .addConfiguration("port", CASSANDRA_NATIVE_PORT)
+        .build();
+
+    List<Record> records = new ArrayList<Record>();
+    for (int i = 0; i < 70000; i++) {
+      Record record = RecordCreator.create();
+      List<Field> fields = new ArrayList<>();
+      fields.add(Field.create(i));
+      fields.add(Field.create(2));
+      fields.add(Field.create(3));
+      fields.add(Field.create(4.0));
+      fields.add(Field.create(5.0));
+      record.set(Field.create(fields));
+      records.add(record);
+    }
+    targetRunner.runInit();
+    targetRunner.runWrite(records);
+
+    // Should not be any error records.
+    Assert.assertTrue(targetRunner.getErrorRecords().isEmpty());
+    Assert.assertTrue(targetRunner.getErrors().isEmpty());
+
+    targetRunner.runDestroy();
+
+    // simple verification that there are as many records as expected
+    ResultSet resultSet = session.execute("SELECT * FROM test.trips");
+    List<Row> allRows = resultSet.all();
+    Assert.assertEquals(70000, allRows.size());
   }
 }

@@ -50,6 +50,14 @@ while test $# -gt 0; do
       shift
       exec ${BASEDIR}/libexec/_cli "$@"
       ;;
+    stagelibs)
+      shift
+      exec ${BASEDIR}/libexec/_stagelibs "$@"
+      ;;
+    show-vault-id)
+      shift
+      exec ${BASEDIR}/libexec/_show_vault_id
+      ;;
     help)
       ${PRG} --help
       exit 0
@@ -69,6 +77,10 @@ while test $# -gt 0; do
       echo "    create-dc: Creates new instance of Data Collector"
       echo ""
       echo "    cli: Data Collector CLI"
+      echo ""
+      echo "    stagelibs: Data Collector Stage library installer"
+      echo ""
+      echo "    show-vault-id: shows the user-id to authorize in Vault"
       echo ""
       exit 0
       ;;

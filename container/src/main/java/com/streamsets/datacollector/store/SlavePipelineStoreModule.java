@@ -20,8 +20,8 @@
 package com.streamsets.datacollector.store;
 
 import com.streamsets.datacollector.execution.store.SlavePipelineStateStoreModule;
-import com.streamsets.datacollector.main.RuntimeModule;
-import com.streamsets.datacollector.stagelibrary.StageLibraryModule;
+import com.streamsets.datacollector.main.SlaveRuntimeModule;
+import com.streamsets.datacollector.stagelibrary.SlaveStageLibraryModule;
 import com.streamsets.datacollector.store.impl.FilePipelineStoreTask;
 import com.streamsets.datacollector.store.impl.SlavePipelineStoreTask;
 
@@ -31,14 +31,14 @@ import dagger.Provides;
 
 import javax.inject.Singleton;
 
-@Module(injects = PipelineStoreTask.class, library = true, includes = {RuntimeModule.class, StageLibraryModule.class,
-  SlavePipelineStateStoreModule.class, LockCacheModule.class})
+@Module(injects = PipelineStoreTask.class, library = true, includes = {SlaveRuntimeModule.class, SlaveStageLibraryModule
+    .class, SlavePipelineStateStoreModule.class, LockCacheModule.class})
 public class SlavePipelineStoreModule {
 
   @Provides
   @Singleton
-  public PipelineStoreTask provideStore(FilePipelineStoreTask store) {
-    return new SlavePipelineStoreTask(store);
+  public PipelineStoreTask provideStore(FilePipelineStoreTask filePipelineStoreTask) {
+    return new SlavePipelineStoreTask(filePipelineStoreTask);
   }
 
 }

@@ -28,6 +28,9 @@ import com.streamsets.datacollector.runner.Observer;
 import com.streamsets.datacollector.runner.production.RulesConfigurationChangeRequest;
 import com.streamsets.datacollector.store.PipelineStoreException;
 import com.streamsets.datacollector.store.PipelineStoreTask;
+import com.streamsets.datacollector.util.AggregatorUtil;
+import com.streamsets.datacollector.util.Configuration;
+import com.streamsets.pipeline.api.Record;
 
 import javax.inject.Named;
 
@@ -37,18 +40,30 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 
 public class RulesConfigLoader {
 
+  private final Configuration configuration;
   private final PipelineStoreTask pipelineStoreTask;
   private final String pipelineName;
   private final String revision;
   private RuleDefinitions previousRuleDefinitions;
+  private BlockingQueue<Record> statsQueue;
 
-  public RulesConfigLoader(@Named("name") String name, @Named("rev") String rev, PipelineStoreTask pipelineStoreTask) {
+  public RulesConfigLoader(
+      @Named("name") String name,
+      @Named("rev") String rev,
+      PipelineStoreTask pipelineStoreTask,
+      Configuration configuration) {
     this.pipelineStoreTask = pipelineStoreTask;
     this.pipelineName = name;
     this.revision = rev;
+    this.configuration = configuration;
+  }
+
+  public void setStatsQueue(BlockingQueue<Record> statsQueue) {
+    this.statsQueue = statsQueue;
   }
 
   public RuleDefinitions load(Observer observer) throws InterruptedException, PipelineStoreException {
@@ -67,19 +82,22 @@ public class RulesConfigLoader {
                                                         RuleDefinitions newRuleDefinitions)
     throws InterruptedException {
     //TODO: compute, detect changes etc and upload
-    Set<String> rulesToRemove = new HashSet<>();
+    Map<String, String> rulesToRemove = new HashMap<>();
     Set<String> pipelineAlertsToRemove = new HashSet<>();
     Map<String, Integer> rulesWithSampledRecordSizeChanges = new HashMap<>();
     if (previousRuleDefinitions != null) {
       //detect rules to remove and also the rules whose 'retain sampled record size' has changed
-      detectDataRuleChanges(previousRuleDefinitions.getDataRuleDefinitions(),
-        newRuleDefinitions.getDataRuleDefinitions(), rulesToRemove, rulesWithSampledRecordSizeChanges);
+      detectDataRuleChanges(previousRuleDefinitions.getAllDataRuleDefinitions(),
+        newRuleDefinitions.getAllDataRuleDefinitions(), rulesToRemove, rulesWithSampledRecordSizeChanges);
       //detect metric rules to be removed
       detectMetricRuleChanges(previousRuleDefinitions.getMetricsRuleDefinitions(),
         newRuleDefinitions.getMetricsRuleDefinitions(), pipelineAlertsToRemove);
+    } else {
+      pushNewRulesToStatsQueue(newRuleDefinitions);
     }
+
     Map<String, List<DataRuleDefinition>> laneToDataRule = new HashMap<>();
-    for (DataRuleDefinition dataRuleDefinition : newRuleDefinitions.getDataRuleDefinitions()) {
+    for (DataRuleDefinition dataRuleDefinition : newRuleDefinitions.getAllDataRuleDefinitions()) {
       String lane = LaneResolver.getPostFixedLaneForObserver(dataRuleDefinition.getLane());
       List<DataRuleDefinition> dataRuleDefinitions = laneToDataRule.get(lane);
       if (dataRuleDefinitions == null) {
@@ -96,6 +114,25 @@ public class RulesConfigLoader {
     return rulesConfigurationChangeRequest;
   }
 
+  private void pushNewRulesToStatsQueue(RuleDefinitions newRuleDefinitions) {
+    if (isStatAggregationEnabled()) {
+      for (DataRuleDefinition d : newRuleDefinitions.getAllDataRuleDefinitions()) {
+        AggregatorUtil.enqueStatsRecord(
+          AggregatorUtil.createDataRuleChangeRecord(d),
+          statsQueue,
+          configuration
+        );
+      }
+      for (MetricsRuleDefinition m : newRuleDefinitions.getMetricsRuleDefinitions()) {
+        AggregatorUtil.enqueStatsRecord(
+          AggregatorUtil.createMetricRuleChangeRecord(m),
+          statsQueue,
+          configuration
+        );
+      }
+    }
+  }
+
   private void detectMetricRuleChanges(List<MetricsRuleDefinition> oldMetricsRuleDefinitions,
                                               List<MetricsRuleDefinition> newMetricsRuleDefinitions,
                                               Set<String> alertsToRemove) {
@@ -107,14 +144,35 @@ public class RulesConfigLoader {
             found = true;
             if(oldMetricAlertDefinition.isEnabled() && !newMetricAlertDefinition.isEnabled()) {
               alertsToRemove.add(oldMetricAlertDefinition.getMetricId());
+              if (isStatAggregationEnabled()) {
+                AggregatorUtil.enqueStatsRecord(
+                  AggregatorUtil.createMetricRuleDisabledRecord(newMetricAlertDefinition),
+                  statsQueue,
+                  configuration
+                );
+              }
             }
             if(hasAlertChanged(oldMetricAlertDefinition, newMetricAlertDefinition)) {
               alertsToRemove.add(oldMetricAlertDefinition.getMetricId());
+              if (isStatAggregationEnabled()) {
+                AggregatorUtil.enqueStatsRecord(
+                  AggregatorUtil.createMetricRuleChangeRecord(newMetricAlertDefinition),
+                  statsQueue,
+                  configuration
+                );
+              }
             }
           }
         }
         if(!found) {
           alertsToRemove.add(oldMetricAlertDefinition.getMetricId());
+          if (isStatAggregationEnabled()) {
+            AggregatorUtil.enqueStatsRecord(
+              AggregatorUtil.createMetricRuleDisabledRecord(oldMetricAlertDefinition),
+              statsQueue,
+              configuration
+            );
+          }
         }
       }
     }
@@ -122,7 +180,7 @@ public class RulesConfigLoader {
 
   private void detectDataRuleChanges(List<DataRuleDefinition> oldRuleDefinitions,
                                      List<DataRuleDefinition> newRuleDefinitions,
-                                     Set<String> rulesToRemove, Map<String, Integer> rulesToResizeSamplingRecords) {
+                                     Map<String, String> rulesToRemove, Map<String, Integer> rulesToResizeSamplingRecords) {
     if(newRuleDefinitions != null && oldRuleDefinitions != null) {
       for(DataRuleDefinition oldRuleDefinition : oldRuleDefinitions) {
         boolean found = false;
@@ -130,11 +188,25 @@ public class RulesConfigLoader {
           if(oldRuleDefinition.getId().equals(newRuleDefinition.getId())) {
             found = true;
             if(oldRuleDefinition.isEnabled() && !newRuleDefinition.isEnabled()) {
-              rulesToRemove.add(oldRuleDefinition.getId());
+              rulesToRemove.put(oldRuleDefinition.getId(), oldRuleDefinition.getLane());
+              if (isStatAggregationEnabled()) {
+                AggregatorUtil.enqueStatsRecord(
+                  AggregatorUtil.createDataRuleDisabledRecord(newRuleDefinition),
+                  statsQueue,
+                  configuration
+                );
+              }
             }
             if(hasRuleChanged(oldRuleDefinition, newRuleDefinition)) {
               if(oldRuleDefinition.isAlertEnabled() || oldRuleDefinition.isMeterEnabled()) {
-                rulesToRemove.add(oldRuleDefinition.getId());
+                rulesToRemove.put(oldRuleDefinition.getId(), oldRuleDefinition.getLane());
+                if (isStatAggregationEnabled()) {
+                  AggregatorUtil.enqueStatsRecord(
+                    AggregatorUtil.createDataRuleChangeRecord(newRuleDefinition),
+                    statsQueue,
+                    configuration
+                  );
+                }
               }
             }
             if(hasSamplingSizeChanged(oldRuleDefinition, newRuleDefinition)) {
@@ -144,7 +216,14 @@ public class RulesConfigLoader {
           }
         }
         if(!found) {
-          rulesToRemove.add(oldRuleDefinition.getId());
+          rulesToRemove.put(oldRuleDefinition.getId(), oldRuleDefinition.getLane());
+          if (isStatAggregationEnabled()) {
+            AggregatorUtil.enqueStatsRecord(
+              AggregatorUtil.createDataRuleDisabledRecord(oldRuleDefinition),
+              statsQueue,
+              configuration
+            );
+          }
         }
       }
     }
@@ -194,16 +273,20 @@ public class RulesConfigLoader {
   }
 
   private boolean areStringsSame(String lhs, String rhs) {
-    if(lhs == null && rhs != null) {
-      return false;
+    if(lhs != null) {
+      if (rhs == null) {
+        return false;
+      }
+      return lhs.equals(rhs);
     }
-    if(lhs != null && rhs == null) {
-      return false;
-    }
-    return lhs.equals(rhs);
+    return false;
   }
 
   void setPreviousRuleDefinitions(RuleDefinitions previousRuleDefinitions) {
     this.previousRuleDefinitions = previousRuleDefinitions;
+  }
+
+  private boolean isStatAggregationEnabled() {
+    return null != statsQueue;
   }
 }

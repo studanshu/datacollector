@@ -28,12 +28,13 @@ import com.streamsets.pipeline.api.Target;
 import com.streamsets.pipeline.configurablestage.DTarget;
 
 @StageDef(
-  version = 2,
+  version = 5,
   label = "Amazon S3",
   description = "Writes to Amazon S3",
   icon = "s3.png",
   privateClassLoader = true,
-  upgrader = AmazonS3TargetUpgrader.class
+  upgrader = AmazonS3TargetUpgrader.class,
+  onlineHelpRefUrl = "index.html#Destinations/AmazonS3.html#task_pxb_j3r_rt"
 )
 @ConfigGroups(Groups.class)
 @GenerateResourceBundle

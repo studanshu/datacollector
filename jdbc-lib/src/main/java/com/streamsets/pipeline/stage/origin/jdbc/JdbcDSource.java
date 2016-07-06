@@ -32,14 +32,15 @@ import com.streamsets.pipeline.lib.el.TimeEL;
 import com.streamsets.pipeline.lib.jdbc.HikariPoolConfigBean;
 
 @StageDef(
-    version = 5,
+    version = 7,
     label = "JDBC Consumer",
     description = "Reads data from a JDBC source.",
     icon = "rdbms.png",
     execution = ExecutionMode.STANDALONE,
     upgrader = JdbcSourceUpgrader.class,
     recordsByRef = true,
-    resetOffset = true
+    resetOffset = true,
+    onlineHelpRefUrl = "index.html#Origins/JDBCConsumer.html#task_ryz_tkr_bs"
 )
 @ConfigGroups(value = Groups.class)
 @GenerateResourceBundle
@@ -62,7 +63,8 @@ public class JdbcDSource extends DSource {
       type = ConfigDef.Type.TEXT,
       mode = ConfigDef.Mode.SQL,
       label = "SQL Query",
-      description = "SELECT <offset column>, ... FROM <table name> WHERE <offset column>  >  ${OFFSET} ORDER BY <offset column>",
+      description =
+          "SELECT <offset column>, ... FROM <table name> WHERE <offset column>  >  ${OFFSET} ORDER BY <offset column>",
       elDefs = {OffsetEL.class},
       evaluation = ConfigDef.Evaluation.IMPLICIT,
       displayPosition = 20,
@@ -107,7 +109,7 @@ public class JdbcDSource extends DSource {
       required = true,
       type = ConfigDef.Type.MODEL,
       defaultValue = "LIST_MAP",
-      label = "Record Type",
+      label = "Root Field Type",
       displayPosition = 130,
       group = "JDBC"
   )
@@ -123,6 +125,26 @@ public class JdbcDSource extends DSource {
       group = "JDBC"
   )
   public int maxBatchSize;
+
+  @ConfigDef(
+      required = true,
+      type = ConfigDef.Type.NUMBER,
+      defaultValue = "1000",
+      label = "Max Clob Size (Characters)",
+      displayPosition = 150,
+      group = "JDBC"
+  )
+  public int maxClobSize;
+
+  @ConfigDef(
+      required = true,
+      type = ConfigDef.Type.NUMBER,
+      defaultValue = "1000",
+      label = "Max Blob Size (Bytes)",
+      displayPosition = 151,
+      group = "JDBC"
+  )
+  public int maxBlobSize;
 
   @ConfigDef(
       required = false,
@@ -148,6 +170,31 @@ public class JdbcDSource extends DSource {
   @ConfigDefBean()
   public HikariPoolConfigBean hikariConfigBean;
 
+  @ConfigDef(
+      required = true,
+      type = ConfigDef.Type.BOOLEAN,
+      label = "Create JDBC Namespace Headers",
+      description = "Specifies whether to populate jdbc column" +
+          " specific information in the record headers under jdbc namespace",
+      defaultValue = "false",
+      displayPosition = 200,
+      group = "ADVANCED")
+  public boolean createJDBCNsHeaders = false;
+
+  @ConfigDef(
+      required = false,
+      type = ConfigDef.Type.STRING,
+      label = "JDBC Header Prefix",
+      description = "This prefix is used as a namespace to populate jdbc column specific information in headers." +
+          "For Ex: If this is a decimal column we will specify jdbc.${columnName}.scale and jdbc.${columnName}.precision",
+      defaultValue = "jdbc.",
+      displayPosition = 200,
+      group = "ADVANCED",
+      dependsOn = "createJDBCNsHeaders",
+      triggeredByValue = "true"
+  )
+  public String jdbcNsHeaderPrefix = "jdbc.";
+
   @Override
   protected Source createSource() {
     return new JdbcSource(
@@ -160,6 +207,10 @@ public class JdbcDSource extends DSource {
         txnMaxSize,
         jdbcRecordType,
         maxBatchSize,
+        maxClobSize,
+        maxBlobSize,
+        createJDBCNsHeaders,
+        jdbcNsHeaderPrefix,
         hikariConfigBean
       );
   }

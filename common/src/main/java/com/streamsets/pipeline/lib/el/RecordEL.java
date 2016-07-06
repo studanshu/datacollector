@@ -83,20 +83,37 @@ public class RecordEL {
     prefix = RECORD_EL_PREFIX,
     name = "valueOrDefault",
     description = "Returns the value of the field represented by path 'fieldPath' for the record in context or "
-      + "the default value if the field is not present")
+      + "the default value if the field is not present or if the field is null")
   public static Object getValueOrDefault(
     @ElParam("fieldPath") String fieldPath, @ElParam("defaultValue") Object defaultValue) {
     Object value = null;
     Record record = getRecordInContext();
     if (record != null) {
       Field field = record.get(fieldPath);
-      if (field != null) {
+      if (field != null && field.getValue() != null) {
         value = field.getValue();
       } else {
         value = defaultValue;
       }
     }
     return value;
+  }
+
+  @ElFunction(
+      prefix = RECORD_EL_PREFIX,
+      name = "attributeOrDefault",
+      description = "Returns the value of the attribute represented by 'attributeName' for the record in context or "
+          + "the default value if the attribute is not present or if the attribute is null")
+  public static Object getAttributeOrDefault(
+      @ElParam("attributeName") String attributeName, @ElParam("defaultValue") String defaultValue) {
+    Record record = getRecordInContext();
+    if (record != null) {
+      Object attributeValue = record.getHeader().getAttribute(attributeName);
+      if (attributeValue != null) {
+        return attributeValue;
+      }
+    }
+    return defaultValue;
   }
 
   @ElFunction(
@@ -451,6 +468,9 @@ public class RecordEL {
   @ElConstant(name = "DATE", description = "Field Type Date")
   public static Field.Type DATE = Field.Type.DATE;
 
+  @ElConstant(name = "TIME", description = "Field Type Time")
+  public static Field.Type TIME = Field.Type.TIME;
+
   @ElConstant(name = "DATETIME", description = "Field Type Date Time")
   public static Field.Type DATETIME = Field.Type.DATETIME;
 
@@ -468,6 +488,9 @@ public class RecordEL {
 
   @ElConstant(name = "MAP", description = "Field Type Map")
   public static Field.Type MAP = Field.Type.MAP;
+
+  @ElConstant(name = "LIST_MAP", description = "Field Type List-Map")
+  public static Field.Type LIST_MAP = Field.Type.LIST_MAP;
 
   @ElConstant(name = "LONG", description = "Field Type Long")
   public static Field.Type LONG = Field.Type.LONG;

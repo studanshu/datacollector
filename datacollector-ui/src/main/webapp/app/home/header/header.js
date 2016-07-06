@@ -25,8 +25,8 @@
 angular
   .module('dataCollectorApp.home')
 
-  .controller('HeaderController', function ($scope, $rootScope, $timeout, _, api, $translate,
-                                           pipelineService, pipelineConstant, $modal, $q) {
+  .controller('HeaderController', function ($scope, $rootScope, $timeout, _, api, $translate, $location, authService,
+                                           pipelineService, pipelineConstant, $modal, $q, $route) {
 
 
     var pipelineValidationInProgress = 'Validating Pipeline...',
@@ -93,6 +93,13 @@ angular
             defer.promise.then(function(previewData) {
               $rootScope.common.infoList = [];
               if(previewData.status === 'VALID') {
+                // clear previous errors if any
+                var commonErrors = $rootScope.common.errors;
+                if(commonErrors && commonErrors.length) {
+                  $rootScope.common.errors = [];
+                  $scope.refreshGraph();
+                }
+
                 $rootScope.common.successList.push({
                   message: pipelineValidationSuccess
                 });
@@ -195,7 +202,7 @@ angular
         var modalInstance = $modal.open({
           templateUrl: 'app/home/snapshot/modal/snapshotModal.tpl.html',
           controller: 'SnapshotModalInstanceController',
-          size: '',
+          size: 'lg',
           backdrop: 'static',
           resolve: {
             pipelineConfig: function () {
@@ -277,7 +284,10 @@ angular
        */
       deletePipelineConfig: function(pipelineInfo, $event) {
         $scope.trackEvent(pipelineConstant.BUTTON_CATEGORY, pipelineConstant.CLICK_ACTION, 'Delete Pipeline', 1);
-        pipelineService.deletePipelineConfigCommand(pipelineInfo, $event);
+        pipelineService.deletePipelineConfigCommand(pipelineInfo, $event)
+          .then(function(pipelines) {
+            $location.path('/');
+          });
       },
 
       /**
@@ -285,7 +295,14 @@ angular
        */
       duplicatePipelineConfig: function(pipelineInfo, $event) {
         $scope.trackEvent(pipelineConstant.BUTTON_CATEGORY, pipelineConstant.CLICK_ACTION, 'Duplicate Pipeline', 1);
-        pipelineService.duplicatePipelineConfigCommand(pipelineInfo, $event);
+        pipelineService.duplicatePipelineConfigCommand(pipelineInfo, $event)
+          .then(function(newPipelineConfig) {
+            if (!angular.isArray(newPipelineConfig)) {
+              $location.path('/collector/pipeline/' + newPipelineConfig.info.name);
+            } else {
+              $location.path('/collector/pipeline/' + newPipelineConfig[0].info.name);
+            }
+          });
       },
 
       /**
@@ -299,18 +316,45 @@ angular
       /**
        * Export link command handler
        */
-      exportPipelineConfig: function(pipelineInfo, $event) {
+      exportPipelineConfig: function(pipelineInfo, includeDefinitions, $event) {
         $scope.trackEvent(pipelineConstant.BUTTON_CATEGORY, pipelineConstant.CLICK_ACTION, 'Export Pipeline', 1);
-        api.pipelineAgent.exportPipelineConfig(pipelineInfo.name);
+        api.pipelineAgent.exportPipelineConfig(pipelineInfo.name, includeDefinitions);
+      },
+
+      publishPipeline: function (pipelineInfo, $event) {
+        $scope.trackEvent(pipelineConstant.BUTTON_CATEGORY, pipelineConstant.CLICK_ACTION, 'Publish Pipeline', 1);
+
+        pipelineService.publishPipelineCommand(pipelineInfo, $event)
+          .then(
+            function(metadata) {
+              $rootScope.common.successList.push({
+                message: 'Successfully Published Pipeline to DPM Pipeline Repository: ' +
+                authService.getRemoteBaseUrl() + ' New Pipeline Commit Version - ' + metadata['dpm.pipeline.version']
+              });
+              $scope.clearUndoRedoArchive();
+              $route.reload();
+            });
+      },
+
+      showCommitHistory: function (pipelineInfo, $event) {
+        $scope.trackEvent(pipelineConstant.BUTTON_CATEGORY, pipelineConstant.CLICK_ACTION, 'Show Commit History', 1);
+        pipelineService.showCommitHistoryCommand(pipelineInfo, $event)
+          .then(
+            function(updatedPipelineConfig) {
+              if (updatedPipelineConfig) {
+                $route.reload();
+                $rootScope.common.successList.push({
+                  message: 'Successfully Fetched Pipeline Commit Version - ' +
+                  updatedPipelineConfig.metadata['dpm.pipeline.version']
+                });
+              }
+            });
       }
     });
-
 
     $scope.$on('bodyDeleteKeyPressed', function() {
       $scope.deleteSelection();
     });
-
-
 
     /**
      * Check for Validate Config Status for every 1 seconds, once done open the snapshot view.

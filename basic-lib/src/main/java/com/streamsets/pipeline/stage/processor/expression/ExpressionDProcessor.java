@@ -1,5 +1,5 @@
 /**
- * Copyright 2015 StreamSets Inc.
+ * Copyright 2016 StreamSets Inc.
  *
  * Licensed under the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -19,10 +19,10 @@
  */
 package com.streamsets.pipeline.stage.processor.expression;
 
-import com.streamsets.pipeline.api.ListBeanModel;
 import com.streamsets.pipeline.api.ConfigDef;
 import com.streamsets.pipeline.api.ConfigGroups;
 import com.streamsets.pipeline.api.GenerateResourceBundle;
+import com.streamsets.pipeline.api.ListBeanModel;
 import com.streamsets.pipeline.api.Processor;
 import com.streamsets.pipeline.api.StageDef;
 import com.streamsets.pipeline.configurablestage.DProcessor;
@@ -34,7 +34,8 @@ import java.util.List;
     label="Expression Evaluator",
     description="Performs calculations on a field-by-field basis",
     icon="expression.png",
-    upgrader = ExpressionProcessorUpgrader.class
+    upgrader = ExpressionProcessorUpgrader.class,
+    onlineHelpRefUrl = "index.html#Processors/Expression.html#task_x2h_tv4_yq"
 )
 @ConfigGroups(Groups.class)
 @GenerateResourceBundle

@@ -23,9 +23,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.security.AccessController;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,14 +33,15 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import com.streamsets.datacollector.security.HadoopSecurityUtil;
 import com.streamsets.pipeline.cluster.Consumer;
 import com.streamsets.pipeline.cluster.ControlChannel;
 import com.streamsets.pipeline.cluster.DataChannel;
 import com.streamsets.pipeline.cluster.Producer;
-import com.streamsets.pipeline.config.CsvRecordType;
 import com.streamsets.pipeline.impl.Pair;
 
-import com.streamsets.pipeline.lib.util.DelimitedDataConstants;
+import com.streamsets.pipeline.stage.common.DefaultErrorRecordHandler;
+import com.streamsets.pipeline.stage.common.ErrorRecordHandler;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.file.FileReader;
@@ -52,7 +50,6 @@ import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
-import org.apache.avro.mapred.AvroJob;
 import org.apache.avro.mapred.FsInput;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -72,7 +69,6 @@ import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.security.authentication.util.KerberosUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,150 +84,110 @@ import com.streamsets.pipeline.api.StageException;
 import com.streamsets.pipeline.api.base.BaseSource;
 import com.streamsets.pipeline.api.impl.Utils;
 import com.streamsets.pipeline.config.CsvHeader;
-import com.streamsets.pipeline.config.CsvMode;
 import com.streamsets.pipeline.config.DataFormat;
-import com.streamsets.pipeline.config.JsonMode;
-import com.streamsets.pipeline.config.LogMode;
-import com.streamsets.pipeline.config.OnParseError;
 import com.streamsets.pipeline.lib.parser.DataParser;
 import com.streamsets.pipeline.lib.parser.DataParserException;
 import com.streamsets.pipeline.lib.parser.DataParserFactory;
-import com.streamsets.pipeline.lib.parser.DataParserFactoryBuilder;
-import com.streamsets.pipeline.lib.parser.avro.AvroDataParserFactory;
-import com.streamsets.pipeline.lib.parser.log.LogDataFormatValidator;
-import com.streamsets.pipeline.lib.parser.log.RegExConfig;
-import javax.security.auth.Subject;
 
 public class ClusterHdfsSource extends BaseSource implements OffsetCommitter, ErrorListener, ClusterSource {
+
+  public static final String DATA_FROMAT_CONFIG_BEAN_PREFIX = "clusterHDFSConfigBean.dataFormatConfig.";
+
   private static final Logger LOG = LoggerFactory.getLogger(ClusterHdfsSource.class);
   private static final int PREVIEW_SIZE = 100;
-  /** Configuration key for the input key schema. */
-  private static final String CONF_INPUT_KEY_SCHEMA = "avro.schema.input.key";
-  private String hdfsUri;
-  private final List<String> hdfsDirLocations;
   private Configuration hadoopConf;
   private final ControlChannel controlChannel;
   private final DataChannel dataChannel;
   private final Producer producer;
   private final Consumer consumer;
-  private final DataFormat dataFormat;
-  private final int textMaxLineLen;
-  private final int jsonMaxObjectLen;
-  private final LogMode logMode;
-  private final boolean retainOriginalLine;
-  private final String customLogFormat;
-  private final String regex;
-  private final List<RegExConfig> fieldPathsToGroupName;
-  private final String grokPatternDefinition;
-  private final String grokPattern;
-  private final boolean enableLog4jCustomLogFormat;
-  private final String log4jCustomLogFormat;
-  private LogDataFormatValidator logDataFormatValidator;
-  private final int logMaxObjectLen;
+  private ErrorRecordHandler errorRecordHandler;
   private DataParserFactory parserFactory;
-  private final boolean produceSingleRecordPerMessage;
-  private final Map<String, String> hdfsConfigs;
-  private final boolean hdfsKerberos;
-  private final String hdfsUser;
-  private final String hadoopConfDir;
   private UserGroupInformation loginUgi;
-  private final boolean recursive;
   private long recordsProduced;
   private final Map<String, Object> previewBuffer;
   private final CountDownLatch countDownLatch;
-  private final CsvMode csvFileFormat;
-  private final CsvHeader csvHeader;
-  private final int csvMaxObjectLen;
-  private final char csvCustomDelimiter;
-  private final char csvCustomEscape;
-  private final char csvCustomQuote;
-  private final CsvRecordType csvRecordType;
-  private final String avroSchema;
+  private final ClusterHdfsConfigBean conf;
+  private static final String CORE_SITE_XML = "core-site.xml";
+  private static final String YARN_SITE_XML = "yarn-site.xml";
+  private static final String HDFS_SITE_XML = "hdfs-site.xml";
+  private static final String MAPRED_SITE_XML = "mapred-site.xml";
 
-  public ClusterHdfsSource(String hdfsUri, List<String> hdfsDirLocations, boolean recursive, Map<String,
-    String> hdfsConfigs, DataFormat dataFormat, int textMaxLineLen, int jsonMaxObjectLen, LogMode logMode,
-    boolean retainOriginalLine, String customLogFormat, String regex,
-    List<RegExConfig> fieldPathsToGroupName, String grokPatternDefinition, String grokPattern,
-    boolean enableLog4jCustomLogFormat, String log4jCustomLogFormat, int logMaxObjectLen,
-    boolean produceSingleRecordPerMessage, boolean hdfsKerberos, String hdfsUser, String hadoopConfDir,
-    CsvMode csvFileFormat, CsvHeader csvHeader, int csvMaxObjectLen, char csvCustomDelimiter, char csvCustomEscape,
-    char csvCustomQuote, CsvRecordType csvRecordType, String avroSchema) {
+
+  public ClusterHdfsSource(ClusterHdfsConfigBean conf) {
     controlChannel = new ControlChannel();
     dataChannel = new DataChannel();
     producer = new Producer(controlChannel, dataChannel);
     consumer = new Consumer(controlChannel, dataChannel);
-    this.recursive = recursive;
-    this.hdfsConfigs = hdfsConfigs;
-    this.hdfsUri = hdfsUri;
-    this.hdfsDirLocations = hdfsDirLocations;
-    this.dataFormat = dataFormat;
-    this.textMaxLineLen = textMaxLineLen;
-    this.jsonMaxObjectLen = jsonMaxObjectLen;
-    this.logMode = logMode;
-    this.retainOriginalLine = retainOriginalLine;
-    this.customLogFormat = customLogFormat;
-    this.regex = regex;
-    this.fieldPathsToGroupName = fieldPathsToGroupName;
-    this.enableLog4jCustomLogFormat = enableLog4jCustomLogFormat;
-    this.grokPatternDefinition = grokPatternDefinition;
-    this.grokPattern = grokPattern;
-    this.log4jCustomLogFormat = log4jCustomLogFormat;
-    this.logMaxObjectLen = logMaxObjectLen;
-    this.produceSingleRecordPerMessage = produceSingleRecordPerMessage;
-    this.hdfsKerberos = hdfsKerberos;
-    this.hdfsUser = hdfsUser;
-    this.hadoopConfDir = hadoopConfDir;
     this.recordsProduced = 0;
     this.previewBuffer = new LinkedHashMap<>();
     this.countDownLatch = new CountDownLatch(1);
-    this.csvFileFormat = csvFileFormat;
-    this.csvHeader = csvHeader;
-    this.csvMaxObjectLen = csvMaxObjectLen;
-    this.csvCustomDelimiter = csvCustomDelimiter;
-    this.csvCustomEscape = csvCustomEscape;
-    this.csvCustomQuote = csvCustomQuote;
-    this.csvRecordType = csvRecordType;
-    this.avroSchema = avroSchema;
+    this.conf = conf;
   }
 
   @Override
   public List<ConfigIssue> init() {
     List<ConfigIssue> issues = super.init();
+    errorRecordHandler = new DefaultErrorRecordHandler(getContext());
+
     validateHadoopFS(issues);
     // This is for getting no of splits - no of executors
     hadoopConf.set(FileInputFormat.LIST_STATUS_NUM_THREADS, "5"); // Per Hive-on-Spark
     hadoopConf.set(FileInputFormat.SPLIT_MAXSIZE, String.valueOf(750000000)); // Per Hive-on-Spark
-    for (Map.Entry<String, String> config : hdfsConfigs.entrySet()) {
+    for (Map.Entry<String, String> config : conf.hdfsConfigs.entrySet()) {
       hadoopConf.set(config.getKey(), config.getValue());
     }
     List<Path> hdfsDirPaths = new ArrayList<>();
-    if (hdfsDirLocations == null || hdfsDirLocations.isEmpty()) {
-      issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsDirLocations", Errors.HADOOPFS_18));
+    if (conf.hdfsDirLocations == null || conf.hdfsDirLocations.isEmpty()) {
+      issues.add(
+          getContext().createConfigIssue(
+              Groups.HADOOP_FS.name(),
+              ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsDirLocations",
+              Errors.HADOOPFS_18
+          )
+      );
     } else if (issues.isEmpty()) {
-      for (String hdfsDirLocation : hdfsDirLocations) {
+      for (String hdfsDirLocation : conf.hdfsDirLocations) {
         try {
           FileSystem fs = getFileSystemForInitDestroy();
           Path ph = fs.makeQualified(new Path(hdfsDirLocation));
           hdfsDirPaths.add(ph);
           if (!fs.exists(ph)) {
-            issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsDirLocations", Errors.HADOOPFS_10,
-              hdfsDirLocation));
+            issues.add(
+                getContext().createConfigIssue(
+                    Groups.HADOOP_FS.name(),
+                    ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsDirLocations",
+                    Errors.HADOOPFS_10,
+                    hdfsDirLocation
+                )
+            );
           } else if (!fs.getFileStatus(ph).isDirectory()) {
-            issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsDirLocations", Errors.HADOOPFS_15,
-              hdfsDirLocation));
+            issues.add(
+                getContext().createConfigIssue(
+                    Groups.HADOOP_FS.name(),
+                    ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsDirLocations",
+                    Errors.HADOOPFS_15,
+                    hdfsDirLocation
+                )
+            );
           } else {
             try {
               FileStatus[] files = fs.listStatus(ph);
               if (files == null || files.length == 0) {
-                issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsDirLocations", Errors.HADOOPFS_16,
-                  hdfsDirLocation));
+                issues.add(
+                    getContext().createConfigIssue(
+                        Groups.HADOOP_FS.name(),
+                        ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsDirLocations",
+                        Errors.HADOOPFS_16,
+                        hdfsDirLocation
+                    )
+                );
               } else if (getContext().isPreview() && previewBuffer.size() < PREVIEW_SIZE) {
                 for (FileStatus fileStatus : files) {
                   if (fileStatus.isFile()) {
                     String path = fileStatus.getPath().toString();
                     try {
                       List<Map.Entry> buffer;
-                      if (dataFormat == DataFormat.AVRO) {
+                      if (conf.dataFormat == DataFormat.AVRO) {
                         buffer = previewAvroBatch(fileStatus, PREVIEW_SIZE);
                       } else {
                         buffer = previewTextBatch(fileStatus, PREVIEW_SIZE);
@@ -244,60 +200,67 @@ public class ClusterHdfsSource extends BaseSource implements OffsetCommitter, Er
                     } catch (IOException | InterruptedException ex) {
                       String msg = "Error opening " + path + ": " + ex;
                       LOG.info(msg, ex);
-                      issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsDirLocations", Errors.HADOOPFS_16,
-                        fileStatus.getPath()));
+                      issues.add(
+                          getContext().createConfigIssue(
+                              Groups.HADOOP_FS.name(),
+                              ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsDirLocations",
+                              Errors.HADOOPFS_16,
+                              fileStatus.getPath()
+                          )
+                      );
                     }
                   }
                 }
               }
             } catch (IOException ex) {
-              issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsDirLocations", Errors.HADOOPFS_09,
-                hdfsDirLocation, ex.toString(), ex));
+              issues.add(
+                  getContext().createConfigIssue(
+                      Groups.HADOOP_FS.name(),
+                      ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsDirLocations",
+                      Errors.HADOOPFS_09,
+                      hdfsDirLocation,
+                      ex.toString(),
+                      ex
+                  )
+              );
             }
           }
         } catch (IOException ioe) {
           LOG.warn("Error connecting to HDFS filesystem: " + ioe, ioe);
-          issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsDirLocations", Errors.HADOOPFS_11,
-            hdfsDirLocation, ioe.toString(), ioe));
+          issues.add(
+              getContext().createConfigIssue(
+                  Groups.HADOOP_FS.name(),
+                  ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsDirLocations",
+                  Errors.HADOOPFS_11,
+                  hdfsDirLocation,
+                  ioe.toString(),
+                  ioe
+              )
+          );
         }
       }
     }
     hadoopConf.set(FileInputFormat.INPUT_DIR, StringUtils.join(hdfsDirPaths, ","));
-    hadoopConf.set(FileInputFormat.INPUT_DIR_RECURSIVE, Boolean.toString(recursive));
-    switch (dataFormat) {
-      case JSON:
-        if (jsonMaxObjectLen < 1) {
-          issues.add(getContext().createConfigIssue(Groups.JSON.name(), "jsonMaxObjectLen", Errors.HADOOPFS_04));
-        }
-        break;
-      case TEXT:
-        if (textMaxLineLen < 1) {
-          issues.add(getContext().createConfigIssue(Groups.TEXT.name(), "textMaxLineLen", Errors.HADOOPFS_05));
-        }
-        break;
-      case LOG:
-        logDataFormatValidator = new LogDataFormatValidator(logMode, logMaxObjectLen, retainOriginalLine,
-                                                            customLogFormat, regex, grokPatternDefinition, grokPattern,
-                                                            enableLog4jCustomLogFormat, log4jCustomLogFormat,
-                                                            OnParseError.ERROR, 0, Groups.LOG.name(),
-                                                            getFieldPathToGroupMap(fieldPathsToGroupName));
-        logDataFormatValidator.validateLogFormatConfig(issues, getContext());
-        break;
-      case DELIMITED:
-        if (csvMaxObjectLen < 1) {
-          issues.add(getContext().createConfigIssue(Groups.DELIMITED.name(), "csvMaxObjectLen", Errors.HADOOPFS_30));
-        }
-        break;
-      case AVRO:
-        if (avroSchema != null && !avroSchema.isEmpty()) {
-          hadoopConf.set(AvroJob.INPUT_SCHEMA, avroSchema);
-          hadoopConf.set(CONF_INPUT_KEY_SCHEMA, avroSchema);
-        }
-        break;
-      default:
-        issues.add(getContext().createConfigIssue(Groups.LOG.name(), "dataFormat", Errors.HADOOPFS_06, dataFormat));
+    hadoopConf.set(FileInputFormat.INPUT_DIR_RECURSIVE, Boolean.toString(conf.recursive));
+
+    // CsvHeader.IGNORE_HEADER must be overridden to CsvHeader.NO_HEADER prior to building the parser.
+    // But it must be set back to the original value for the produce() method.
+    CsvHeader originalCsvHeader = conf.dataFormatConfig.csvHeader;
+    if (originalCsvHeader != null && originalCsvHeader == CsvHeader.IGNORE_HEADER) {
+      conf.dataFormatConfig.csvHeader = CsvHeader.NO_HEADER;
+
     }
-    validateParserFactoryConfigs(issues);
+    conf.dataFormatConfig.init(
+        getContext(),
+        conf.dataFormat,
+        Groups.HADOOP_FS.name(),
+        DATA_FROMAT_CONFIG_BEAN_PREFIX,
+        issues
+    );
+    conf.dataFormatConfig.csvHeader = originalCsvHeader;
+
+    parserFactory = conf.dataFormatConfig.getParserFactory();
+
     LOG.info("Issues: " + issues);
     return issues;
   }
@@ -305,15 +268,26 @@ public class ClusterHdfsSource extends BaseSource implements OffsetCommitter, Er
   private List<Map.Entry> previewTextBatch(FileStatus fileStatus, int batchSize)
     throws IOException, InterruptedException {
     TextInputFormat textInputFormat = new TextInputFormat();
-    InputSplit fileSplit = new FileSplit(fileStatus.getPath(), 0, fileStatus.getLen(), null);
+    long fileLength = fileStatus.getLen();
+    List<Map.Entry> batch = new ArrayList<>();
+    Path filePath = fileStatus.getPath();
+    // MR allows file length to be 0 for text data (not for avro)
+    if (fileLength == 0) {
+      LOG.info("File length is 0 for " + filePath);
+      return batch;
+    }
+    // Hadoop does unsafe casting from long to int, so split length should not be greater than int
+    // max value
+    long splitLength = (fileLength < Integer.MAX_VALUE) ? fileLength: Integer.MAX_VALUE;
+    InputSplit fileSplit = new FileSplit(filePath, 0, splitLength, null);
     TaskAttemptContext taskAttemptContext = new TaskAttemptContextImpl(hadoopConf,
       TaskAttemptID.forName("attempt_1439420318532_0011_m_000000_0"));
     RecordReader<LongWritable, Text> recordReader = textInputFormat.createRecordReader(fileSplit, taskAttemptContext);
     recordReader.initialize(fileSplit, taskAttemptContext);
     boolean hasNext = recordReader.nextKeyValue();
-    List<Map.Entry> batch = new ArrayList<>();
+
     while (hasNext && batch.size() < batchSize) {
-      batch.add(new Pair(fileStatus.getPath().toUri().getPath() + "::" + recordReader.getCurrentKey(),
+      batch.add(new Pair(filePath.toUri().getPath() + "::" + recordReader.getCurrentKey(),
         String.valueOf(recordReader.getCurrentValue())));
       hasNext = recordReader.nextKeyValue(); // not like iterator.hasNext, actually advances
     }
@@ -321,7 +295,8 @@ public class ClusterHdfsSource extends BaseSource implements OffsetCommitter, Er
   }
 
   private List<Map.Entry> previewAvroBatch(FileStatus fileStatus, int batchSize) throws IOException, InterruptedException {
-    SeekableInput input = new FsInput(fileStatus.getPath(), hadoopConf);
+    Path filePath = fileStatus.getPath();
+    SeekableInput input = new FsInput(filePath, hadoopConf);
     DatumReader<GenericRecord> reader = new GenericDatumReader<>();
     FileReader<GenericRecord> fileReader = DataFileReader.openReader(input, reader);
     List<Map.Entry> batch = new ArrayList<>();
@@ -335,7 +310,7 @@ public class ClusterHdfsSource extends BaseSource implements OffsetCommitter, Er
       dataFileWriter.append(datum);
       dataFileWriter.close();
       out.close();
-      batch.add(new Pair(fileStatus.getPath().toUri().getPath() + "::" + count, out.toByteArray()));
+      batch.add(new Pair(filePath.toUri().getPath() + "::" + count, out.toByteArray()));
       count++;
     }
     return batch;
@@ -347,73 +322,151 @@ public class ClusterHdfsSource extends BaseSource implements OffsetCommitter, Er
   }
 
   Configuration getHadoopConfiguration(List<ConfigIssue> issues) {
-    Configuration conf = new Configuration();
-    if (hdfsKerberos) {
-      conf.set(CommonConfigurationKeys.HADOOP_SECURITY_AUTHENTICATION,
+    Configuration hadoopConf = new Configuration();
+    if (conf.hdfsKerberos) {
+      hadoopConf.set(CommonConfigurationKeys.HADOOP_SECURITY_AUTHENTICATION,
         UserGroupInformation.AuthenticationMethod.KERBEROS.name());
       try {
-        conf.set(DFSConfigKeys.DFS_NAMENODE_USER_NAME_KEY, "hdfs/_HOST@" + KerberosUtil.getDefaultRealm());
+        hadoopConf.set(DFSConfigKeys.DFS_NAMENODE_USER_NAME_KEY, "hdfs/_HOST@" + HadoopSecurityUtil.getDefaultRealm());
       } catch (Exception ex) {
-        if (!hdfsConfigs.containsKey(DFSConfigKeys.DFS_NAMENODE_USER_NAME_KEY)) {
+        if (!conf.hdfsConfigs.containsKey(DFSConfigKeys.DFS_NAMENODE_USER_NAME_KEY)) {
           issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), null, Errors.HADOOPFS_28,
             ex.getMessage()));
         }
       }
     }
-    if (hadoopConfDir != null && !hadoopConfDir.isEmpty()) {
-      File hadoopConfigDir = new File(hadoopConfDir);
+    if (conf.hdfsConfDir != null && !conf.hdfsConfDir.isEmpty()) {
+      File hadoopConfigDir = new File(conf.hdfsConfDir);
       if (hadoopConfigDir.isAbsolute()) {
         // Do not allow absolute hadoop config directory in cluster mode
-        issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hadoopConfDir", Errors.HADOOPFS_29,
-          hadoopConfDir));
+        issues.add(
+            getContext().createConfigIssue(
+                Groups.HADOOP_FS.name(),
+                ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hadoopConfDir",
+                Errors.HADOOPFS_29,
+                conf.hdfsConfDir
+            )
+        );
       } else {
-        hadoopConfigDir = new File(getContext().getResourcesDirectory(), hadoopConfDir).getAbsoluteFile();
+        hadoopConfigDir = new File(getContext().getResourcesDirectory(), conf.hdfsConfDir).getAbsoluteFile();
       }
       if (!hadoopConfigDir.exists()) {
-        issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsConfDir", Errors.HADOOPFS_25,
-          hadoopConfigDir.getPath()));
+        issues.add(
+            getContext().createConfigIssue(
+                Groups.HADOOP_FS.name(),
+                ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsConfDir",
+                Errors.HADOOPFS_25,
+                hadoopConfigDir.getPath()
+            )
+        );
       } else if (!hadoopConfigDir.isDirectory()) {
-        issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsConfDir", Errors.HADOOPFS_26,
-          hadoopConfigDir.getPath()));
+        issues.add(
+            getContext().createConfigIssue(
+                Groups.HADOOP_FS.name(),
+                ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsConfDir",
+                Errors.HADOOPFS_26,
+                hadoopConfigDir.getPath()
+            )
+        );
       } else {
-        File coreSite = new File(hadoopConfigDir, "core-site.xml");
+        File coreSite = new File(hadoopConfigDir, CORE_SITE_XML);
         if (coreSite.exists()) {
           if (!coreSite.isFile()) {
-            issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsConfDir", Errors.HADOOPFS_27,
-              coreSite.getPath()));
+            issues.add(
+                getContext().createConfigIssue(
+                    Groups.HADOOP_FS.name(),
+                    ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsConfDir",
+                    Errors.HADOOPFS_27,
+                    coreSite.getPath()
+                )
+            );
           }
-          conf.addResource(new Path(coreSite.getAbsolutePath()));
+          hadoopConf.addResource(new Path(coreSite.getAbsolutePath()));
+        } else {
+          issues.add(
+            getContext().createConfigIssue(
+                Groups.HADOOP_FS.name(),
+                ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsConfDir",
+                Errors.HADOOPFS_30,
+                CORE_SITE_XML
+            )
+          );
         }
-        File hdfsSite = new File(hadoopConfigDir, "hdfs-site.xml");
+        File hdfsSite = new File(hadoopConfigDir, HDFS_SITE_XML);
         if (hdfsSite.exists()) {
           if (!hdfsSite.isFile()) {
-            issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsConfDir", Errors.HADOOPFS_27,
-              hdfsSite.getPath()));
+            issues.add(
+                getContext().createConfigIssue(
+                    Groups.HADOOP_FS.name(),
+                    ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsConfDir",
+                    Errors.HADOOPFS_27,
+                    hdfsSite.getPath()
+                )
+            );
           }
-          conf.addResource(new Path(hdfsSite.getAbsolutePath()));
+          hadoopConf.addResource(new Path(hdfsSite.getAbsolutePath()));
+        } else {
+          issues.add(
+            getContext().createConfigIssue(
+                Groups.HADOOP_FS.name(),
+                ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsConfDir",
+                Errors.HADOOPFS_30,
+                HDFS_SITE_XML
+            )
+          );
         }
-        File yarnSite = new File(hadoopConfigDir, "yarn-site.xml");
+        File yarnSite = new File(hadoopConfigDir, YARN_SITE_XML);
         if (yarnSite.exists()) {
           if (!yarnSite.isFile()) {
-            issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsConfDir", Errors.HADOOPFS_27,
-              yarnSite.getPath()));
+            issues.add(
+                getContext().createConfigIssue(
+                    Groups.HADOOP_FS.name(),
+                    ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsConfDir",
+                    Errors.HADOOPFS_27,
+                    yarnSite.getPath()
+                )
+            );
           }
-          conf.addResource(new Path(yarnSite.getAbsolutePath()));
+          hadoopConf.addResource(new Path(yarnSite.getAbsolutePath()));
+        } else {
+          issues.add(
+            getContext().createConfigIssue(
+                Groups.HADOOP_FS.name(),
+                ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsConfDir",
+                Errors.HADOOPFS_30,
+                YARN_SITE_XML
+            )
+          );
         }
-        File mapredSite = new File(hadoopConfigDir, "mapred-site.xml");
+        File mapredSite = new File(hadoopConfigDir, MAPRED_SITE_XML);
         if (mapredSite.exists()) {
           if (!mapredSite.isFile()) {
-            issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsConfDir", Errors.HADOOPFS_27,
-              mapredSite.getPath()));
+            issues.add(
+                getContext().createConfigIssue(
+                    Groups.HADOOP_FS.name(),
+                    ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsConfDir",
+                    Errors.HADOOPFS_27,
+                    mapredSite.getPath()
+                )
+            );
           }
-          conf.addResource(new Path(mapredSite.getAbsolutePath()));
+          hadoopConf.addResource(new Path(mapredSite.getAbsolutePath()));
+        } else {
+          issues.add(
+            getContext().createConfigIssue(
+                Groups.HADOOP_FS.name(),
+                ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsConfDir",
+                Errors.HADOOPFS_30,
+                MAPRED_SITE_XML
+            )
+          );
         }
       }
     }
-    for (Map.Entry<String, String> config : hdfsConfigs.entrySet()) {
-      conf.set(config.getKey(), config.getValue());
+    for (Map.Entry<String, String> config : conf.hdfsConfigs.entrySet()) {
+      hadoopConf.set(config.getKey(), config.getValue());
     }
-    return conf;
+    return hadoopConf;
   }
 
 
@@ -421,57 +474,88 @@ public class ClusterHdfsSource extends BaseSource implements OffsetCommitter, Er
     boolean validHapoopFsUri = true;
     hadoopConf = getHadoopConfiguration(issues);
     String hdfsUriInConf;
-    if (hdfsUri != null && !hdfsUri.isEmpty()) {
-      hadoopConf.set(CommonConfigurationKeys.FS_DEFAULT_NAME_KEY, hdfsUri);
+    if (conf.hdfsUri != null && !conf.hdfsUri.isEmpty()) {
+      hadoopConf.set(CommonConfigurationKeys.FS_DEFAULT_NAME_KEY, conf.hdfsUri);
     } else {
       hdfsUriInConf = hadoopConf.get(CommonConfigurationKeys.FS_DEFAULT_NAME_KEY);
       if (hdfsUriInConf == null) {
-        issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsUri", Errors.HADOOPFS_19));
+        issues.add(
+            getContext().createConfigIssue(
+                Groups.HADOOP_FS.name(),
+                ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsUri",
+                Errors.HADOOPFS_19
+            )
+        );
         return;
       } else {
-        hdfsUri = hdfsUriInConf;
+        conf.hdfsUri = hdfsUriInConf;
       }
     }
-    if (hdfsUri.contains("://")) {
+    if (conf.hdfsUri.contains("://")) {
       try {
-        URI uri = new URI(hdfsUri);
+        URI uri = new URI(conf.hdfsUri);
         if (!"hdfs".equals(uri.getScheme())) {
-          issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsUri", Errors.HADOOPFS_12, hdfsUri,
-            uri.getScheme()));
+          issues.add(
+              getContext().createConfigIssue(
+                  Groups.HADOOP_FS.name(),
+                  ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsUri",
+                  Errors.HADOOPFS_12,
+                  conf.hdfsUri,
+                  uri.getScheme()
+              )
+          );
           validHapoopFsUri = false;
         } else if (uri.getAuthority() == null) {
-          issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsUri", Errors.HADOOPFS_13, hdfsUri));
+          issues.add(
+              getContext().createConfigIssue(
+                  Groups.HADOOP_FS.name(),
+                  ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsUri",
+                  Errors.HADOOPFS_13,
+                  conf.hdfsUri
+              )
+          );
           validHapoopFsUri = false;
         }
       } catch (Exception ex) {
-        issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsUri", Errors.HADOOPFS_22, hdfsUri,
-          ex.getMessage(), ex));
+        issues.add(
+            getContext().createConfigIssue(
+                Groups.HADOOP_FS.name(),
+                ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsUri",
+                Errors.HADOOPFS_22,
+                conf.hdfsUri,
+                ex.getMessage(),
+                ex
+            )
+        );
         validHapoopFsUri = false;
       }
     } else {
-      issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsUri", Errors.HADOOPFS_02, hdfsUri));
+      issues.add(
+          getContext().createConfigIssue(
+              Groups.HADOOP_FS.name(),
+              ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsUri",
+              Errors.HADOOPFS_02,
+              conf.hdfsUri
+          )
+      );
       validHapoopFsUri = false;
     }
 
     StringBuilder logMessage = new StringBuilder();
     try {
-      // forcing UGI to initialize with the security settings from the stage
-      UserGroupInformation.setConfiguration(hadoopConf);
-      Subject subject = Subject.getSubject(AccessController.getContext());
-      if (UserGroupInformation.isSecurityEnabled()) {
-        loginUgi = UserGroupInformation.getUGIFromSubject(subject);
-      } else {
-        UserGroupInformation.loginUserFromSubject(subject);
-        loginUgi = UserGroupInformation.getLoginUser();
-      }
-      LOG.info("Subject = {}, Principals = {}, Login UGI = {}", subject,
-        subject == null ? "null" : subject.getPrincipals(), loginUgi);
-      if (hdfsKerberos) {
+      loginUgi = HadoopSecurityUtil.getLoginUser(hadoopConf);
+      if (conf.hdfsKerberos) {
         logMessage.append("Using Kerberos");
         if (loginUgi.getAuthenticationMethod() != UserGroupInformation.AuthenticationMethod.KERBEROS) {
-          issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), "hdfsKerberos", Errors.HADOOPFS_00,
-            loginUgi.getAuthenticationMethod(),
-            UserGroupInformation.AuthenticationMethod.KERBEROS));
+          issues.add(
+              getContext().createConfigIssue(
+                  Groups.HADOOP_FS.name(),
+                  ClusterHdfsConfigBean.CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "hdfsKerberos",
+                  Errors.HADOOPFS_00,
+                  loginUgi.getAuthenticationMethod(),
+                  UserGroupInformation.AuthenticationMethod.KERBEROS
+              )
+          );
         }
       } else {
         logMessage.append("Using Simple");
@@ -490,8 +574,16 @@ public class ClusterHdfsSource extends BaseSource implements OffsetCommitter, Er
       }
     } catch (Exception ex) {
       LOG.info("Error connecting to FileSystem: " + ex, ex);
-      issues.add(getContext().createConfigIssue(Groups.HADOOP_FS.name(), null, Errors.HADOOPFS_11, hdfsUri,
-        String.valueOf(ex), ex));
+      issues.add(
+          getContext().createConfigIssue(
+              Groups.HADOOP_FS.name(),
+              null,
+              Errors.HADOOPFS_11,
+              conf.hdfsUri,
+              String.valueOf(ex),
+              ex
+          )
+      );
     }
     LOG.info("Authentication Config: " + logMessage);
   }
@@ -501,7 +593,7 @@ public class ClusterHdfsSource extends BaseSource implements OffsetCommitter, Er
       return getUGI().doAs(new PrivilegedExceptionAction<FileSystem>() {
         @Override
         public FileSystem run() throws Exception {
-          return FileSystem.get(new URI(hdfsUri), hadoopConf);
+          return FileSystem.get(new URI(conf.hdfsUri), hadoopConf);
         }
       });
     } catch (IOException ex) {
@@ -512,41 +604,8 @@ public class ClusterHdfsSource extends BaseSource implements OffsetCommitter, Er
   }
 
   private UserGroupInformation getUGI() {
-    return (hdfsUser == null || hdfsUser.isEmpty()) ? loginUgi : UserGroupInformation.createProxyUser(hdfsUser, loginUgi);
-  }
-
-  private void validateParserFactoryConfigs(List<ConfigIssue> issues) {
-    DataParserFactoryBuilder builder = new DataParserFactoryBuilder(getContext(), dataFormat.getParserFormat())
-      .setCharset(Charset.defaultCharset());
-
-    // TextInputFormat supports Hadoop Text class which is Standard UTF-8
-    builder.setCharset(StandardCharsets.UTF_8);
-
-    switch (dataFormat) {
-      case DELIMITED:
-        builder.setMaxDataLen(csvMaxObjectLen).setMode(csvFileFormat)
-          .setMode((csvHeader == CsvHeader.IGNORE_HEADER) ? CsvHeader.NO_HEADER: csvHeader)
-          .setMode(csvRecordType)
-          .setConfig(DelimitedDataConstants.DELIMITER_CONFIG, csvCustomDelimiter)
-          .setConfig(DelimitedDataConstants.ESCAPE_CONFIG, csvCustomEscape)
-          .setConfig(DelimitedDataConstants.QUOTE_CONFIG, csvCustomQuote);
-        break;
-      case TEXT:
-        builder.setMaxDataLen(textMaxLineLen);
-        break;
-      case JSON:
-        builder.setMode(JsonMode.MULTIPLE_OBJECTS);
-        builder.setMaxDataLen(jsonMaxObjectLen);
-        break;
-      case LOG:
-        logDataFormatValidator.populateBuilder(builder);
-        break;
-      case AVRO:
-        builder.setMaxDataLen(Integer.MAX_VALUE).setConfig(AvroDataParserFactory.SCHEMA_KEY, avroSchema)
-        .setConfig(AvroDataParserFactory.SCHEMA_IN_MESSAGE_KEY, true);
-        break;
-    }
-    parserFactory = builder.build();
+    return (conf.hdfsUser == null || conf.hdfsUser.isEmpty()) ?
+        loginUgi : HadoopSecurityUtil.getProxyUser(conf.hdfsUser, loginUgi);
   }
 
   @Override
@@ -556,20 +615,19 @@ public class ClusterHdfsSource extends BaseSource implements OffsetCommitter, Er
       // we support text and csv today
       List<Map.Entry> records = new ArrayList<>();
       int count = 0;
-      Iterator<String> keys = previewBuffer.keySet().iterator();
+      Iterator<Map.Entry<String, Object>> keys = previewBuffer.entrySet().iterator();
       while (count < maxBatchSize && count < previewBuffer.size() && keys.hasNext()) {
-        String key =  keys.next();
-        String[] keyParts = key.split("::");
-        if (count == 0 && DataFormat.DELIMITED == dataFormat && CsvHeader.NO_HEADER != csvHeader
-          && keyParts.length > 1 && keyParts[1].equals("0")) {
+        Map.Entry<String, Object> entry =  keys.next();
+        String[] keyParts = entry.getKey().split("::");
+        if (count == 0 && DataFormat.DELIMITED == conf.dataFormat &&
+            CsvHeader.NO_HEADER != conf.dataFormatConfig.csvHeader &&
+            keyParts.length > 1 && keyParts[1].equals("0")) {
           // add header
-          if (CsvHeader.WITH_HEADER == csvHeader) {
-            records.add(new Pair(previewBuffer.get(key), null));
-          } else if (CsvHeader.IGNORE_HEADER == csvHeader) {
-            // this record will be ignored - don't increment the count
+          if (CsvHeader.WITH_HEADER == conf.dataFormatConfig.csvHeader) {
+            records.add(new Pair(entry.getValue(), null));
           }
         } else {
-          records.add(new Pair(key, previewBuffer.get(key)));
+          records.add(new Pair(entry.getKey(), entry.getValue()));
           count++;
         }
 
@@ -589,10 +647,10 @@ public class ClusterHdfsSource extends BaseSource implements OffsetCommitter, Er
       count++;
       messageId = String.valueOf(message.getKey());
       List<Record> listRecords = null;
-      if (dataFormat == DataFormat.TEXT) {
+      if (conf.dataFormat == DataFormat.TEXT) {
         listRecords = processMessage(messageId, message.getValue());
-      } else if (dataFormat == DataFormat.DELIMITED) {
-        switch (csvHeader) {
+      } else if (conf.dataFormat == DataFormat.DELIMITED) {
+        switch (conf.dataFormatConfig.csvHeader) {
           case IGNORE_HEADER:
             // ignore header by skipping this header string
             // [1] - startOffset - [2] - contextKey
@@ -613,14 +671,14 @@ public class ClusterHdfsSource extends BaseSource implements OffsetCommitter, Er
             }
             break;
           default:
-            String msg = Utils.format("Unrecognized header: '{}'", csvHeader);
+            String msg = Utils.format("Unrecognized header: '{}'", conf.dataFormatConfig.csvHeader);
             LOG.warn(msg);
             throw new IllegalStateException(msg);
         }
-      } else if (dataFormat == DataFormat.AVRO) {
+      } else if (conf.dataFormat == DataFormat.AVRO) {
         listRecords = processMessage(messageId, message.getValue());
       } else {
-        throw new IllegalStateException(Utils.format("Unrecognized data format: '{}'", dataFormat));
+        throw new IllegalStateException(Utils.format("Unrecognized data format: '{}'", conf.dataFormat));
       }
       if (listRecords != null) {
         for (Record record : listRecords) {
@@ -637,7 +695,7 @@ public class ClusterHdfsSource extends BaseSource implements OffsetCommitter, Er
 
   protected List<Record> processMessage(String messageId, Object message) throws StageException {
     List<Record> records = new ArrayList<>();
-    if (dataFormat == DataFormat.AVRO) {
+    if (conf.dataFormat == DataFormat.AVRO) {
       try (DataParser parser = parserFactory.getParser(messageId, (byte[]) message)) {
         Record record = parser.parse();
         if (record != null) {
@@ -645,7 +703,7 @@ public class ClusterHdfsSource extends BaseSource implements OffsetCommitter, Er
         }
       } catch (IOException | DataParserException ex) {
         LOG.debug("Got exception: '{}'", ex, ex);
-        handleException(messageId, ex);
+        errorRecordHandler.onError(Errors.HADOOPFS_08, messageId, ex.toString(), ex);
       }
     } else {
       try (DataParser parser = parserFactory.getParser(messageId, String.valueOf(message))) {
@@ -656,10 +714,10 @@ public class ClusterHdfsSource extends BaseSource implements OffsetCommitter, Er
         }
       } catch (IOException | DataParserException ex) {
         LOG.debug("Got exception: '{}'", ex, ex);
-        handleException(messageId, ex);
+        errorRecordHandler.onError(Errors.HADOOPFS_08, messageId, ex.toString(), ex);
       }
     }
-    if (produceSingleRecordPerMessage) {
+    if (conf.produceSingleRecordPerMessage) {
       List<Field> list = new ArrayList<>();
       for (Record record : records) {
         list.add(record.get());
@@ -719,39 +777,8 @@ public class ClusterHdfsSource extends BaseSource implements OffsetCommitter, Er
     }
   }
 
-
-  private Map<String, Integer> getFieldPathToGroupMap(List<RegExConfig> fieldPathsToGroupName) {
-    if(fieldPathsToGroupName == null) {
-      return new HashMap<>();
-    }
-    Map<String, Integer> fieldPathToGroup = new HashMap<>();
-    for(RegExConfig r : fieldPathsToGroupName) {
-      fieldPathToGroup.put(r.fieldPath, r.group);
-    }
-    return fieldPathToGroup;
-  }
-
-  private void handleException(String messageId, Exception ex) throws StageException {
-    switch (getContext().getOnErrorRecord()) {
-      case DISCARD:
-        break;
-      case TO_ERROR:
-        getContext().reportError(Errors.HADOOPFS_08, messageId, ex.toString(), ex);
-        break;
-      case STOP_PIPELINE:
-        if (ex instanceof StageException) {
-          throw (StageException) ex;
-        } else {
-          throw new StageException(Errors.HADOOPFS_08, messageId, ex.toString(), ex);
-        }
-      default:
-        throw new IllegalStateException(Utils.format("Unknown OnError value '{}'",
-          getContext().getOnErrorRecord(), ex));
-    }
-  }
-
   @Override
-  public int getParallelism() throws IOException {
+  public int getParallelism() {
     return 1; // not used as MR calculates splits
   }
 

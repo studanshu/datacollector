@@ -22,7 +22,7 @@
  * Directive for resize
  */
 
-angular.module('dataCollectorApp.commonDirectives')
+angular.module('commonUI.commonDirectives')
   .directive('resize', function ($window) {
     return function (scope, element) {
       var w = angular.element($window);

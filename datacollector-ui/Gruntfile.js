@@ -119,6 +119,7 @@ module.exports = function(grunt) {
         'bower_components/codemirror/mode/clike/clike.js',
         'bower_components/codemirror/mode/python/python.js',
         'bower_components/codemirror/mode/ruby/ruby.js',
+        'bower_components/codemirror/mode/groovy/groovy.js',
         'bower_components/codemirror/mode/javascript/javascript.js',
         'bower_components/codemirror/mode/sql/sql.js',
         'bower_components/codemirror/mode/xml/xml.js',
@@ -127,7 +128,8 @@ module.exports = function(grunt) {
         'bower_components/codemirror/addon/hint/show-hint.js',
         'bower_components/codemirror/addon/hint/javascript-hint.js',
         'bower_components/codemirror/addon/hint/python-hint.js',
-        'bower_components/codemirror/addon/hint/sql-hint.js'
+        'bower_components/codemirror/addon/hint/sql-hint.js',
+        'bower_components/angular-xeditable/dist/js/xeditable.js'
       ],
       css: [
         'bower_components/bootstrap/dist/css/bootstrap.min.css',
@@ -137,7 +139,8 @@ module.exports = function(grunt) {
         'bower_components/angular-ui-select/dist/select.css',
         'bower_components/angular-bootstrap-datetimepicker/src/css/datetimepicker.css',
         'bower_components/codemirror/lib/codemirror.css',
-        'bower_components/codemirror/addon/hint/show-hint.css'
+        'bower_components/codemirror/addon/hint/show-hint.css',
+        'bower_components/angular-xeditable/dist/css/xeditable.css'
       ],
       assets: [
       ],
@@ -181,6 +184,8 @@ module.exports = function(grunt) {
         '/**\n' +
         ' * <%= pkg.name %> - v<%= pkg.version %> - <%= buildTime %>\n' +
         ' * <%= pkg.homepage %>\n' +
+        ' *\n' +
+        ' * Copyright 2015 StreamSets Inc.\n' +
         ' *\n' +
         ' * Licensed under the Apache Software Foundation (ASF) under one\n' +
         ' * or more contributor license agreements.  See the NOTICE file\n' +

@@ -19,12 +19,16 @@
  */
 package com.streamsets.pipeline.stage.destination.sdcipc;
 
+import com.google.common.collect.Lists;
 import com.streamsets.pipeline.api.Batch;
+import com.streamsets.pipeline.api.OnRecordError;
 import com.streamsets.pipeline.api.Record;
 import com.streamsets.pipeline.api.StageException;
 import com.streamsets.pipeline.api.base.BaseTarget;
 import com.streamsets.pipeline.api.ext.ContextExtensions;
 import com.streamsets.pipeline.api.ext.RecordWriter;
+import com.streamsets.pipeline.stage.common.DefaultErrorRecordHandler;
+import com.streamsets.pipeline.stage.common.ErrorRecordHandler;
 import org.iq80.snappy.SnappyFramedOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +45,7 @@ public class SdcIpcTarget extends BaseTarget {
   private static final Logger LOG = LoggerFactory.getLogger(SdcIpcTarget.class);
 
   private final Configs config;
+  private ErrorRecordHandler errorRecordHandler;
   final List<String> standByHostPorts;
   final List<String> activeHostPorts;
   int lastActive;
@@ -55,6 +60,7 @@ public class SdcIpcTarget extends BaseTarget {
   @Override
   protected List<ConfigIssue> init() {
     List<ConfigIssue> issues = super.init();
+    errorRecordHandler = new DefaultErrorRecordHandler(getContext());
     issues.addAll(config.init(getContext()));
     if (issues.isEmpty()) {
       initializeHostPortsLists();
@@ -115,6 +121,7 @@ public class SdcIpcTarget extends BaseTarget {
     HttpURLConnection  conn = config.createConnection(getHostPort(isRetry));
     conn.setRequestMethod("POST");
     conn.setRequestProperty(Constants.CONTENT_TYPE_HEADER, Constants.APPLICATION_BINARY);
+    conn.setRequestProperty(Constants.X_SDC_JSON1_FRAGMENTABLE_HEADER, "true");
     conn.setDefaultUseCaches(false);
     conn.setDoOutput(true);
     conn.setDoInput(true);
@@ -126,10 +133,23 @@ public class SdcIpcTarget extends BaseTarget {
     ContextExtensions ext = (ContextExtensions) getContext();
     boolean ok = false;
     int retryCount = 0;
+    long waitTime = config.backOff;
     String errorReason = null;
     HttpURLConnection conn = null;
+
     while (!ok && retryCount <= config.retriesPerBatch) {
       LOG.debug("Writing out batch '{}' retry '{}'", batch.getSourceOffset(), retryCount);
+
+      if(retryCount > 0 && waitTime > 0) {
+        LOG.debug("Waiting '{}' milliseconds before re-try", waitTime);
+        try {
+          Thread.sleep(waitTime);
+        } catch (InterruptedException e) {
+          LOG.info("Backoff waiting was interrupted", e);
+        }
+        waitTime *= config.backOff;
+      }
+
       try {
         conn = createWriteConnection(retryCount > 0);
         if (config.compression) {
@@ -164,22 +184,20 @@ public class SdcIpcTarget extends BaseTarget {
       retryCount++;
     }
     if (!ok) {
-      switch (getContext().getOnErrorRecord()) {
-        case DISCARD:
-          LOG.debug("Discarding batch '{}' after error", batch.getSourceOffset());
-          break;
-        case TO_ERROR:
-          Iterator<Record> it = batch.getRecords();
-          while (it.hasNext()) {
-            Record record = it.next();
-            getContext().toError(record, Errors.IPC_DEST_20, errorReason);
-          }
-          break;
-        case STOP_PIPELINE:
-          throw new StageException(Errors.IPC_DEST_20, errorReason);
-        default:
-          throw new StageException(Errors.IPC_DEST_21, getContext().getOnErrorRecord());
+      OnRecordError onErrorRecord = getContext().getOnErrorRecord();
+      // this branch only happens when the pipeline error handling strategy is "send to RPC". if we can't forward to
+      // that pipeline, then it's a pipeline-stopping problem.
+      if (onErrorRecord == null) {
+        throw new StageException(Errors.IPC_DEST_20, errorReason);
       }
+
+      errorRecordHandler.onError(
+          Lists.newArrayList(batch.getRecords()),
+          new StageException(
+              Errors.IPC_DEST_20,
+              errorReason
+          )
+      );
     }
   }
 

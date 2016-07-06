@@ -20,7 +20,6 @@
 package com.streamsets.pipeline;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashMap;
@@ -145,8 +144,7 @@ public class ApplicationPackage {
           if (!path.startsWith(JAVA_HOME) && !path.startsWith(MACOS_JAVA_EXTENSIONS_DIR) &&
             path.endsWith(JAR_FILE_SUFFIX)) {
             try {
-              try (InputStream in = url.openStream()) {
-                ZipInputStream zip = new ZipInputStream(in);
+              try (ZipInputStream zip = new ZipInputStream(url.openStream())) {
                 for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
                   if (!entry.isDirectory() && entry.getName().endsWith(CLASS_FILE_SUFFIX)) {
                     // This ZipEntry represents a class. Now, what class does it represent?

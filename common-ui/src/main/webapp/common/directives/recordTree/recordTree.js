@@ -23,7 +23,7 @@
  */
 
 angular.module('recordTreeDirectives', ['RecursionHelper'])
-  .directive('recordTree', function(RecursionHelper) {
+  .directive('recordTree', function(RecursionHelper, $modal) {
     'use strict';
 
     var linkFunction = function (scope) {
@@ -34,6 +34,7 @@ angular.module('recordTreeDirectives', ['RecursionHelper'])
         updatedField: false,
         limit: mapListLimit,
         listMapKey: undefined,
+        mapKeys: (scope.recordValue && scope.recordValue.value) ? Object.keys(scope.recordValue.value) : [],
 
         onClick: function($event) {
           $event.preventDefault();
@@ -133,7 +134,8 @@ angular.module('recordTreeDirectives', ['RecursionHelper'])
             }
           }
 
-          return scope.singleQuoteUnescape(lastFieldName);
+          //return scope.singleQuoteUnescape(lastFieldName);
+          return lastFieldName;
         },
 
         /**
@@ -147,6 +149,30 @@ angular.module('recordTreeDirectives', ['RecursionHelper'])
             return path.substring(1, path.length - 1);
           }
           return path;
+        },
+
+        /**
+         * Display stack trace in modal dialog.
+         *
+         * @param header
+         */
+        showStackTrace: function (header) {
+          $modal.open({
+            templateUrl: 'errorModalContent.html',
+            controller: 'ErrorModalInstanceController',
+            size: 'lg',
+            backdrop: true,
+            resolve: {
+              errorObj: function () {
+                return {
+                  RemoteException: {
+                    localizedMessage: header.errorMessage,
+                    stackTrace: header.errorStackTrace
+                  }
+                };
+              }
+            }
+          });
         }
       });
 

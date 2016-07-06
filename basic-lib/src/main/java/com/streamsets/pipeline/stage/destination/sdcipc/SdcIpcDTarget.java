@@ -28,9 +28,10 @@ import com.streamsets.pipeline.configurablestage.DTarget;
 
 @StageDef(
     version = 1,
-    label = "RPC",
-    description = "Sends records via RPC to a Data Collector pipeline that uses an RPC origin",
-    icon="sdcipc.png"
+    label = "SDC RPC",
+    description = "Sends records via SDC RPC to a Data Collector pipeline that uses an SDC RPC origin",
+    icon="sdcipc.png",
+    onlineHelpRefUrl = "index.html#Destinations/SDC_RPCdest.html#task_nbl_r2x_dt"
 )
 @ConfigGroups(Groups.class)
 @GenerateResourceBundle

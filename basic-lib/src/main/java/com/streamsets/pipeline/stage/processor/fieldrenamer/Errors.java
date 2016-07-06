@@ -25,7 +25,9 @@ import com.streamsets.pipeline.api.GenerateResourceBundle;
 @GenerateResourceBundle
 public enum Errors implements ErrorCode {
   FIELD_RENAMER_00("Record '{}' does not contain fields '{}'"),
-  FIELD_RENAMER_01("Fields '{}' cannot be overwritten for record '{}'")
+  FIELD_RENAMER_01("Target Fields '{}' cannot be overwritten for record '{}'"),
+  FIELD_RENAMER_02("Invalid From Field Expression : {}"),
+  FIELD_RENAMER_03("Same fields matched my multiple expressions. {} "),
   ;
 
   private final String msg;

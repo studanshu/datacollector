@@ -22,20 +22,16 @@ package com.streamsets.pipeline.stage.destination.jdbc;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import com.streamsets.pipeline.api.Batch;
-import com.streamsets.pipeline.api.ErrorCode;
 import com.streamsets.pipeline.api.Record;
 import com.streamsets.pipeline.api.StageException;
 import com.streamsets.pipeline.api.Target;
 import com.streamsets.pipeline.api.base.BaseTarget;
 import com.streamsets.pipeline.api.base.OnRecordErrorException;
 import com.streamsets.pipeline.api.el.ELEval;
-import com.streamsets.pipeline.api.el.ELEvalException;
 import com.streamsets.pipeline.api.el.ELVars;
-import com.streamsets.pipeline.api.impl.Utils;
-import com.streamsets.pipeline.lib.el.RecordEL;
+import com.streamsets.pipeline.lib.el.ELUtils;
 import com.streamsets.pipeline.lib.jdbc.ChangeLogFormat;
 import com.streamsets.pipeline.lib.jdbc.HikariPoolConfigBean;
 import com.streamsets.pipeline.lib.jdbc.JdbcGenericRecordWriter;
@@ -43,6 +39,8 @@ import com.streamsets.pipeline.lib.jdbc.JdbcMultiRowRecordWriter;
 import com.streamsets.pipeline.lib.jdbc.JdbcRecordWriter;
 import com.streamsets.pipeline.lib.jdbc.JdbcUtil;
 import com.streamsets.pipeline.lib.jdbc.MicrosoftJdbcRecordWriter;
+import com.streamsets.pipeline.stage.common.DefaultErrorRecordHandler;
+import com.streamsets.pipeline.stage.common.ErrorRecordHandler;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import org.slf4j.Logger;
@@ -52,7 +50,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -66,13 +63,15 @@ import static com.streamsets.pipeline.lib.jdbc.HikariPoolConfigBean.MILLISECONDS
 public class JdbcTarget extends BaseTarget {
   private static final Logger LOG = LoggerFactory.getLogger(JdbcTarget.class);
 
+  private static final String HIKARI_CONFIG_PREFIX = "hikariConfigBean.";
   private static final String CUSTOM_MAPPINGS = "columnNames";
   private static final String TABLE_NAME = "tableNameTemplate";
-  private static final String CONNECTION_STRING = "connectionString";
+  private static final String CONNECTION_STRING = HIKARI_CONFIG_PREFIX + "connectionString";
   private static final String EL_PREFIX = "${";
 
   private final boolean rollbackOnError;
   private final boolean useMultiRowInsert;
+  private final int maxPrepStmtParameters;
 
   private final String tableNameTemplate;
   private final List<JdbcFieldMappingConfig> customMappings;
@@ -81,8 +80,10 @@ public class JdbcTarget extends BaseTarget {
   private final ChangeLogFormat changeLogFormat;
   private final HikariPoolConfigBean hikariConfigBean;
 
+  private ErrorRecordHandler errorRecordHandler;
   private HikariDataSource dataSource = null;
   private ELEval tableNameEval = null;
+  private ELVars tableNameVars = null;
 
   private Connection connection = null;
 
@@ -103,6 +104,7 @@ public class JdbcTarget extends BaseTarget {
       final List<JdbcFieldMappingConfig> customMappings,
       final boolean rollbackOnError,
       final boolean useMultiRowInsert,
+      int maxPrepStmtParameters,
       final ChangeLogFormat changeLogFormat,
       final HikariPoolConfigBean hikariConfigBean
   ) {
@@ -110,6 +112,7 @@ public class JdbcTarget extends BaseTarget {
     this.customMappings = customMappings;
     this.rollbackOnError = rollbackOnError;
     this.useMultiRowInsert = useMultiRowInsert;
+    this.maxPrepStmtParameters = maxPrepStmtParameters;
     this.driverProperties.putAll(hikariConfigBean.driverProperties);
     this.changeLogFormat = changeLogFormat;
     this.hikariConfigBean = hikariConfigBean;
@@ -118,13 +121,25 @@ public class JdbcTarget extends BaseTarget {
   @Override
   protected List<ConfigIssue> init() {
     List<ConfigIssue> issues = super.init();
+    errorRecordHandler = new DefaultErrorRecordHandler(getContext());
 
     Target.Context context = getContext();
 
     issues = hikariConfigBean.validateConfigs(context, issues);
 
-    tableNameEval = context.createELEval("tableNameTemplate");
-    validateEL(tableNameEval, tableNameTemplate, "tableNameTemplate", Errors.JDBCDEST_20, Errors.JDBCDEST_21, issues);
+    tableNameVars = getContext().createELVars();
+    tableNameEval = context.createELEval(TABLE_NAME);
+    ELUtils.validateExpression(
+        tableNameEval,
+        tableNameVars,
+        tableNameTemplate,
+        getContext(),
+        Groups.JDBC.getLabel(),
+        TABLE_NAME,
+        Errors.JDBCDEST_20,
+        String.class,
+        issues
+    );
 
     if (issues.isEmpty()) {
       createDataSource(issues);
@@ -171,7 +186,8 @@ public class JdbcTarget extends BaseTarget {
               dataSource,
               tableName,
               rollbackOnError,
-              customMappings
+              customMappings,
+              maxPrepStmtParameters
           );
         }
         break;
@@ -252,77 +268,17 @@ public class JdbcTarget extends BaseTarget {
   @Override
   @SuppressWarnings("unchecked")
   public void write(Batch batch) throws StageException {
-    Multimap<String, Record> partitions = partitionBatch(batch);
+    Multimap<String, Record> partitions = ELUtils.partitionBatchByExpression(
+        tableNameEval,
+        tableNameVars,
+        tableNameTemplate,
+        batch
+    );
     Set<String> tableNames = partitions.keySet();
     for (String tableName : tableNames) {
       List<OnRecordErrorException> errors = recordWriters.getUnchecked(tableName).writeBatch(partitions.get(tableName));
       for (OnRecordErrorException error : errors) {
-        handleErrorRecord(error);
-      }
-    }
-  }
-
-  private Multimap<String, Record> partitionBatch(Batch batch) {
-    Multimap<String, Record> partitions = ArrayListMultimap.create();
-
-    Iterator<Record> batchIterator = batch.getRecords();
-
-    while (batchIterator.hasNext()) {
-      Record record = batchIterator.next();
-
-      ELVars vars = getContext().createELVars();
-      RecordEL.setRecordInContext(vars, record);
-
-      try {
-        String tableName = tableNameEval.eval(vars, tableNameTemplate, String.class);
-        partitions.put(tableName, record);
-      } catch (ELEvalException e) {
-        LOG.error("Failed to evaluate expression '{}' : ", tableNameTemplate, e.toString(), e);
-        // send to error
-      }
-    }
-
-    return partitions;
-  }
-
-  private void handleErrorRecord(OnRecordErrorException error) throws StageException {
-    switch (getContext().getOnErrorRecord()) {
-      case DISCARD:
-        break;
-      case TO_ERROR:
-        getContext().toError(error.getRecord(), error);
-        break;
-      case STOP_PIPELINE:
-        throw error;
-      default:
-        throw new IllegalStateException(
-            Utils.format("Unknown OnError value '{}'", getContext().getOnErrorRecord(), error)
-        );
-    }
-  }
-
-  private void validateEL(
-      ELEval elEval,
-      String elStr,
-      String config,
-      ErrorCode parseError,
-      ErrorCode evalError,
-      List<ConfigIssue> issues
-  ) {
-    ELVars vars = getContext().createELVars();
-    RecordEL.setRecordInContext(vars, getContext().createRecord("validateConfigs"));
-    boolean parsed = false;
-    try {
-      getContext().parseEL(elStr);
-      parsed = true;
-    } catch (ELEvalException ex) {
-      issues.add(getContext().createConfigIssue(Groups.JDBC.name(), config, parseError, ex.toString(), ex));
-    }
-    if (parsed) {
-      try {
-        elEval.eval(vars, elStr, String.class);
-      } catch (ELEvalException ex) {
-        issues.add(getContext().createConfigIssue(Groups.JDBC.name(), config, evalError, ex.toString(), ex));
+        errorRecordHandler.onError(error);
       }
     }
   }

@@ -21,10 +21,9 @@ package com.streamsets.pipeline.stage.origin.udp;
 
 
 import com.streamsets.pipeline.api.Record;
-import com.streamsets.pipeline.api.Stage;
 import com.streamsets.pipeline.api.base.OnRecordErrorException;
-import com.streamsets.pipeline.api.impl.Utils;
-import com.streamsets.pipeline.lib.parser.AbstractParser;
+import com.streamsets.pipeline.lib.parser.udp.AbstractParser;
+import com.streamsets.pipeline.lib.udp.UDPConsumer;
 import io.netty.channel.socket.DatagramPacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +46,7 @@ public class QueuingUDPConsumer implements UDPConsumer {
     this.totalPackets = new AtomicLong(0);
   }
 
+  @Override
   public void process(DatagramPacket packet) throws Exception {
     long total = totalPackets.incrementAndGet();
     boolean droppedPacket = false;

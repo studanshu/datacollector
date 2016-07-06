@@ -22,10 +22,6 @@ package com.streamsets.datacollector.restapi.bean;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.streamsets.datacollector.restapi.bean.BeanHelper;
-import com.streamsets.datacollector.restapi.bean.DataRuleDefinitionJson;
-import com.streamsets.datacollector.restapi.bean.ThresholdTypeJson;
-
 public class TestDataRuleDefinitionBean {
 
   @Test(expected = NullPointerException.class)
@@ -33,12 +29,17 @@ public class TestDataRuleDefinitionBean {
     DataRuleDefinitionJson dataRuleDefinitionJson = new DataRuleDefinitionJson(null);
   }
 
+  @Test(expected = NullPointerException.class)
+  public void testDriftRuleDefinitionBeanNull() {
+    new DriftRuleDefinitionJson(null);
+  }
+
   @Test
   public void testDataRuleDefinitionBean() {
     com.streamsets.datacollector.config.DataRuleDefinition dataRuleDefinition =
       new com.streamsets.datacollector.config.DataRuleDefinition("nameNotNull","nameNotNull", "lane", 100, 10,
         "${record:value(\"/name\")==null}", true, "nameNotNull", com.streamsets.datacollector.config.ThresholdType.COUNT,
-        "2", 5, true, false, true);
+        "2", 5, true, false, true, System.currentTimeMillis());
 
     DataRuleDefinitionJson dataRuleDefinitionJsonBean = new DataRuleDefinitionJson(dataRuleDefinition);
 
@@ -62,14 +63,38 @@ public class TestDataRuleDefinitionBean {
   }
 
   @Test
+  public void testDriftRuleDefinitionBean() {
+    com.streamsets.datacollector.config.DriftRuleDefinition driftRuleDefinition =
+        new com.streamsets.datacollector.config.DriftRuleDefinition("nameNotNull","nameNotNull", "lane", 100, 10,
+            "${record:value(\"/name\")==null}", true, "nameNotNull", true, false, true, System.currentTimeMillis());
+
+    DriftRuleDefinitionJson driftRuleDefinitionJsonBean = new DriftRuleDefinitionJson(driftRuleDefinition);
+
+    Assert.assertEquals(driftRuleDefinition.getLabel(), driftRuleDefinitionJsonBean.getLabel());
+    Assert.assertEquals(driftRuleDefinition.getLane(), driftRuleDefinitionJsonBean.getLane());
+    Assert.assertTrue(driftRuleDefinition.getSamplingPercentage() == driftRuleDefinitionJsonBean.getSamplingPercentage());
+    Assert.assertEquals(driftRuleDefinition.getSamplingRecordsToRetain(),
+        driftRuleDefinitionJsonBean.getSamplingRecordsToRetain());
+    Assert.assertEquals(driftRuleDefinition.getAlertText(), driftRuleDefinitionJsonBean.getAlertText());
+    Assert.assertEquals(driftRuleDefinition.getId(), driftRuleDefinitionJsonBean.getId());
+    Assert.assertEquals(driftRuleDefinition.getCondition(), driftRuleDefinitionJsonBean.getCondition());
+    Assert.assertEquals(driftRuleDefinition.isAlertEnabled(), driftRuleDefinitionJsonBean.isAlertEnabled());
+    Assert.assertEquals(driftRuleDefinition.isMeterEnabled(), driftRuleDefinitionJsonBean.isMeterEnabled());
+    Assert.assertEquals(driftRuleDefinition.isSendEmail(), driftRuleDefinitionJsonBean.isSendEmail());
+    Assert.assertEquals(driftRuleDefinition.isValid(), driftRuleDefinitionJsonBean.isValid());
+    Assert.assertEquals(driftRuleDefinition.isEnabled(), driftRuleDefinitionJsonBean.isEnabled());
+  }
+
+  @Test
   public void testDataRuleDefinitionBeanConstructorWithArgs() {
     com.streamsets.datacollector.config.DataRuleDefinition dataRuleDefinition =
       new com.streamsets.datacollector.config.DataRuleDefinition("nameNotNull","nameNotNull", "lane", 100, 10,
         "${record:value(\"/name\")==null}", true, "nameNotNull", com.streamsets.datacollector.config.ThresholdType.COUNT,
-        "2", 5, true, false, true);
+        "2", 5, true, false, true, System.currentTimeMillis());
 
     DataRuleDefinitionJson dataRuleDefinitionJsonBean = new DataRuleDefinitionJson("nameNotNull","nameNotNull", "lane", 100, 10,
-      "${record:value(\"/name\")==null}", true, "nameNotNull", ThresholdTypeJson.COUNT, "2", 5, true, false, true);
+      "${record:value(\"/name\")==null}", true, "nameNotNull", ThresholdTypeJson.COUNT, "2", 5, true, false, true,
+      System.currentTimeMillis());
 
     Assert.assertEquals(dataRuleDefinition.getLabel(), dataRuleDefinitionJsonBean.getLabel());
     Assert.assertEquals(dataRuleDefinition.getLane(), dataRuleDefinitionJsonBean.getLane());
@@ -114,5 +139,55 @@ public class TestDataRuleDefinitionBean {
     Assert.assertEquals(dataRuleDefinition.isSendEmail(), dataRuleDefinitionJsonBean.getDataRuleDefinition().isSendEmail());
     Assert.assertEquals(dataRuleDefinition.isValid(), dataRuleDefinitionJsonBean.getDataRuleDefinition().isValid());
     Assert.assertEquals(dataRuleDefinition.isEnabled(), dataRuleDefinitionJsonBean.getDataRuleDefinition().isEnabled());
+  }
+
+  @Test
+  public void testDriftRuleDefinitionBeanConstructorWithArgs() {
+    com.streamsets.datacollector.config.DriftRuleDefinition DriftRuleDefinition =
+        new com.streamsets.datacollector.config.DriftRuleDefinition("nameNotNull","nameNotNull", "lane", 100, 10,
+            "${record:value(\"/name\")==null}", true, "nameNotNull", true, false, true, System.currentTimeMillis());
+
+    DriftRuleDefinitionJson DriftRuleDefinitionJsonBean = new DriftRuleDefinitionJson("nameNotNull","nameNotNull", "lane", 100, 10,
+        "${record:value(\"/name\")==null}", true, "nameNotNull", true, false, true, System.currentTimeMillis());
+
+    Assert.assertEquals(DriftRuleDefinition.getLabel(), DriftRuleDefinitionJsonBean.getLabel());
+    Assert.assertEquals(DriftRuleDefinition.getLane(), DriftRuleDefinitionJsonBean.getLane());
+    Assert.assertTrue(DriftRuleDefinition.getSamplingPercentage() == DriftRuleDefinitionJsonBean.getSamplingPercentage());
+    Assert.assertEquals(DriftRuleDefinition.getSamplingRecordsToRetain(),
+        DriftRuleDefinitionJsonBean.getSamplingRecordsToRetain());
+    Assert.assertEquals(DriftRuleDefinition.getAlertText(), DriftRuleDefinitionJsonBean.getAlertText());
+    Assert.assertEquals(DriftRuleDefinition.getId(), DriftRuleDefinitionJsonBean.getId());
+    Assert.assertEquals(DriftRuleDefinition.getCondition(), DriftRuleDefinitionJsonBean.getCondition());
+    Assert.assertEquals(DriftRuleDefinition.isAlertEnabled(), DriftRuleDefinitionJsonBean.isAlertEnabled());
+    Assert.assertEquals(DriftRuleDefinition.isMeterEnabled(), DriftRuleDefinitionJsonBean.isMeterEnabled());
+    Assert.assertEquals(DriftRuleDefinition.isSendEmail(), DriftRuleDefinitionJsonBean.isSendEmail());
+    Assert.assertEquals(DriftRuleDefinition.isValid(), DriftRuleDefinitionJsonBean.isValid());
+    Assert.assertEquals(DriftRuleDefinition.isEnabled(), DriftRuleDefinitionJsonBean.isEnabled());
+
+    //underlying DriftRuleDefinition
+    Assert.assertEquals(DriftRuleDefinition.getLabel(), DriftRuleDefinitionJsonBean.getDriftRuleDefinition().getLabel());
+    Assert.assertEquals(DriftRuleDefinition.getLane(), DriftRuleDefinitionJsonBean.getDriftRuleDefinition().getLane());
+    Assert.assertEquals(DriftRuleDefinition.getMinVolume(),
+        DriftRuleDefinitionJsonBean.getDriftRuleDefinition().getMinVolume());
+    Assert.assertTrue(DriftRuleDefinition.getSamplingPercentage() ==
+        DriftRuleDefinitionJsonBean.getDriftRuleDefinition().getSamplingPercentage());
+    Assert.assertEquals(DriftRuleDefinition.getSamplingRecordsToRetain(),
+        DriftRuleDefinitionJsonBean.getDriftRuleDefinition().getSamplingRecordsToRetain());
+    Assert.assertEquals(DriftRuleDefinition.getThresholdType(),
+        DriftRuleDefinitionJsonBean.getDriftRuleDefinition().getThresholdType());
+    Assert.assertEquals(DriftRuleDefinition.getThresholdValue(),
+        DriftRuleDefinitionJsonBean.getDriftRuleDefinition().getThresholdValue());
+    Assert.assertEquals(DriftRuleDefinition.getAlertText(),
+        DriftRuleDefinitionJsonBean.getDriftRuleDefinition().getAlertText());
+    Assert.assertEquals(DriftRuleDefinition.getId(), DriftRuleDefinitionJsonBean.getDriftRuleDefinition().getId());
+    Assert.assertEquals(DriftRuleDefinition.getCondition(),
+        DriftRuleDefinitionJsonBean.getDriftRuleDefinition().getCondition());
+    Assert.assertEquals(DriftRuleDefinition.isAlertEnabled(),
+        DriftRuleDefinitionJsonBean.getDriftRuleDefinition().isAlertEnabled());
+    Assert.assertEquals(DriftRuleDefinition.isMeterEnabled(),
+        DriftRuleDefinitionJsonBean.getDriftRuleDefinition().isMeterEnabled());
+    Assert.assertEquals(DriftRuleDefinition.isSendEmail(), DriftRuleDefinitionJsonBean.getDriftRuleDefinition().isSendEmail());
+    Assert.assertEquals(DriftRuleDefinition.isValid(), DriftRuleDefinitionJsonBean.getDriftRuleDefinition().isValid());
+    Assert.assertEquals(DriftRuleDefinition.isEnabled(), DriftRuleDefinitionJsonBean.getDriftRuleDefinition().isEnabled());
   }
 }

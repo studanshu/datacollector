@@ -51,7 +51,9 @@ public class MiniSDCSystemProcessImpl extends SystemProcessImpl {
     }
     File yarnCommand = new File(tempDir, "yarn-command");
     if (!yarnCommand.isFile() || !yarnCommand.canExecute()) {
-      yarnCommand.delete();
+      if (!yarnCommand.delete()) {
+        LOG.warn("Failed to delete yarn command file " + yarnCommand);
+      }
       try {
         Files.write(YARN_COMMAND_TEXT, yarnCommand, StandardCharsets.UTF_8);
       } catch (IOException e) {
@@ -70,7 +72,7 @@ public class MiniSDCSystemProcessImpl extends SystemProcessImpl {
   public void start(Map<String, String> env) throws IOException {
     String sparkHomeDir = System.getProperty("SPARK_TEST_HOME");
     LOG.debug("Spark home in test case is at " + sparkHomeDir);
-    env.put("SPARK_SUBMIT_COMMAND", new File(sparkHomeDir, "bin/spark-submit").getAbsolutePath());
+    env.put("SPARK_SUBMIT_YARN_COMMAND", new File(sparkHomeDir, "bin/spark-submit").getAbsolutePath());
     // need to set some this prop, actual value doesn't matter
     env.put("YARN_CONF_DIR", testDir.getAbsolutePath());
     env.put("YARN_COMMAND",  yarnCommand);

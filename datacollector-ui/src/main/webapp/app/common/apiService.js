@@ -23,7 +23,7 @@
  */
 
 angular.module('dataCollectorApp.common')
-  .factory('api', function($rootScope, $http, $q) {
+  .factory('api', function($rootScope, $http, $q, $cookies) {
     var apiVersion = 'v1',
       apiBase = 'rest/' + apiVersion,
       api = {
@@ -37,8 +37,21 @@ angular.module('dataCollectorApp.common')
        *
        * @param endingOffset
        */
-      getCurrentLog: function(endingOffset) {
+      getCurrentLog: function(endingOffset, extraMessage, filterPipeline, filterSeverity) {
         var url = apiBase + '/system/logs?endingOffset=' +  (endingOffset ? endingOffset : '-1');
+
+        if(extraMessage) {
+          url += '&extraMessage=' + extraMessage;
+        }
+
+        if(filterPipeline) {
+          url += '&pipeline=' + filterPipeline;
+         }
+
+        if(filterSeverity) {
+          url += '&severity=' + filterSeverity;
+        }
+
         return $http({
           method: 'GET',
           url: url
@@ -60,17 +73,6 @@ angular.module('dataCollectorApp.common')
     };
 
     api.admin = {
-
-      /**
-       * Fetch Help IDs
-       */
-      getHelpRef: function() {
-        var url = apiBase + '/definitions/helpref';
-        return $http({
-          method: 'GET',
-          url: url
-        });
-      },
 
       /**
        * Fetches JVM Metrics
@@ -97,7 +99,7 @@ angular.module('dataCollectorApp.common')
       },
 
       /**
-       * Fetched User Information
+       * Fetches User Information
        */
       getUserInfo: function() {
         var url = apiBase + '/system/info/currentUser';
@@ -108,10 +110,21 @@ angular.module('dataCollectorApp.common')
       },
 
       /**
-       * Fetched Build Information
+       * Fetches Build Information
        */
       getBuildInfo: function() {
         var url = apiBase + '/system/info';
+        return $http({
+          method: 'GET',
+          url: url
+        });
+      },
+
+      /**
+       * Fetches Remote Server Info
+       */
+      getRemoteServerInfo: function() {
+        var url = apiBase + '/system/info/remote';
         return $http({
           method: 'GET',
           url: url
@@ -131,14 +144,62 @@ angular.module('dataCollectorApp.common')
       },
 
       /**
-       * logout
+       * Restart the Data Collector.
+       * @returns {*}
        */
-      logout: function() {
-        var url = apiBase + '/authentication/logout';
+      restartDataCollector: function() {
+        var url = apiBase + '/system/restart';
         return $http({
           method: 'POST',
           url: url
         });
+      },
+
+      /**
+       * Update Application Token
+       * @returns {*}
+       */
+      updateApplicationToken: function(authToken) {
+        var url = apiBase + '/system/appToken';
+        return $http({
+          method: 'POST',
+          url: url,
+          data: authToken
+        });
+      },
+
+      /**
+       * Enable DPM
+       * @param dpmInfo
+       */
+      enableDPM: function(dpmInfo) {
+        var url = apiBase + '/system/enableDPM';
+        return $http({
+          method: 'POST',
+          url: url,
+          data: dpmInfo
+        });
+      },
+
+
+      /**
+       * logout
+       */
+      logout: function(authenticationType, isDPMEnabled) {
+        var url;
+        if (isDPMEnabled) {
+          url = 'logout';
+          return $http({
+            method: 'GET',
+            url: url
+          });
+        } else {
+          url = apiBase + '/authentication/logout';
+          return $http({
+            method: 'POST',
+            url: url
+          });
+        }
       },
 
       /**
@@ -284,17 +345,31 @@ angular.module('dataCollectorApp.common')
       },
 
       /**
-       * Delete Pipeline Cofiguration.
+       * Delete Pipeline Configuration.
        *
        * @param name
        * @returns {*}
        */
       deletePipelineConfig: function(name) {
         var url = apiBase + '/pipeline/' + name;
-
         return $http({
           method: 'DELETE',
           url: url
+        });
+      },
+
+      /**
+       * Delete Pipelines.
+       *
+       * @param pipelineNames
+       * @returns {*}
+       */
+      deletePipelines: function(pipelineNames) {
+        var url = apiBase + '/pipelines/delete';
+        return $http({
+          method: 'POST',
+          url: url,
+          data: pipelineNames
         });
       },
 
@@ -309,7 +384,10 @@ angular.module('dataCollectorApp.common')
         // Fetch the pipelineInfo full object
         // then Create new config object
         // then copy the configuration from pipelineInfo to new Object.
-        $q.all([api.pipelineAgent.getPipelineConfig(pipelineInfo.name), api.pipelineAgent.getPipelineRules(pipelineInfo.name)])
+        $q.all([
+          api.pipelineAgent.getPipelineConfig(pipelineInfo.name),
+          api.pipelineAgent.getPipelineRules(pipelineInfo.name)
+        ])
           .then(function(results) {
             pipelineObject = results[0].data;
             pipelineRulesObject = results[1].data;
@@ -320,7 +398,13 @@ angular.module('dataCollectorApp.common')
             duplicatePipelineObject.configuration = pipelineObject.configuration;
             duplicatePipelineObject.uiInfo = pipelineObject.uiInfo;
             duplicatePipelineObject.errorStage = pipelineObject.errorStage;
+            duplicatePipelineObject.statsAggregatorStage = pipelineObject.statsAggregatorStage;
             duplicatePipelineObject.stages = pipelineObject.stages;
+            if (pipelineObject.metadata && pipelineObject.metadata.labels) {
+              duplicatePipelineObject.metadata = {
+                labels: pipelineObject.metadata.labels
+              };
+            }
             return api.pipelineAgent.savePipelineConfig(name, duplicatePipelineObject);
           })
           .then(function(res) {
@@ -333,6 +417,7 @@ angular.module('dataCollectorApp.common')
             duplicatePipelineRulesObject = res.data;
             duplicatePipelineRulesObject.metricsRuleDefinitions = pipelineRulesObject.metricsRuleDefinitions;
             duplicatePipelineRulesObject.dataRuleDefinitions = pipelineRulesObject.dataRuleDefinitions;
+            duplicatePipelineRulesObject.driftRuleDefinitions = pipelineRulesObject.driftRuleDefinitions;
             duplicatePipelineRulesObject.emailIds = pipelineRulesObject.emailIds;
 
             //Save the pipeline Rules
@@ -347,22 +432,50 @@ angular.module('dataCollectorApp.common')
         return deferred.promise;
       },
 
-
       /**
        * Export Pipeline Configuration.
        *
        * @param name
+       * @param includeLibraryDefinitions
        */
-      exportPipelineConfig: function(name) {
-        var url;
+      exportPipelineConfig: function(name, includeLibraryDefinitions) {
+        var url = apiBase + '/pipeline/' + name + '/export?attachment=true';
+        if (includeLibraryDefinitions) {
+          url += '&includeLibraryDefinitions=true';
+        }
+        window.open(url, '_blank', '');
+      },
 
-        if(!name) {
-          name = 'xyz';
+      /**
+       * Export Pipelines.
+       *
+       * @param pipelineNames
+       * @param includeLibraryDefinitions
+       */
+      exportSelectedPipelines: function(pipelineNames, includeLibraryDefinitions) {
+        angular.forEach(pipelineNames, function (name) {
+          api.pipelineAgent.exportPipelineConfig(name, includeLibraryDefinitions);
+        });
+      },
+
+      /**
+       * Import Pipeline Configuration.
+       *
+       * @param pipelineName
+       * @param pipelineEnvelope
+       * @param overwrite
+       */
+      importPipelineConfig: function(pipelineName, pipelineEnvelope, overwrite) {
+        var url = apiBase + '/pipeline/' + pipelineName + '/import';
+        if (overwrite) {
+          url += '?overwrite=' + overwrite;
         }
 
-        url = apiBase + '/pipeline/' + name + '?attachment=true';
-
-        window.open(url, '_blank', '');
+        return $http({
+          method: 'POST',
+          url: url,
+          data: pipelineEnvelope
+        });
       },
 
       /**
@@ -547,14 +660,36 @@ angular.module('dataCollectorApp.common')
        * @param pipelineName
        * @param rev
        * @param snapshotName
+       * @param snapshotLabel
        * @param batchSize
        * @returns {*}
        */
-      captureSnapshot: function(pipelineName, rev, snapshotName, batchSize) {
+      captureSnapshot: function(pipelineName, rev, snapshotName, snapshotLabel, batchSize) {
         var url = apiBase + '/pipeline/' + pipelineName + '/snapshot/' + snapshotName +
-          '?batchSize=' + batchSize + '&rev=' + rev;
+          '?batchSize=' + batchSize +
+          '&snapshotLabel=' + snapshotLabel +
+          '&rev=' + rev;
         return $http({
           method: 'PUT',
+          url: url
+        });
+      },
+
+      /**
+       * Update Snapshot label
+       *
+       * @param pipelineName
+       * @param rev
+       * @param snapshotName
+       * @param snapshotLabel
+       * @returns {*}
+       */
+      updateSnapshotLabel: function(pipelineName, rev, snapshotName, snapshotLabel) {
+        var url = apiBase + '/pipeline/' + pipelineName + '/snapshot/' + snapshotName +
+          '?snapshotLabel=' + snapshotLabel +
+          '&rev=' + rev;
+        return $http({
+          method: 'POST',
           url: url
         });
       },
@@ -802,7 +937,6 @@ angular.module('dataCollectorApp.common')
       }
     };
 
-
     api.timeSeries = {
       /**
        * Fetch Time Series Data
@@ -816,6 +950,127 @@ angular.module('dataCollectorApp.common')
           url: url
         });
       }
+    };
+
+    api.remote = {
+      publishPipeline: function(remoteBaseURL, ssoToken, name, commitPipelineModel) {
+        var deferred = $q.defer();
+        var remoteURL = remoteBaseURL + 'pipelinestore/rest/v1/pipelines';
+        var url = apiBase + '/pipeline/' + name + '/export?includeLibraryDefinitions=true';
+
+        $http({
+          method: 'GET',
+          url: url
+        }).then(function(res) {
+          var pipeline = res.data;
+
+          commitPipelineModel.pipelineDefinition = JSON.stringify(pipeline.pipelineConfig);
+          commitPipelineModel.libraryDefinitions = JSON.stringify(pipeline.libraryDefinitions);
+          commitPipelineModel.rulesDefinition = JSON.stringify(pipeline.pipelineRules);
+
+          return $http({
+            method: 'PUT',
+            url: remoteURL,
+            data: commitPipelineModel,
+            useXDomain: true,
+            withCredentials : false,
+            headers:  {
+              'Content-Type': 'application/json; charset=utf-8',
+              'X-SS-User-Auth-Token': ssoToken
+            }
+          });
+        }).then(function(result) {
+          var remoteStorePipeline = result.data;
+          var pipelineDefinition = JSON.parse(remoteStorePipeline.pipelineDefinition);
+          return api.pipelineAgent.savePipelineConfig(name, pipelineDefinition);
+        }).then(function(res) {
+          deferred.resolve(res.data.metadata);
+        }, function(err) {
+          deferred.reject(err);
+        });
+        return deferred.promise;
+      },
+
+      fetchPipelines: function(remoteBaseURL, ssoToken) {
+        var remoteURL = remoteBaseURL + 'pipelinestore/rest/v1/pipelines';
+        return $http({
+          method: 'GET',
+          url: remoteURL,
+          headers:  {
+            'Content-Type': 'application/json; charset=utf-8',
+            'X-SS-User-Auth-Token': ssoToken
+          }
+        });
+      },
+
+      getPipeline: function(remoteBaseURL, ssoToken, remotePipeline) {
+        var remoteURL = remoteBaseURL + 'pipelinestore/rest/v1/pipelineCommit/' + remotePipeline.commitId;
+        return $http({
+          method: 'GET',
+          url: remoteURL,
+          headers:  {
+            'Content-Type': 'application/json; charset=utf-8',
+            'X-SS-User-Auth-Token': ssoToken
+          }
+        });
+      },
+
+      getPipelineCommitHistory: function(remoteBaseURL, ssoToken, pipelineId, offset, len, order) {
+        if (offset === undefined) {
+          offset = 0;
+        }
+        if (len === undefined) {
+          len = -1;
+        }
+        if (order === undefined) {
+          order = 'DESC';
+        }
+        var remoteURL = remoteBaseURL + 'pipelinestore/rest/v1/pipeline/' + pipelineId + '/log?' +
+          'offset=' + offset +
+          '&len=' + len +
+          '&order=' + order;
+
+        return $http({
+          method: 'GET',
+          url: remoteURL,
+          headers:  {
+            'Content-Type': 'application/json; charset=utf-8',
+            'X-SS-User-Auth-Token': ssoToken
+          }
+        });
+      },
+
+      getRemoteRoles: function(remoteBaseURL, ssoToken) {
+        var remoteURL = remoteBaseURL + 'security/rest/v1/currentUser';
+        return $http({
+          method: 'GET',
+          url: remoteURL,
+          headers:  {
+            'Content-Type': 'application/json; charset=utf-8',
+            'X-SS-User-Auth-Token': ssoToken
+          }
+        });
+      },
+
+      generateApplicationToken: function(remoteBaseURL, ssoToken, orgId) {
+        var newComponentsModel = {
+          organization: orgId,
+          componentType: 'dc',
+          numberOfComponents: 1,
+          active: true
+        };
+        var remoteURL = remoteBaseURL + 'security/rest/v1/organization/' + orgId + '/components';
+        return $http({
+          method: 'PUT',
+          url: remoteURL,
+          data: newComponentsModel,
+          headers:  {
+            'Content-Type': 'application/json; charset=utf-8',
+            'X-SS-User-Auth-Token': ssoToken
+          }
+        });
+      }
+
     };
 
     return api;

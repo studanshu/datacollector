@@ -30,15 +30,17 @@ import com.streamsets.pipeline.api.impl.Utils;
 
 
 public class EmbeddedDataCollectorFactory {
-
   private static final Logger LOG = LoggerFactory.getLogger(EmbeddedDataCollectorFactory.class);
+
+  private EmbeddedDataCollectorFactory() {}
+
   public static Source startPipeline(final Runnable postBatchRunnable) throws Exception {
     EmbeddedDataCollector embeddedDataCollector = new EmbeddedDataCollector();
     embeddedDataCollector.init();
     embeddedDataCollector.startPipeline();
     long startTime = System.currentTimeMillis();
     long endTime = startTime;
-    long diff = endTime - startTime;
+    long diff = 0;
     while (embeddedDataCollector.getPipeline() == null && diff < 60000) {
       LOG.debug("Waiting for pipeline to be created");
       Thread.sleep(100);

@@ -29,10 +29,11 @@ import com.streamsets.pipeline.configurablestage.DSourceOffsetCommitter;
 
 @StageDef(
     version = 1,
-    label = "RPC",
+    label = "SDC RPC",
     execution = ExecutionMode.STANDALONE,
-    description = "Receives records via RPC from a Data Collector pipeline that uses an RPC destination",
-    icon="sdcipc.png"
+    description = "Receives records via SDC RPC from a Data Collector pipeline that uses an SDC RPC destination",
+    icon="sdcipc.png",
+    onlineHelpRefUrl = "index.html#Origins/SDC_RPCorigin.html#task_lxh_1w2_ct"
 )
 @ConfigGroups(Groups.class)
 @GenerateResourceBundle

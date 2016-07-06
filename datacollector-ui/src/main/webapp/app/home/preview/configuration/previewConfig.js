@@ -62,7 +62,10 @@ angular
     });
 
 
-    if(pipelineStatus.executionMode !== pipelineConstant.CLUSTER) {
+    if(pipelineStatus.executionMode !== pipelineConstant.CLUSTER &&
+        pipelineStatus.executionMode !== pipelineConstant.CLUSTER_BATCH &&
+        pipelineStatus.executionMode !== pipelineConstant.CLUSTER_YARN_STREAMING &&
+        pipelineStatus.executionMode !== pipelineConstant.CLUSTER_MESOS_STREAMING) {
       api.pipelineAgent.getSnapshotsInfo().then(function(res) {
         if(res && res.data && res.data.length) {
           $scope.snapshotsInfo = res.data;

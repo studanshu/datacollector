@@ -23,6 +23,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Files;
@@ -45,6 +46,7 @@ import com.streamsets.datacollector.execution.SnapshotInfo;
 import com.streamsets.datacollector.execution.alerts.AlertInfo;
 import com.streamsets.datacollector.execution.cluster.ClusterHelper;
 import com.streamsets.datacollector.execution.metrics.MetricsEventRunnable;
+import com.streamsets.datacollector.execution.runner.RetryUtils;
 import com.streamsets.datacollector.execution.runner.common.PipelineRunnerException;
 import com.streamsets.datacollector.execution.runner.common.ProductionPipeline;
 import com.streamsets.datacollector.execution.runner.common.ProductionPipelineBuilder;
@@ -80,6 +82,7 @@ import com.streamsets.pipeline.lib.executor.SafeScheduledExecutorService;
 
 import dagger.ObjectGraph;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -108,8 +111,6 @@ public class ClusterRunner extends AbstractRunner {
   static final String APPLICATION_STATE = "cluster.application.state";
   private static final String APPLICATION_STATE_START_TIME = "cluster.application.startTime";
 
-  @Inject RuntimeInfo runtimeInfo;
-  @Inject Configuration configuration;
   @Inject PipelineStateStore pipelineStateStore;
   @Inject @Named("runnerExecutor") SafeScheduledExecutorService runnerExecutor;
   @Inject ResourceManager resourceManager;
@@ -129,6 +130,10 @@ public class ClusterRunner extends AbstractRunner {
   private UpdateChecker updateChecker;
   private MetricsEventRunnable metricsEventRunnable;
   private PipelineConfiguration pipelineConf;
+  private int maxRetries;
+  private boolean shouldRetry;
+  private ScheduledFuture<Void> retryFuture;
+  private long rateLimit = -1L;
 
   private static final Map<PipelineStatus, Set<PipelineStatus>> VALID_TRANSITIONS =
      new ImmutableMap.Builder<PipelineStatus, Set<PipelineStatus>>()
@@ -138,16 +143,17 @@ public class ClusterRunner extends AbstractRunner {
     .put(PipelineStatus.START_ERROR, ImmutableSet.of(PipelineStatus.STARTING))
     // cannot transition to disconnecting from Running
     .put(PipelineStatus.RUNNING, ImmutableSet.of(PipelineStatus.CONNECT_ERROR, PipelineStatus.STOPPING, PipelineStatus.DISCONNECTED,
-      PipelineStatus.FINISHED, PipelineStatus.KILLED, PipelineStatus.RUN_ERROR))
+      PipelineStatus.FINISHED, PipelineStatus.KILLED, PipelineStatus.RUN_ERROR, PipelineStatus.RETRY))
     .put(PipelineStatus.RUN_ERROR, ImmutableSet.of(PipelineStatus.STARTING))
+    .put(PipelineStatus.RETRY, ImmutableSet.of(PipelineStatus.STARTING, PipelineStatus.STOPPING, PipelineStatus.DISCONNECTED, PipelineStatus.RUN_ERROR))
     .put(PipelineStatus.STOPPING, ImmutableSet.of(PipelineStatus.STOPPED, PipelineStatus.CONNECT_ERROR, PipelineStatus.DISCONNECTED))
     .put(PipelineStatus.FINISHED, ImmutableSet.of(PipelineStatus.STARTING))
     .put(PipelineStatus.STOPPED, ImmutableSet.of(PipelineStatus.STARTING))
     .put(PipelineStatus.KILLED, ImmutableSet.of(PipelineStatus.STARTING))
     .put(PipelineStatus.CONNECT_ERROR, ImmutableSet.of(PipelineStatus.RUNNING, PipelineStatus.STOPPING, PipelineStatus.DISCONNECTED,
-      PipelineStatus.KILLED, PipelineStatus.FINISHED, PipelineStatus.RUN_ERROR))
+      PipelineStatus.KILLED, PipelineStatus.FINISHED, PipelineStatus.RUN_ERROR, PipelineStatus.RETRY))
     .put(PipelineStatus.DISCONNECTED, ImmutableSet.of(PipelineStatus.CONNECTING))
-    .put(PipelineStatus.CONNECTING, ImmutableSet.of(PipelineStatus.STARTING, PipelineStatus.RUNNING, PipelineStatus.CONNECT_ERROR,
+    .put(PipelineStatus.CONNECTING, ImmutableSet.of(PipelineStatus.STARTING, PipelineStatus.RUNNING, PipelineStatus.CONNECT_ERROR, PipelineStatus.RETRY,
       PipelineStatus.FINISHED, PipelineStatus.KILLED, PipelineStatus.RUN_ERROR, PipelineStatus.DISCONNECTED))
     .build();
 
@@ -185,8 +191,7 @@ public class ClusterRunner extends AbstractRunner {
     this.objectGraph.inject(this);
     this.tempDir = new File(new File(runtimeInfo.getDataDir(), "temp"), PipelineUtils.
       escapedPipelineName(Utils.format("pipeline-{}-{}-{}", user, name, rev)));
-    this.tempDir.mkdirs();
-    if (!this.tempDir.isDirectory()) {
+    if (!(this.tempDir.mkdirs() || this.tempDir.isDirectory())) {
       throw new IllegalStateException(Utils.format("Could not create temp directory: {}", tempDir));
     }
     this.clusterHelper = new ClusterHelper(runtimeInfo, new SecurityConfiguration(runtimeInfo,
@@ -213,8 +218,8 @@ public class ClusterRunner extends AbstractRunner {
           msg = "Upgrading execution mode to " + ExecutionMode.CLUSTER_BATCH + " from " + ExecutionMode.CLUSTER;
           executionMode = ExecutionMode.CLUSTER_BATCH;
         } else {
-          msg = "Upgrading execution mode to " + ExecutionMode.CLUSTER_STREAMING + " from " + ExecutionMode.CLUSTER;
-          executionMode = ExecutionMode.CLUSTER_STREAMING;
+          msg = "Upgrading execution mode to " + ExecutionMode.CLUSTER_YARN_STREAMING + " from " + ExecutionMode.CLUSTER;
+          executionMode = ExecutionMode.CLUSTER_YARN_STREAMING;
 
         }
         PipelineState currentState = getState();
@@ -235,6 +240,8 @@ public class ClusterRunner extends AbstractRunner {
     switch (status) {
       case STARTING:
         msg = "Pipeline was in STARTING state, forcing it to DISCONNECTED";
+      case RETRY:
+        msg = (msg == null) ? "Pipeline was in RETRY state, forcing it to DISCONNECTING": msg;
       case CONNECTING:
         msg = msg == null ? "Pipeline was in CONNECTING state, forcing it to DISCONNECTED" : msg;
       case RUNNING:
@@ -310,11 +317,14 @@ public class ClusterRunner extends AbstractRunner {
     PipelineRunnerException, PipelineRuntimeException {
     try {
       if (isNodeShuttingDown) {
+        if (getState().getStatus() == PipelineStatus.RETRY) {
+          retryFuture.cancel(true);
+        }
         validateAndSetStateTransition(PipelineStatus.DISCONNECTED, "Node is shutting down, disconnecting from the "
           + "pipeline in " + getState().getExecutionMode() + " mode");
       } else {
         ApplicationState appState = new ApplicationState((Map) getState().getAttributes().get(APPLICATION_STATE));
-        if (appState.getId() == null) {
+        if (appState.getId() == null && getState().getStatus() != PipelineStatus.STOPPED) {
           throw new PipelineRunnerException(ContainerError.CONTAINER_0101, "for cluster application");
         }
         stop(appState, pipelineConf);
@@ -334,8 +344,7 @@ public class ClusterRunner extends AbstractRunner {
     attributes.putAll(getAttributes());
     ApplicationState appState = new ApplicationState((Map) attributes.get(APPLICATION_STATE));
     if (appState.getId() == null) {
-      prepareForStart();
-      start();
+      retryOrStart();
     } else {
       try {
         slaveCallbackManager.setClusterToken(appState.getSdcToken());
@@ -351,8 +360,28 @@ public class ClusterRunner extends AbstractRunner {
     }
   }
 
+  private void retryOrStart() throws PipelineStoreException, PipelineRunnerException, PipelineRuntimeException, StageException {
+    PipelineState pipelineState = getState();
+    if (pipelineState.getRetryAttempt() == 0) {
+      prepareForStart();
+      start();
+    } else {
+      validateAndSetStateTransition(PipelineStatus.RETRY, "Changing the state to RETRY on startup");
+      long retryTimeStamp = pipelineState.getNextRetryTimeStamp();
+      long delay = 0;
+      long currentTime = System.currentTimeMillis();
+      if (retryTimeStamp > currentTime) {
+        delay = retryTimeStamp - currentTime;
+      }
+      retryFuture = scheduleForRetries(runnerExecutor, delay);
+    }
+   }
+
   @Override
   public void prepareForStart() throws PipelineStoreException, PipelineRunnerException {
+    PipelineState fromState = getState();
+    checkState(VALID_TRANSITIONS.get(fromState.getStatus()).contains(PipelineStatus.STARTING), ContainerError.CONTAINER_0102,
+        fromState.getStatus(), PipelineStatus.STARTING);
     if(!resourceManager.requestRunnerResources(ThreadUsage.CLUSTER)) {
       throw new PipelineRunnerException(ContainerError.CONTAINER_0166, name);
     }
@@ -363,7 +392,14 @@ public class ClusterRunner extends AbstractRunner {
   @Override
   public void prepareForStop() throws PipelineStoreException, PipelineRunnerException {
     LOG.info("Preparing to stop pipeline '{}::{}'", name, rev);
-    validateAndSetStateTransition(PipelineStatus.STOPPING, "Stopping pipeline in " + getState().getExecutionMode() + " mode");
+    if (getState().getStatus() == PipelineStatus.RETRY) {
+      retryFuture.cancel(true);
+      validateAndSetStateTransition(PipelineStatus.STOPPING, null);
+      validateAndSetStateTransition(PipelineStatus.STOPPED, "Stopped while the pipeline was in RETRY state");
+    } else {
+      validateAndSetStateTransition(PipelineStatus.STOPPING, "Stopping pipeline in " + getState().getExecutionMode()
+        + " mode");
+    }
   }
 
   @Override
@@ -373,14 +409,15 @@ public class ClusterRunner extends AbstractRunner {
       Utils.checkState(!isClosed,
         Utils.formatL("Cannot start the pipeline '{}::{}' as the runner is already closed", name, rev));
       ExecutionMode executionMode = pipelineStateStore.getState(name, rev).getExecutionMode();
-      if (executionMode != ExecutionMode.CLUSTER_BATCH && executionMode != ExecutionMode.CLUSTER_STREAMING) {
+      if (executionMode != ExecutionMode.CLUSTER_BATCH && executionMode != ExecutionMode.CLUSTER_YARN_STREAMING
+          && executionMode != ExecutionMode.CLUSTER_MESOS_STREAMING) {
         throw new PipelineRunnerException(ValidationError.VALIDATION_0073);
       }
       LOG.debug("State of pipeline for '{}::{}' is '{}' ", name, rev, getState());
       pipelineConf = getPipelineConf(name, rev);
       doStart(pipelineConf, getClusterSourceInfo(name, rev, pipelineConf));
     } catch (Exception e) {
-      validateAndSetStateTransition(PipelineStatus.START_ERROR, e.toString(), new HashMap<String, Object>());
+      validateAndSetStateTransition(PipelineStatus.START_ERROR, e.toString(), getAttributes());
       throw e;
     }
   }
@@ -391,7 +428,12 @@ public class ClusterRunner extends AbstractRunner {
   }
 
   @Override
-  public String captureSnapshot(String name, int batches, int batchSize) {
+  public String captureSnapshot(String name, String label, int batches, int batchSize) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public String updateSnapshotLabel(String snapshotName, String snapshotLabel) throws PipelineException {
     throw new UnsupportedOperationException();
   }
 
@@ -470,7 +512,8 @@ public class ClusterRunner extends AbstractRunner {
     validateAndSetStateTransition(toStatus, message, attributes);
   }
 
-  private void validateAndSetStateTransition(PipelineStatus toStatus, String message, Map<String, Object> attributes)
+  @VisibleForTesting
+  void validateAndSetStateTransition(PipelineStatus toStatus, String message, Map<String, Object> attributes)
     throws PipelineStoreException, PipelineRunnerException {
     Utils.checkState(attributes!=null, "Attributes cannot be set to null");
     PipelineState fromState = getState();
@@ -482,6 +525,33 @@ public class ClusterRunner extends AbstractRunner {
         fromState = getState();
         checkState(VALID_TRANSITIONS.get(fromState.getStatus()).contains(toStatus), ContainerError.CONTAINER_0102,
           fromState.getStatus(), toStatus);
+        long nextRetryTimeStamp = fromState.getNextRetryTimeStamp();
+        int retryAttempt = fromState.getRetryAttempt();
+        if (toStatus == PipelineStatus.RUN_ERROR && shouldRetry) {
+          toStatus = PipelineStatus.RETRY;
+          checkState(VALID_TRANSITIONS.get(fromState.getStatus()).contains(toStatus), ContainerError.CONTAINER_0102,
+            fromState.getStatus(), toStatus);
+        }
+        if (toStatus == PipelineStatus.RETRY && fromState.getStatus() != PipelineStatus.CONNECTING) {
+          retryAttempt = fromState.getRetryAttempt() + 1;
+          if (retryAttempt > maxRetries && maxRetries != -1) {
+            LOG.info("Retry attempt '{}' is greater than max no of retries '{}'", retryAttempt, maxRetries);
+            toStatus = PipelineStatus.RUN_ERROR;
+            retryAttempt = 0;
+            nextRetryTimeStamp = 0;
+          } else {
+            nextRetryTimeStamp = RetryUtils.getNextRetryTimeStamp(retryAttempt, getState().getTimeStamp());
+            long delay = 0;
+            long currentTime = System.currentTimeMillis();
+            if (nextRetryTimeStamp > currentTime) {
+              delay = nextRetryTimeStamp - currentTime;
+            }
+            retryFuture = scheduleForRetries(runnerExecutor, delay);
+          }
+        } else if (!toStatus.isActive()) {
+          retryAttempt = 0;
+          nextRetryTimeStamp = 0;
+        }
         ObjectMapper objectMapper = ObjectMapperFactory.get();
         String metricsJSONStr = null;
         if (!toStatus.isActive() || toStatus == PipelineStatus.DISCONNECTED) {
@@ -499,7 +569,7 @@ public class ClusterRunner extends AbstractRunner {
         }
         pipelineState =
           pipelineStateStore.saveState(user, name, rev, toStatus, message, attributes, getState().getExecutionMode(),
-            metricsJSONStr, 0, 0);
+            metricsJSONStr, retryAttempt, nextRetryTimeStamp);
       }
       // This should be out of sync block
       if (eventListenerManager != null) {
@@ -531,6 +601,7 @@ public class ClusterRunner extends AbstractRunner {
         PipelineRuntimeException e =
           new PipelineRuntimeException(ContainerError.CONTAINER_0800, name, issues.get(0).getMessage());
         Map<String, Object> attributes = new HashMap<>();
+        attributes.putAll(getAttributes());
         attributes.put("issues", new IssuesJson(new Issues(issues)));
         validateAndSetStateTransition(PipelineStatus.START_ERROR, issues.get(0).getMessage(), attributes);
         throw e;
@@ -554,7 +625,7 @@ public class ClusterRunner extends AbstractRunner {
       }
       return new ClusterSourceInfo(parallelism,
                                    clusterSource.getConfigsToShip());
-    } catch (IOException ex) {
+    } catch (IOException | StageException ex) {
       throw new PipelineRuntimeException(ContainerError.CONTAINER_0117, ex.toString(), ex);
     }
   }
@@ -583,6 +654,9 @@ public class ClusterRunner extends AbstractRunner {
     ProductionPipelineRunner runner =
       new ProductionPipelineRunner(name, rev, configuration, runtimeInfo, new MetricRegistry(),
         null, null);
+    if (rateLimit > 0) {
+      runner.setRateLimit(rateLimit);
+    }
     ProductionPipelineBuilder builder =
       new ProductionPipelineBuilder(name, rev, configuration, runtimeInfo, stageLibrary,  runner, null);
     return builder.build(pipelineConfiguration);
@@ -613,7 +687,7 @@ public class ClusterRunner extends AbstractRunner {
         ApplicationState appState = new ApplicationState((Map) ps.getAttributes().get(APPLICATION_STATE));
         clusterRunner.connect(appState, pipelineConf);
       }
-      if (!clusterRunner.getState().getStatus().isActive()) {
+      if (!clusterRunner.getState().getStatus().isActive() || clusterRunner.getState().getStatus() == PipelineStatus.RETRY) {
         LOG.debug(Utils.format("Cancelling the task as the runner is in a non-active state '{}'",
           clusterRunner.getState()));
         clusterRunner.cancelRunnable();
@@ -649,17 +723,37 @@ public class ClusterRunner extends AbstractRunner {
       } else if (clusterPipelineState == ClusterPipelineStatus.FAILED) {
         msg = "Pipeline failed in cluster";
         LOG.debug(msg);
-        validateAndSetStateTransition(PipelineStatus.RUN_ERROR, msg);
+        postTerminate(appState, PipelineStatus.RUN_ERROR, msg);
       } else if (clusterPipelineState == ClusterPipelineStatus.KILLED) {
         msg = "Pipeline killed in cluster";
         LOG.debug(msg);
-        validateAndSetStateTransition(PipelineStatus.KILLED, msg);
+        postTerminate(appState, PipelineStatus.KILLED, msg);
       } else if (clusterPipelineState == ClusterPipelineStatus.SUCCEEDED) {
         msg = "Pipeline succeeded in cluster";
         LOG.debug(msg);
-        validateAndSetStateTransition(PipelineStatus.FINISHED, msg);
+        postTerminate(appState, PipelineStatus.FINISHED, msg);
       }
     }
+  }
+
+  private void postTerminate(ApplicationState appState,
+      PipelineStatus pipelineStatus, String msg)
+          throws PipelineStoreException, PipelineRunnerException {
+    Optional<String> dirID = appState.getDirId();
+    // For mesos, remove dir hosting jar once job terminates
+    if (dirID.isPresent()) {
+      deleteDir(dirID.get());
+    }
+    Map<String, Object> attributes = new HashMap<String, Object>();
+    attributes.putAll(getAttributes());
+    attributes.remove(APPLICATION_STATE);
+    attributes.remove(APPLICATION_STATE_START_TIME);
+    validateAndSetStateTransition(pipelineStatus, msg, attributes);
+  }
+
+  private void deleteDir(String dirId) {
+    File hostingDir = new File(runtimeInfo.getDataDir(), dirId);
+    FileUtils.deleteQuietly(hostingDir);
   }
 
   private synchronized void doStart(PipelineConfiguration pipelineConf, ClusterSourceInfo clusterSourceInfo) throws PipelineStoreException,
@@ -676,7 +770,9 @@ public class ClusterRunner extends AbstractRunner {
       if (pipelineConfigBean == null) {
         throw new PipelineRunnerException(ContainerError.CONTAINER_0116, errors);
       }
-
+      maxRetries = pipelineConfigBean.retryAttempts;
+      shouldRetry = pipelineConfigBean.shouldRetry;
+      rateLimit = pipelineConfigBean.rateLimit;
       registerEmailNotifierIfRequired(pipelineConfigBean, name, rev);
 
       Map<String, String> environment = new HashMap<>(pipelineConfigBean.clusterLauncherEnv);
@@ -687,6 +783,7 @@ public class ClusterRunner extends AbstractRunner {
       sourceInfo.put(ClusterModeConstants.CLUSTER_PIPELINE_NAME, name);
       sourceInfo.put(ClusterModeConstants.CLUSTER_PIPELINE_REV, rev);
       sourceInfo.put(ClusterModeConstants.CLUSTER_PIPELINE_USER, user);
+      sourceInfo.put(ClusterModeConstants.CLUSTER_PIPELINE_REMOTE, String.valueOf(isRemotePipeline()));
       for (Map.Entry<String, String> configsToShip : clusterSourceInfo.getConfigsToShip().entrySet()) {
         if (LOG.isTraceEnabled()) {
           LOG.trace("Config to ship " + configsToShip.getKey() + " = " + configsToShip.getValue());
@@ -701,6 +798,7 @@ public class ClusterRunner extends AbstractRunner {
           sourceInfo, SUBMIT_TIMEOUT_SECS, getRules());
       // set state of running before adding callback which modified attributes
       Map<String, Object> attributes = new HashMap<>();
+      attributes.putAll(getAttributes());
       attributes.put(APPLICATION_STATE, applicationState.getMap());
       attributes.put(APPLICATION_STATE_START_TIME, System.currentTimeMillis());
       slaveCallbackManager.setClusterToken(applicationState.getSdcToken());
@@ -769,6 +867,11 @@ public class ClusterRunner extends AbstractRunner {
     }
     Map<String, Object> attributes = new HashMap<>();
     if (stopped) {
+      Optional<String> dirID = applicationState.getDirId();
+      if (dirID.isPresent()) {
+        // For mesos, remove dir hosting jar once job terminates
+        deleteDir(dirID.get());
+      }
       attributes.putAll(getAttributes());
       attributes.remove(APPLICATION_STATE);
       attributes.remove(APPLICATION_STATE_START_TIME);

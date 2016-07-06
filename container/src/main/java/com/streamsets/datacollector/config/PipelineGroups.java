@@ -25,6 +25,7 @@ public enum PipelineGroups implements Label {
   CONSTANTS("Constants"),
   BAD_RECORDS("Error Records"),
   CLUSTER("Cluster"),
+  STATS("Statistics")
   ;
 
   private final String label;

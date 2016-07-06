@@ -38,7 +38,7 @@ public class TestJvmEL {
 
   @Test
   public void testJvmELAvailViaRuleELRegistry() throws Exception {
-    ELEvaluator eval = new ELEvaluator("x", RuleELRegistry.getRuleELs());
+    ELEvaluator eval = new ELEvaluator("x", RuleELRegistry.getRuleELs(RuleELRegistry.GENERAL));
     ELVariables variables = new ELVariables();
     Assert.assertTrue(eval.eval(variables, "${jvm:maxMemoryMB()}", Long.class) > 0);
   }

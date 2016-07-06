@@ -31,15 +31,16 @@ import com.streamsets.pipeline.sdk.SourceRunner;
 import com.streamsets.pipeline.sdk.StageRunner;
 import com.streamsets.pipeline.stage.destination.sdcipc.Constants;
 import com.streamsets.pipeline.stage.destination.sdcipc.SSLTestUtils;
+import com.streamsets.testing.NetworkUtils;
 import org.iq80.snappy.SnappyFramedOutputStream;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.ServerSocket;
 import java.security.KeyPair;
 import java.security.cert.Certificate;
 import java.util.List;
@@ -51,11 +52,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class TestSdcIpcSource {
+  private static int randomPort;
 
-  private int getRandomPort() throws Exception {
-    try (ServerSocket ss = new ServerSocket(0)) {
-      return ss.getLocalPort();
-    }
+  @BeforeClass
+  public static void setUp() throws Exception {
+    randomPort = NetworkUtils.getRandomPort();
   }
 
   private void testReceiveRecords(final boolean ssl, final boolean compressed) throws Exception {
@@ -76,7 +77,7 @@ public class TestSdcIpcSource {
     configs.sslEnabled = ssl;
     configs.keyStoreFile = keyStore.toString();
     configs.keyStorePassword = "keystore";
-    configs.port = getRandomPort();
+    configs.port = randomPort;
     configs.maxWaitTimeSecs = 2;
     Source source = new SdcIpcSource(configs);
     final SourceRunner runner = new SourceRunner.Builder(SdcIpcSource.class, source).addOutputLane("lane").build();

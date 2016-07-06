@@ -37,6 +37,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.LinkedList;
 import java.util.List;
 
 public class TestPipelineConfigurationValidator {
@@ -200,6 +201,12 @@ public class TestPipelineConfigurationValidator {
   public void testAddMissingConfigs() {
     StageLibraryTask lib = MockStages.createStageLibrary();
     PipelineConfiguration conf = MockStages.createPipelineConfigurationSourceProcessorTarget();
+
+    // Generate error stage and clean up it's configuration
+    StageConfiguration errorStage = MockStages.getErrorStageConfig();
+    errorStage.setConfig(new LinkedList<Config>());
+    conf.setErrorStage(errorStage);
+
     int pipelineConfigs = conf.getConfiguration().size();
     int stageConfigs = conf.getStages().get(2).getConfiguration().size();
     PipelineConfigurationValidator validator = new PipelineConfigurationValidator(lib, "name", conf);
@@ -210,6 +217,47 @@ public class TestPipelineConfigurationValidator {
 
     Assert.assertTrue(pipelineConfigs < conf.getConfiguration().size());
     Assert.assertTrue(stageConfigs < conf.getStages().get(2).getConfiguration().size());
+
+    // Verify that error stage configs were generated as expected
+    Assert.assertTrue(conf.getErrorStage().getConfiguration().size() > 0);
   }
 
+  @Test
+  public void testValidatePipelineConfigs() {
+    StageLibraryTask lib = MockStages.createStageLibrary();
+    PipelineConfiguration conf =  MockStages.createPipelineConfigurationWithClusterOnlyStage(ExecutionMode.CLUSTER_MESOS_STREAMING);
+    PipelineConfigurationValidator validator = new PipelineConfigurationValidator(lib, "name", conf);
+    conf = validator.validate();
+    Assert.assertTrue(conf.getIssues().hasIssues());
+    List<Issue> issues = conf.getIssues().getIssues();
+    Assert.assertEquals(2, issues.size());
+    //mesosDispatcherURL is required but not set
+    Assert.assertEquals(ValidationError.VALIDATION_0007.name(), issues.get(0).getErrorCode());
+    //hdfsS3ConfDir is required but not set
+    Assert.assertEquals(ValidationError.VALIDATION_0007.name(), issues.get(1).getErrorCode());
+  }
+
+  @Test
+  public void testValidateOffsetControlMultipleTargets() {
+    StageLibraryTask lib = MockStages.createStageLibrary();
+    PipelineConfiguration conf = MockStages.createPipelineWith2OffsetCommitController(ExecutionMode.STANDALONE);
+    PipelineConfigurationValidator validator = new PipelineConfigurationValidator(lib, "name", conf);
+    conf = validator.validate();
+    Assert.assertTrue(conf.getIssues().hasIssues());
+    List<Issue> issues = conf.getIssues().getIssues();
+    Assert.assertEquals(1, issues.size());
+    Assert.assertEquals(ValidationError.VALIDATION_0091.name(), issues.get(0).getErrorCode());
+  }
+
+  @Test
+  public void testValidateOffsetControlDeliveryGuarantee() {
+    StageLibraryTask lib = MockStages.createStageLibrary();
+    PipelineConfiguration conf = MockStages.createPipelineWithOffsetCommitController(ExecutionMode.STANDALONE);
+    PipelineConfigurationValidator validator = new PipelineConfigurationValidator(lib, "name", conf);
+    conf = validator.validate();
+    Assert.assertTrue(conf.getIssues().hasIssues());
+    List<Issue> issues = conf.getIssues().getIssues();
+    Assert.assertEquals(1, issues.size());
+    Assert.assertEquals(ValidationError.VALIDATION_0092.name(), issues.get(0).getErrorCode());
+  }
 }

@@ -22,7 +22,6 @@ package com.streamsets.pipeline.stage.origin.sdcipc;
 import com.streamsets.pipeline.api.ConfigDef;
 import com.streamsets.pipeline.api.Stage;
 
-import javax.net.ssl.SSLSocketFactory;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -32,13 +31,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Configs {
+  private static final String CONFIG_PREFIX = "config.";
+  private static final String PORT = CONFIG_PREFIX + "port";
+  private static final String KEY_STORE_FILE = CONFIG_PREFIX + "keyStoreFile";
 
   @ConfigDef(
       required = true,
       type = ConfigDef.Type.NUMBER,
       defaultValue = "20000",
-      label = "RPC Listening Port",
-      description = "Port number to listen for data. Must match one of the port numbers used by the RPC destination of the origin pipeline.",
+      label = "SDC RPC Listening Port",
+      description = "Port number to listen for data. Must match one of the port numbers used by the SDC RPC destination of the origin pipeline.",
       displayPosition = 10,
       group = "RPC",
       min = 1,
@@ -49,8 +51,8 @@ public class Configs {
   @ConfigDef(
       required = true,
       type = ConfigDef.Type.STRING,
-      label = "RPC ID",
-      description = "User-defined ID. Must match the RPC ID used by the RPC destination of the origin pipeline.",
+      label = "SDC RPC ID",
+      description = "User-defined ID. Must match the SDC RPC ID used by the SDC RPC destination of the origin pipeline.",
       displayPosition = 20,
       group = "RPC"
   )
@@ -73,7 +75,8 @@ public class Configs {
       required = true,
       type = ConfigDef.Type.BOOLEAN,
       defaultValue = "false",
-      label = "SSL Enabled",
+      label = "TLS Enabled",
+      description = "Encrypt RPC communication using TLS.",
       displayPosition = 40,
       group = "RPC"
   )
@@ -128,12 +131,12 @@ public class Configs {
 
   void validatePort(Stage.Context context, List<Stage.ConfigIssue> issues) {
     if (port < 1 || port > 65535) {
-      issues.add(context.createConfigIssue("", "port", Errors.IPC_ORIG_00));
+      issues.add(context.createConfigIssue(Groups.RPC.name(), PORT, Errors.IPC_ORIG_00));
 
     } else {
       try (ServerSocket ss = new ServerSocket(port)){
       } catch (Exception ex) {
-        issues.add(context.createConfigIssue("", "port", Errors.IPC_ORIG_01, ex.toString()));
+        issues.add(context.createConfigIssue(Groups.RPC.name(), PORT, Errors.IPC_ORIG_01, ex.toString()));
 
       }
     }
@@ -144,13 +147,13 @@ public class Configs {
       if (!keyStoreFile.isEmpty()) {
         File file = getKeyStoreFile(context);
         if (!file.exists()) {
-          issues.add(context.createConfigIssue("", "keyStoreFile", Errors.IPC_ORIG_07));
+          issues.add(context.createConfigIssue(Groups.RPC.name(), KEY_STORE_FILE, Errors.IPC_ORIG_07));
         } else {
           if (!file.isFile()) {
-            issues.add(context.createConfigIssue("", "keyStoreFile", Errors.IPC_ORIG_08));
+            issues.add(context.createConfigIssue(Groups.RPC.name(), KEY_STORE_FILE, Errors.IPC_ORIG_08));
           } else {
             if (!file.canRead()) {
-              issues.add(context.createConfigIssue("", "keyStoreFile", Errors.IPC_ORIG_09));
+              issues.add(context.createConfigIssue(Groups.RPC.name(), KEY_STORE_FILE, Errors.IPC_ORIG_09));
             } else {
               try {
                 KeyStore keystore = KeyStore.getInstance("jks");
@@ -158,13 +161,13 @@ public class Configs {
                   keystore.load(is, keyStorePassword.toCharArray());
                 }
               } catch (Exception ex) {
-                issues.add(context.createConfigIssue("", "keyStoreFile", Errors.IPC_ORIG_10, ex.toString()));
+                issues.add(context.createConfigIssue(Groups.RPC.name(), KEY_STORE_FILE, Errors.IPC_ORIG_10, ex.toString()));
               }
             }
           }
         }
       } else {
-        issues.add(context.createConfigIssue("", "keyStoreFile", Errors.IPC_ORIG_11));
+        issues.add(context.createConfigIssue(Groups.RPC.name(), KEY_STORE_FILE, Errors.IPC_ORIG_11));
       }
     }
   }

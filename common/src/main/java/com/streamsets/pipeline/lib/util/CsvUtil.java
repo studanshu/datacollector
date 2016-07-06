@@ -33,6 +33,8 @@ import java.util.Map;
 
 public class CsvUtil {
 
+  private CsvUtil() {}
+
   public static List<String> fieldToCsv(Field field) throws IOException {
     Map<String, Field> map  = field.getValueAsMap();
     List<String> values = new ArrayList<>();
@@ -53,6 +55,8 @@ public class CsvUtil {
       return String.valueOf(field.getValueAsChar());
     } else if(field.getType()== Field.Type.DATE) {
       return String.valueOf(field.getValueAsDate());
+    } else if(field.getType()== Field.Type.TIME) {
+      return String.valueOf(field.getValueAsTime());
     } else if(field.getType()== Field.Type.DATETIME) {
       return String.valueOf(field.getValueAsDatetime());
     } else if(field.getType()== Field.Type.DECIMAL) {

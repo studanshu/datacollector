@@ -24,7 +24,7 @@
 
 angular
   .module('dataCollectorApp')
-  .controller('ShutdownModalInstanceController', function ($scope, $modalInstance, api, $window) {
+  .controller('ShutdownModalInstanceController', function ($scope, $modalInstance, api) {
     angular.extend($scope, {
       issues: [],
       isShuttingDown: false,

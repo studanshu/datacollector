@@ -19,6 +19,7 @@
  */
 package com.streamsets.datacollector.restapi.bean;
 
+import com.streamsets.datacollector.config.DriftRuleDefinition;
 import com.streamsets.datacollector.config.ModelType;
 import com.streamsets.datacollector.el.ElConstantDefinition;
 import com.streamsets.datacollector.el.ElFunctionArgumentDefinition;
@@ -39,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 
 public class BeanHelper {
+  private BeanHelper() {}
 
   public static com.streamsets.datacollector.restapi.bean.PipelineStateJson wrapPipelineState(com.streamsets.datacollector.execution.PipelineState pipelineState) {
     if(pipelineState == null) {
@@ -221,6 +223,28 @@ public class BeanHelper {
       dataRuleDefinitionList.add(m.getDataRuleDefinition());
     }
     return dataRuleDefinitionList;
+  }
+
+  public static List<DriftRuleDefinitionJson> wrapDriftRuleDefinitions(List<DriftRuleDefinition> rules) {
+    if(rules == null) {
+      return null;
+    }
+    List<DriftRuleDefinitionJson> rulesJson = new ArrayList<>(rules.size());
+    for(DriftRuleDefinition d : rules) {
+      rulesJson.add(new DriftRuleDefinitionJson(d));
+    }
+    return rulesJson;
+  }
+
+  public static List<DriftRuleDefinition> unwrapDriftRuleDefinitions(List<DriftRuleDefinitionJson> rulesJson) {
+    if(rulesJson == null) {
+      return null;
+    }
+    List<DriftRuleDefinition> rules = new ArrayList<>(rulesJson.size());
+    for(DriftRuleDefinitionJson m : rulesJson) {
+      rules.add(m.getDriftRuleDefinition());
+    }
+    return rules;
   }
 
   public static PipelineConfigurationJson wrapPipelineConfiguration(
@@ -1110,8 +1134,10 @@ public class BeanHelper {
     switch (executionMode) {
       case CLUSTER_BATCH:
         return ExecutionModeJson.CLUSTER_BATCH;
-      case CLUSTER_STREAMING:
-        return ExecutionModeJson.CLUSTER_STREAMING;
+      case CLUSTER_YARN_STREAMING:
+        return ExecutionModeJson.CLUSTER_YARN_STREAMING;
+      case CLUSTER_MESOS_STREAMING:
+        return ExecutionModeJson.CLUSTER_MESOS_STREAMING;
       case STANDALONE:
         return ExecutionModeJson.STANDALONE;
       case SLAVE:
@@ -1130,8 +1156,10 @@ public class BeanHelper {
         return ExecutionMode.CLUSTER;
       case CLUSTER_BATCH:
         return ExecutionMode.CLUSTER_BATCH;
-      case CLUSTER_STREAMING:
-        return ExecutionMode.CLUSTER_STREAMING;
+      case CLUSTER_YARN_STREAMING:
+        return ExecutionMode.CLUSTER_YARN_STREAMING;
+      case CLUSTER_MESOS_STREAMING:
+        return ExecutionMode.CLUSTER_MESOS_STREAMING;
       case STANDALONE:
         return ExecutionMode.STANDALONE;
       case SLAVE:

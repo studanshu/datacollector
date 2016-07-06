@@ -20,18 +20,23 @@
 package com.streamsets.pipeline.stage.origin.s3;
 
 import com.amazonaws.ClientConfiguration;
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.S3ClientOptions;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
+import com.amazonaws.services.s3.model.ListObjectsRequest;
 import com.streamsets.pipeline.api.ConfigDef;
+import com.streamsets.pipeline.api.ConfigDefBean;
 import com.streamsets.pipeline.api.Stage;
 import com.streamsets.pipeline.api.ValueChooserModel;
 import com.streamsets.pipeline.common.InterfaceAudience;
 import com.streamsets.pipeline.common.InterfaceStability;
+import com.streamsets.pipeline.stage.lib.aws.AWSRegionChooserValues;
+import com.streamsets.pipeline.stage.lib.aws.AWSConfig;
+import com.streamsets.pipeline.stage.lib.aws.AWSUtil;
+import com.streamsets.pipeline.stage.lib.aws.ProxyConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +45,12 @@ import java.util.List;
 @InterfaceAudience.LimitedPrivate
 @InterfaceStability.Unstable
 public class S3Config {
+
+  private static final String AWS_CONFIG_PREFIX = "awsConfig.";
   private final static Logger LOG = LoggerFactory.getLogger(S3Config.class);
+
+  @ConfigDefBean(groups = "S3")
+  public AWSConfig awsConfig;
 
   @ConfigDef(
     required = true,
@@ -50,35 +60,15 @@ public class S3Config {
     displayPosition = 10,
     group = "#0"
   )
-  @ValueChooserModel(S3RegionChooserValues.class)
+  @ValueChooserModel(AWSRegionChooserValues.class)
   public Regions region;
-
-  @ConfigDef(
-    required = true,
-    type = ConfigDef.Type.STRING,
-    label = "Access Key ID",
-    description = "",
-    displayPosition = 20,
-    group = "#0"
-  )
-  public String accessKeyId;
-
-  @ConfigDef(
-    required = true,
-    type = ConfigDef.Type.STRING,
-    label = "Secret Access Key",
-    description = "",
-    displayPosition = 30,
-    group = "#0"
-  )
-  public String secretAccessKey;
 
   @ConfigDef(
     required = true,
     type = ConfigDef.Type.STRING,
     label = "Bucket",
     description = "",
-    displayPosition = 40,
+    displayPosition = 20,
     group = "#0"
   )
   public String bucket;
@@ -86,20 +76,20 @@ public class S3Config {
   @ConfigDef(
     required = false,
     type = ConfigDef.Type.STRING,
-    label = "Folder",
+    label = "Common Prefix",
     description = "",
-    displayPosition = 50,
+    displayPosition = 30,
     group = "#0"
   )
-  public String folder;
+  public String commonPrefix;
 
   @ConfigDef(
     required = true,
     type = ConfigDef.Type.STRING,
-    label = "Object Path Delimiter",
+    label = "Delimiter",
     description = "",
     defaultValue = "/",
-    displayPosition = 70,
+    displayPosition = 40,
     group = "#0"
   )
   public String delimiter;
@@ -111,11 +101,16 @@ public class S3Config {
     this.endPoint = endPoint;
   }
 
-  public void init(Stage.Context context, List<Stage.ConfigIssue> issues, S3AdvancedConfig advancedConfig) {
-    validateConnection(context, issues, advancedConfig);
-    //if the folder does not end with delimiter, add one
-    if(folder != null && !folder.isEmpty() && !folder.endsWith(delimiter)) {
-      folder = folder + delimiter;
+  public void init(
+      Stage.Context context,
+      String configPrefix,
+      ProxyConfig proxyConfig,
+      List<Stage.ConfigIssue> issues
+  ) {
+    validateConnection(context, configPrefix, proxyConfig, issues);
+    //if the commonPrefix does not end with delimiter, add one
+    if (commonPrefix != null && !commonPrefix.isEmpty() && !commonPrefix.endsWith(delimiter)) {
+      commonPrefix = commonPrefix + delimiter;
     }
   }
 
@@ -131,27 +126,14 @@ public class S3Config {
 
   private AmazonS3Client s3Client;
 
-  private void validateConnection(Stage.Context context, List<Stage.ConfigIssue> issues, S3AdvancedConfig advancedConfig) {
-    //Access Key ID - username [unique in aws]
-    //secret access key - password
-    AWSCredentials credentials = new BasicAWSCredentials(accessKeyId, secretAccessKey);
-    ClientConfiguration clientConfig = new ClientConfiguration();
-
-    // Optional proxy settings
-    if (advancedConfig.useProxy) {
-      if (advancedConfig.proxyHost != null && !advancedConfig.proxyHost.isEmpty()) {
-        clientConfig.setProxyHost(advancedConfig.proxyHost);
-        clientConfig.setProxyPort(advancedConfig.proxyPort);
-
-        if (advancedConfig.proxyUser != null && !advancedConfig.proxyUser.isEmpty()) {
-          clientConfig.setProxyUsername(advancedConfig.proxyUser);
-        }
-
-        if (advancedConfig.proxyPassword != null) {
-          clientConfig.setProxyPassword(advancedConfig.proxyPassword);
-        }
-      }
-    }
+  private void validateConnection(
+      Stage.Context context,
+      String configPrefix,
+      ProxyConfig proxyConfig,
+      List<Stage.ConfigIssue> issues
+  ) {
+    AWSCredentialsProvider credentials = AWSUtil.getCredentialsProvider(awsConfig);
+    ClientConfiguration clientConfig = AWSUtil.getClientConfiguration(proxyConfig);
 
     s3Client = new AmazonS3Client(credentials, clientConfig);
     s3Client.setS3ClientOptions(new S3ClientOptions().withPathStyleAccess(true));
@@ -161,12 +143,18 @@ public class S3Config {
       s3Client.setRegion(Region.getRegion(region));
     }
     try {
-      //check if the credentials are right by trying to list buckets
-      s3Client.listBuckets();
+      //check if the credentials are right by trying to list an object in the common prefix
+      s3Client.listObjects(new ListObjectsRequest(bucket, commonPrefix, null, delimiter, 1));
     } catch (AmazonS3Exception e) {
       LOG.debug(Errors.S3_SPOOLDIR_20.getMessage(), e.toString(), e);
-      issues.add(context.createConfigIssue(Groups.S3.name(), "accessKeyId", Errors.S3_SPOOLDIR_20,
-        e.toString()));
+      issues.add(
+          context.createConfigIssue(
+              Groups.S3.name(),
+              configPrefix + AWS_CONFIG_PREFIX + "awsAccessKeyId",
+              Errors.S3_SPOOLDIR_20,
+              e.toString()
+          )
+      );
     }
   }
 }

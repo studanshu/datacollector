@@ -39,7 +39,7 @@ public class HikariPoolConfigBean {
   private static final String DEFAULT_MAX_LIFETIME_EL = "${30 * MINUTES}";
 
   private static final int MAX_POOL_SIZE_MIN = 1;
-  private static final int MIN_IDLE_MIN = 1;
+  private static final int MIN_IDLE_MIN = 0;
   private static final int CONNECTION_TIMEOUT_MIN = 1;
   private static final int IDLE_TIMEOUT_MIN = 0;
   private static final int MAX_LIFETIME_MIN = 0;
@@ -152,7 +152,7 @@ public class HikariPoolConfigBean {
       label = "Minimum Idle Connections",
       description = "Minimum number of connections to maintain. It is recommended to set this to the same value" +
           "as Maximum Pool Size which effectively creates a fixed connection pool.",
-      min = 1,
+      min = 0,
       defaultValue = "1",
       displayPosition = 20,
       group = "ADVANCED"
@@ -162,7 +162,7 @@ public class HikariPoolConfigBean {
   @ConfigDef(
       required = true,
       type = ConfigDef.Type.NUMBER,
-      label = "Connection Timeout (s)",
+      label = "Connection Timeout",
       description = "Maximum time to wait for a connection to become available. Exceeding will cause a pipeline error.",
       min = 1,
       defaultValue = DEFAULT_CONNECTION_TIMEOUT_EL,
@@ -175,7 +175,7 @@ public class HikariPoolConfigBean {
   @ConfigDef(
       required = true,
       type = ConfigDef.Type.NUMBER,
-      label = "Idle Timeout (s)",
+      label = "Idle Timeout",
       description = "Maximum amount of time that a connection is allowed to sit idle in the pool. 0 means don't " +
           "remove idle connections.",
       min = 1,
@@ -189,7 +189,7 @@ public class HikariPoolConfigBean {
   @ConfigDef(
       required = true,
       type = ConfigDef.Type.NUMBER,
-      label = "Max Connection Lifetime (s)",
+      label = "Max Connection Lifetime",
       description = "Maximum lifetime of a connection in the pool. When reached it will be retired from the pool. 0 " +
           "means no maximum lifetime.",
       min = 0,
@@ -204,7 +204,7 @@ public class HikariPoolConfigBean {
       required = true,
       type = ConfigDef.Type.BOOLEAN,
       label = "Enforce Read-only Connection",
-      description = "Should be set to true whenever possible to avoid unintended writes. Set to false with extreme" +
+      description = "Should be set to true whenever possible to avoid unintended writes. Set to false with extreme " +
           "caution.",
       defaultValue = "true",
       displayPosition = 60,

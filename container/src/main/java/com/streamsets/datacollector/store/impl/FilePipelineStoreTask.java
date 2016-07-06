@@ -22,6 +22,7 @@ package com.streamsets.datacollector.store.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import com.streamsets.datacollector.config.DriftRuleDefinition;
 import com.streamsets.datacollector.config.StageConfiguration;
 import com.streamsets.datacollector.util.LogUtil;
 import com.streamsets.pipeline.api.ExecutionMode;
@@ -33,6 +34,7 @@ import com.streamsets.datacollector.config.PipelineConfiguration;
 import com.streamsets.datacollector.config.RuleDefinitions;
 import com.streamsets.datacollector.creation.PipelineBeanCreator;
 import com.streamsets.datacollector.creation.PipelineConfigBean;
+import com.streamsets.datacollector.event.handler.remote.RemoteDataCollector;
 import com.streamsets.datacollector.execution.PipelineStateStore;
 import com.streamsets.datacollector.execution.PipelineStatus;
 import com.streamsets.datacollector.io.DataStore;
@@ -52,6 +54,7 @@ import com.streamsets.datacollector.util.ContainerError;
 import com.streamsets.datacollector.util.LockCache;
 import com.streamsets.datacollector.util.PipelineDirectoryUtil;
 import com.streamsets.datacollector.validation.Issue;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -154,7 +157,7 @@ public class FilePipelineStoreTask extends AbstractTask implements PipelineStore
   }
 
   @Override
-  public PipelineConfiguration create(String user, String name, String description) throws PipelineStoreException {
+  public PipelineConfiguration create(String user, String name, String description, boolean isRemote) throws PipelineStoreException {
     synchronized (lockCache.getLock(name)) {
       if (hasPipeline(name)) {
         throw new PipelineStoreException(ContainerError.CONTAINER_0201, name);
@@ -166,10 +169,10 @@ public class FilePipelineStoreTask extends AbstractTask implements PipelineStore
 
       Date date = new Date();
       UUID uuid = UUID.randomUUID();
-      PipelineInfo info = new PipelineInfo(name, description, date, date, user, user, REV, uuid, false);
+      PipelineInfo info = new PipelineInfo(name, description, date, date, user, user, REV, uuid, false, null);
       PipelineConfiguration pipeline =
         new PipelineConfiguration(SCHEMA_VERSION, PipelineConfigBean.VERSION, uuid, description, stageLibrary
-          .getPipeline().getPipelineDefaultConfigs(), Collections.EMPTY_MAP, Collections.EMPTY_LIST, null);
+          .getPipeline().getPipelineDefaultConfigs(), Collections.EMPTY_MAP, Collections.EMPTY_LIST, null, null);
 
       try {
         json.writeValue(getInfoFile(name), BeanHelper.wrapPipelineInfo(info));
@@ -179,8 +182,7 @@ public class FilePipelineStoreTask extends AbstractTask implements PipelineStore
       }
       pipeline.setPipelineInfo(info);
       if (pipelineStateStore != null) {
-        pipelineStateStore.saveState(user, name, REV, PipelineStatus.EDITED, "Pipeline edited", null,
-          ExecutionMode.STANDALONE, null, 0, 0);
+        pipelineStateStore.edited(user, name, REV, ExecutionMode.STANDALONE, isRemote);
       }
       return pipeline;
     }
@@ -217,18 +219,21 @@ public class FilePipelineStoreTask extends AbstractTask implements PipelineStore
   @Override
   public List<PipelineInfo> getPipelines() throws PipelineStoreException {
     List<PipelineInfo> pipelineInfoList = new ArrayList<PipelineInfo>();
-    for (String name : storeDir.list(new FilenameFilter() {
+    String[] filenames = storeDir.list(new FilenameFilter() {
       @Override
       public boolean accept(File dir, String name) {
         // If one browses to the pipelines directory, mac creates a ".DS_store directory and this causes us problems
         // So filter it out
-        if (name.startsWith(".")) {
-          return false;
-        }
-        return true;
+        return !name.startsWith(".");
       }
 
-    })) {
+    });
+    // filenames can be null if storeDir is not actually a directory.
+    if (filenames == null) {
+      throw new PipelineStoreException(ContainerError.CONTAINER_0213, storeDir.getPath());
+    }
+
+    for (String name : filenames) {
       PipelineInfoJson pipelineInfoJsonBean;
       try {
         pipelineInfoJsonBean = json.readValue(getInfoFile(name), PipelineInfoJson.class);
@@ -277,16 +282,24 @@ public class FilePipelineStoreTask extends AbstractTask implements PipelineStore
         }
       }
       UUID uuid = UUID.randomUUID();
-      PipelineInfo info =
-        new PipelineInfo(getInfo(name), pipeline.getDescription(), new Date(), user, REV, uuid, pipeline.isValid());
+      PipelineInfo info = new PipelineInfo(
+          getInfo(name),
+          pipeline.getDescription(),
+          new Date(),
+          user,
+          REV,
+          uuid,
+          pipeline.isValid(),
+          pipeline.getMetadata()
+      );
       try {
         pipeline.setUuid(uuid);
         json.writeValue(getInfoFile(name), BeanHelper.wrapPipelineInfo(info));
         json.writeValue(getPipelineFile(name), BeanHelper.wrapPipelineConfiguration(pipeline));
         if (pipelineStateStore != null) {
           List<Issue> errors = new ArrayList<>();
-          PipelineConfigBean pipelineConfigBean = PipelineBeanCreator.get().create(pipeline, errors);
-          pipelineStateStore.edited(user, name, tag,  PipelineBeanCreator.get().getExecutionMode(pipeline, errors));
+          PipelineBeanCreator.get().create(pipeline, errors);
+          pipelineStateStore.edited(user, name, tag,  PipelineBeanCreator.get().getExecutionMode(pipeline, errors), false);
           pipeline.getIssues().addAll(errors);
         }
 
@@ -346,22 +359,25 @@ public class FilePipelineStoreTask extends AbstractTask implements PipelineStore
         }
         //try loading from store, needed in cases like restart
         RuleDefinitions ruleDefinitions = null;
-        File rulesFile = getRulesFile(name);
-        if(rulesFile.exists()) {
-          try (InputStream is = new DataStore(rulesFile).getInputStream()){
-            RuleDefinitionsJson ruleDefinitionsJsonBean =
-              ObjectMapperFactory.get().readValue(is, RuleDefinitionsJson.class);
-            ruleDefinitions = ruleDefinitionsJsonBean.getRuleDefinitions();
-          } catch (IOException ex) {
-            //File does not exist
-            LOG.debug(ContainerError.CONTAINER_0403.getMessage(), name, ex.toString(),
-                      ex);
-            ruleDefinitions = null;
+        DataStore ds = new DataStore(getRulesFile(name));
+        try {
+          if (ds.exists()) {
+            try (InputStream is = ds.getInputStream()) {
+              RuleDefinitionsJson ruleDefinitionsJsonBean =
+                  ObjectMapperFactory.get().readValue(is, RuleDefinitionsJson.class);
+              ruleDefinitions = ruleDefinitionsJsonBean.getRuleDefinitions();
+            }
           }
+        } catch (IOException ex) {
+          //File does not exist
+          LOG.debug(ContainerError.CONTAINER_0403.getMessage(), name, ex.toString(),
+              ex);
+          ruleDefinitions = null;
         }
         if(ruleDefinitions == null) {
           ruleDefinitions = new RuleDefinitions(new ArrayList<MetricsRuleDefinition>(),
-            new ArrayList<DataRuleDefinition>(), new ArrayList<String>(), UUID.randomUUID());
+            new ArrayList<DataRuleDefinition>(), new ArrayList<DriftRuleDefinition>(),
+              new ArrayList<String>(), UUID.randomUUID());
         }
         pipelineToRuleDefinitionMap.put(getPipelineKey(name, tagOrRev), ruleDefinitions);
       }
@@ -388,11 +404,15 @@ public class FilePipelineStoreTask extends AbstractTask implements PipelineStore
 
       UUID uuid = UUID.randomUUID();
       ruleDefinitions.setUuid(uuid);
-      try (OutputStream os = new DataStore(getRulesFile(pipelineName)).getOutputStream()) {
+      DataStore dataStore = new DataStore(getRulesFile(pipelineName));
+      try (OutputStream os = dataStore.getOutputStream()) {
         ObjectMapperFactory.get().writeValue(os, BeanHelper.wrapRuleDefinitions(ruleDefinitions));
+        dataStore.commit(os);
         pipelineToRuleDefinitionMap.put(getPipelineKey(pipelineName, tag), ruleDefinitions);
       } catch (IOException ex) {
         throw new PipelineStoreException(ContainerError.CONTAINER_0404, pipelineName, ex.toString(), ex);
+      } finally {
+        dataStore.release();
       }
       return ruleDefinitions;
     }
@@ -448,6 +468,13 @@ public class FilePipelineStoreTask extends AbstractTask implements PipelineStore
       }
     }
     return pipelineConf;
+  }
+
+  @Override
+  public boolean isRemotePipeline(String name, String rev) throws PipelineStoreException {
+    Object isRemote = pipelineStateStore.getState(name, rev).getAttributes().get(RemoteDataCollector.IS_REMOTE_PIPELINE);
+    // remote attribute will be null for pipelines with version earlier than 1.3
+    return (isRemote == null) ? false : (boolean) isRemote;
   }
 
 }

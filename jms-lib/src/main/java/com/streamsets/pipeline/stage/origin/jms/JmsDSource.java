@@ -25,6 +25,7 @@ import com.streamsets.pipeline.api.ConfigGroups;
 import com.streamsets.pipeline.api.ErrorListener;
 import com.streamsets.pipeline.api.ExecutionMode;
 import com.streamsets.pipeline.api.GenerateResourceBundle;
+import com.streamsets.pipeline.api.HideConfigs;
 import com.streamsets.pipeline.api.Source;
 import com.streamsets.pipeline.api.StageDef;
 import com.streamsets.pipeline.api.ValueChooserModel;
@@ -36,15 +37,17 @@ import com.streamsets.pipeline.stage.origin.lib.DataParserFormatConfig;
 import com.streamsets.pipeline.stage.origin.lib.MessageConfig;
 
 @StageDef(
-    version = 2,
+    version = 4,
     label = "JMS Consumer",
     description = "Reads data from a JMS source.",
     icon = "jms.png",
     execution = ExecutionMode.STANDALONE,
     upgrader = JmsSourceUpgrader.class,
-    recordsByRef = true
+    recordsByRef = true,
+    onlineHelpRefUrl = "index.html#Origins/JMS.html#task_zp1_4ck_dt"
 )
 @ConfigGroups(value = JmsGroups.class)
+@HideConfigs(value = {"dataFormatConfig.compression"})
 @GenerateResourceBundle
 public class JmsDSource extends DSourceOffsetCommitter implements ErrorListener {
 

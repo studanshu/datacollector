@@ -19,18 +19,20 @@
  */
 package com.streamsets.pipeline.stage.origin.kafka;
 
-import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import com.streamsets.pipeline.api.BatchMaker;
 import com.streamsets.pipeline.api.Record;
 import com.streamsets.pipeline.api.StageException;
+import com.streamsets.pipeline.kafka.api.MessageAndOffset;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 public class StandaloneKafkaSource extends BaseKafkaSource {
   private static final Logger LOG = LoggerFactory.getLogger(StandaloneKafkaSource.class);
 
-  public StandaloneKafkaSource(SourceArguments args) {
-    super(args);
+  public StandaloneKafkaSource(KafkaConfigBean conf) {
+    super(conf);
   }
 
   @Override
@@ -39,7 +41,7 @@ public class StandaloneKafkaSource extends BaseKafkaSource {
     if (issues.isEmpty()) {
       if(getContext().isPreview()) {
         //set fixed batch duration time of 1 second for preview.
-        maxWaitTime = 1000;
+        conf.maxWaitTime = 1000;
       }
       try {
         kafkaConsumer.init();
@@ -52,19 +54,23 @@ public class StandaloneKafkaSource extends BaseKafkaSource {
   }
 
   private String getMessageID(MessageAndOffset message) {
-    return topic + "::" + message.getPartition() + "::" + message.getOffset();
+    return conf.topic + "::" + message.getPartition() + "::" + message.getOffset();
   }
 
   @Override
   public String produce(String lastSourceOffset, int maxBatchSize, BatchMaker batchMaker) throws StageException {
     int recordCounter = 0;
-    int batchSize = this.maxBatchSize > maxBatchSize ? maxBatchSize : this.maxBatchSize;
+    int batchSize = conf.maxBatchSize > maxBatchSize ? maxBatchSize : conf.maxBatchSize;
     long startTime = System.currentTimeMillis();
-    while(recordCounter < batchSize && (startTime + maxWaitTime) > System.currentTimeMillis()) {
+    while (recordCounter < batchSize && (startTime + conf.maxWaitTime) > System.currentTimeMillis()) {
       MessageAndOffset message = kafkaConsumer.read();
       if (message != null) {
         String messageId = getMessageID(message);
-        List<Record> records = processKafkaMessage(messageId, message.getPayload());
+        List<Record> records = processKafkaMessage(String.valueOf(message.getPartition()), message.getOffset(), messageId, message.getPayload());
+        // If we are in preview mode, make sure we don't send a huge number of messages.
+        if (getContext().isPreview() && recordCounter + records.size() > batchSize) {
+          records = records.subList(0, batchSize - recordCounter);
+        }
         for (Record record : records) {
           batchMaker.addRecord(record);
         }

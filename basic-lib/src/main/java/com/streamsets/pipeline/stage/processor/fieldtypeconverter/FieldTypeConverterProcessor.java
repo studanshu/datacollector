@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -49,7 +50,7 @@ public class FieldTypeConverterProcessor extends SingleLaneRecordProcessor {
 
   @Override
   protected void process(Record record, SingleLaneBatchMaker batchMaker) throws StageException {
-    Set<String> fieldPaths = record.getFieldPaths();
+    Set<String> fieldPaths = record.getEscapedFieldPaths();
     for(FieldTypeConverterConfig fieldTypeConverterConfig : fieldTypeConverterConfigs) {
       for(String fieldToConvert : fieldTypeConverterConfig.fields) {
         for(String matchingField : FieldRegexUtil.getMatchingFieldPaths(fieldToConvert, fieldPaths)) {
@@ -67,7 +68,8 @@ public class FieldTypeConverterProcessor extends SingleLaneRecordProcessor {
                 try {
                   String dateMask = null;
                   if (fieldTypeConverterConfig.targetType == Field.Type.DATE ||
-                    fieldTypeConverterConfig.targetType == Field.Type.DATETIME) {
+                    fieldTypeConverterConfig.targetType == Field.Type.DATETIME ||
+                    fieldTypeConverterConfig.targetType == Field.Type.TIME) {
                     dateMask = (fieldTypeConverterConfig.dateFormat != DateFormat.OTHER)
                       ? fieldTypeConverterConfig.dateFormat.getFormat()
                       : fieldTypeConverterConfig.otherDateFormat;
@@ -80,15 +82,23 @@ public class FieldTypeConverterProcessor extends SingleLaneRecordProcessor {
 
                 }
               }
-            } else if ((field.getType() == Field.Type.DATETIME || field.getType() == Field.Type.DATE) &&
-              fieldTypeConverterConfig.targetType == Field.Type.LONG) {
+            } else if ((field.getType() == Field.Type.DATETIME || field.getType() == Field.Type.DATE || field.getType() == Field.Type.TIME) &&
+                (fieldTypeConverterConfig.targetType == Field.Type.LONG ||
+                    fieldTypeConverterConfig.targetType == Field.Type.STRING)) {
               if (field.getValue() == null) {
                 LOG.warn("Field {} in record {} has null value. Converting the type of field to '{}' with null value.",
-                  matchingField, record.getHeader().getSourceId(), fieldTypeConverterConfig.targetType);
+                    matchingField, record.getHeader().getSourceId(), fieldTypeConverterConfig.targetType);
                 record.set(matchingField, Field.create(fieldTypeConverterConfig.targetType, null));
-              } else {
+              } else if(fieldTypeConverterConfig.targetType == Field.Type.LONG) {
                 record.set(matchingField, Field.create(fieldTypeConverterConfig.targetType,
-                  field.getValueAsDatetime().getTime()));
+                    field.getValueAsDatetime().getTime()));
+              } else if(fieldTypeConverterConfig.targetType == Field.Type.STRING) {
+                String dateMask = (fieldTypeConverterConfig.dateFormat != DateFormat.OTHER)
+                    ? fieldTypeConverterConfig.dateFormat.getFormat()
+                    : fieldTypeConverterConfig.otherDateFormat;
+                java.text.DateFormat dateFormat = new SimpleDateFormat(dateMask, Locale.ENGLISH);
+                record.set(matchingField, Field.create(fieldTypeConverterConfig.targetType,
+                    dateFormat.format(field.getValueAsDatetime())));
               }
             } else {
               //use the built in type conversion provided by TypeSupport
@@ -97,7 +107,7 @@ public class FieldTypeConverterProcessor extends SingleLaneRecordProcessor {
                 record.set(matchingField, Field.create(fieldTypeConverterConfig.targetType, field.getValue()));
               } catch (IllegalArgumentException e) {
                 throw new OnRecordErrorException(Errors.CONVERTER_00, matchingField, field.getValueAsString(),
-                  fieldTypeConverterConfig.targetType.name(), e.toString(), e);
+                    fieldTypeConverterConfig.targetType.name(), e.toString(), e);
               }
             }
           }
@@ -116,7 +126,7 @@ public class FieldTypeConverterProcessor extends SingleLaneRecordProcessor {
       case BYTE:
         return Field.create(NumberFormat.getInstance(dataLocale).parse(stringValue).byteValue());
       case BYTE_ARRAY:
-        return Field.create(stringValue.getBytes());
+        return Field.create(stringValue.getBytes(StandardCharsets.UTF_8));
       case CHAR:
         return Field.create(stringValue.charAt(0));
       case DATE:
@@ -125,6 +135,9 @@ public class FieldTypeConverterProcessor extends SingleLaneRecordProcessor {
       case DATETIME:
         java.text.DateFormat dateTimeFormat = new SimpleDateFormat(dateMask, Locale.ENGLISH);
         return Field.createDatetime(dateTimeFormat.parse(stringValue));
+      case TIME:
+        java.text.DateFormat timeFormat = new SimpleDateFormat(dateMask, Locale.ENGLISH);
+        return Field.createTime(timeFormat.parse(stringValue));
       case DECIMAL:
         Number decimal = NumberFormat.getInstance(dataLocale).parse(stringValue);
         return Field.create(new BigDecimal(decimal.toString()));

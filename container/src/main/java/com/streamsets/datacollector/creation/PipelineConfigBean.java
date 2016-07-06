@@ -19,6 +19,7 @@
  */
 package com.streamsets.datacollector.creation;
 
+import com.streamsets.datacollector.config.StatsTargetChooserValues;
 import com.streamsets.datacollector.config.DeliveryGuarantee;
 import com.streamsets.datacollector.config.DeliveryGuaranteeChooserValues;
 import com.streamsets.datacollector.config.ErrorHandlingChooserValues;
@@ -45,11 +46,16 @@ import java.util.Map;
 // the annotation processor does not work on this maven project
 // we have a hardcoded 'datacollector-resource-bundles.json' file in resources
 @GenerateResourceBundle
-@StageDef(version = PipelineConfigBean.VERSION, label = "Pipeline", upgrader = PipelineConfigUpgrader.class)
+@StageDef(
+    version = PipelineConfigBean.VERSION,
+    label = "Pipeline",
+    upgrader = PipelineConfigUpgrader.class,
+    onlineHelpRefUrl = "not applicable"
+)
 @ConfigGroups(PipelineGroups.class)
 public class PipelineConfigBean implements Stage {
 
-  public static final int VERSION = 4;
+  public static final int VERSION = 5;
 
   @ConfigDef(
       required = true,
@@ -118,7 +124,6 @@ public class PipelineConfigBean implements Stage {
   @ValueChooserModel(MemoryLimitExceededChooserValues.class)
   public MemoryLimitExceeded memoryLimitExceeded;
 
-
   @ConfigDef(
     required = false,
     type = ConfigDef.Type.MODEL,
@@ -163,6 +168,16 @@ public class PipelineConfigBean implements Stage {
   @ValueChooserModel(ErrorHandlingChooserValues.class)
   public String badRecordsHandling;
 
+  @ConfigDef(
+    required = false,
+    type = ConfigDef.Type.MODEL,
+    label = "Statistics Aggregator",
+    defaultValue = "streamsets-datacollector-basic-lib::com_streamsets_pipeline_stage_destination_devnull_StatsNullDTarget::1",
+    displayPosition = 95,
+    group = "STATS"
+  )
+  @ValueChooserModel(StatsTargetChooserValues.class)
+  public String statsAggregatorStage;
 
   @ConfigDef(
       required = true,
@@ -172,7 +187,7 @@ public class PipelineConfigBean implements Stage {
       displayPosition = 100,
       group = "CLUSTER",
       dependsOn = "executionMode",
-      triggeredByValue = {"CLUSTER_BATCH", "CLUSTER_STREAMING"}
+      triggeredByValue = {"CLUSTER_BATCH", "CLUSTER_YARN_STREAMING"}
   )
   public long clusterSlaveMemory;
 
@@ -186,7 +201,7 @@ public class PipelineConfigBean implements Stage {
     displayPosition = 110,
     group = "CLUSTER",
     dependsOn = "executionMode",
-    triggeredByValue = {"CLUSTER_BATCH", "CLUSTER_STREAMING"}
+    triggeredByValue = {"CLUSTER_BATCH", "CLUSTER_YARN_STREAMING"}
   )
   public String clusterSlaveJavaOpts;
 
@@ -200,10 +215,44 @@ public class PipelineConfigBean implements Stage {
     displayPosition = 120,
     group = "CLUSTER",
     dependsOn = "executionMode",
-    triggeredByValue = {"CLUSTER_BATCH", "CLUSTER_STREAMING"}
+    triggeredByValue = {"CLUSTER_BATCH", "CLUSTER_YARN_STREAMING"}
   )
   public Map clusterLauncherEnv;
 
+  @ConfigDef(
+    required = true,
+    type = ConfigDef.Type.STRING,
+    label = "Mesos Dispatcher URL",
+    description = "URL for service which launches Mesos framework",
+    displayPosition = 130,
+    group = "CLUSTER",
+    dependsOn = "executionMode",
+    triggeredByValue = {"CLUSTER_MESOS_STREAMING"}
+  )
+  public String mesosDispatcherURL;
+
+  @ConfigDef(
+    required = true,
+    type = ConfigDef.Type.STRING,
+    label = "Checkpoint Configuration Directory",
+    description = "An SDC resource directory or symbolic link with HDFS/S3 configuration files core-site.xml and hdfs-site.xml",
+    displayPosition = 150,
+    group = "CLUSTER",
+    dependsOn = "executionMode",
+    triggeredByValue = {"CLUSTER_MESOS_STREAMING"}
+  )
+  public String hdfsS3ConfDir;
+
+  @ConfigDef(
+      required = false,
+      type = ConfigDef.Type.NUMBER,
+      defaultValue = "0",
+      label = "Rate Limit (records / sec)",
+      description = "Maximum number of events per second that should be accepted into the pipeline. " +
+          "Rate is not limited if this is not set, or is set to 0",
+      displayPosition = 180
+  )
+  public long rateLimit;
 
   @Override
   public List<ConfigIssue> init(Info info, Context context) {

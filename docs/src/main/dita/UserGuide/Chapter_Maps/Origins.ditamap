@@ -18,11 +18,14 @@
  <topicref href="../Origins/Origins_title.dita">
   <topicref href="../Origins/Origins_overview.dita" chunk="to-content">
     <topicmeta><shortdesc></shortdesc></topicmeta>
+   <topicref href="../Origins/Origins_AWSCredentials.dita"/>
    <topicref href="../Origins/BatchSizeWaitTime.dita"/>
+   <topicref href="../Origins/FileCompressionFormats.dita"/>
+   <topicref href="../Origins/FilePath_Offset.dita"/>
   <topicref href="../Origins/PreviewingRawSourceData.dita"/></topicref>
   <topicref href="../Origins/AmazonS3.dita" chunk="to-content">
    <topicmeta><shortdesc></shortdesc></topicmeta>
-   <topicref href="../Origins/AmazonS3-Folder_FileNamePattern.dita"/>
+   <topicref href="../Origins/AmazonS3-CommonPrefixPatterns.dita"/>
    <topicref href="../Origins/AmazonS3-FileProcessingOrder.dita"/>
    <topicref href="../Origins/AmazonS3-BufferLimit.dita"/>
    <topicref href="../Origins/AmazonS3-DataFormat.dita"/>
@@ -30,8 +33,9 @@
   </topicref>
   <topicref href="../Origins/Directory.dita" chunk="to-content">
    <topicmeta><shortdesc></shortdesc></topicmeta>
-   <topicref href="../Origins/Directory_FileProcessing.dita"/>
-   <topicref href="../Origins/Directory-CompressionTypes.dita"/>
+   <topicref href="../Origins/Directory-ReadOrder.dita"/>
+   <topicref href="../Origins/Directory-FirstFile.dita"/>
+   <topicref href="../Origins/Directory-LateDir.dita"/>
    <topicref href="../Origins/Directory-BufferLimit.dita"/>
    <topicref href="../Origins/Directory-DataFormat.dita">
     <topicref href="../Origins/LogFormats.dita"/>
@@ -40,16 +44,16 @@
   </topicref>
   <topicref href="../Origins/FileTail.dita" chunk="to-content">
    <topicmeta><shortdesc></shortdesc></topicmeta>
-   <topicref href="../Origins/FileTail-MultipleDirectories.dita">
-    <topicref href="../Origins/FileTail-TagAttribute.dita"/>
-   </topicref>
    <topicref href="../Origins/FileTail-FileProcessing.dita"/>
-   <topicref href="../Origins/FileTail-PathsandPatterns.dita"/>
+   <topicref href="../Origins/FileTail-MultipleDirectories.dita"/>
+   <topicref href="../Origins/FileTail-LateDirectories.dita"/>
+   <topicref href="../Origins/FileTail-Patterns.dita"/>
+   <topicref href="../Origins/FileTail-TagAttribute.dita"/>
+   <topicref href="../Origins/FileTail-MultipleLines.dita"/>
+   <topicref href="../Origins/FileTail-Output.dita"/>
    <topicref href="../Origins/FileTail-DataFormats.dita">
     <topicref href="../Origins/LogFormats.dita"/>
    </topicref>
-   <topicref href="../Origins/FileTail-MultipleLines.dita"/>
-   <topicref href="../Origins/FileTail-Nodes.dita"/>
    <topicref href="../Origins/FileTail-Configuring.dita"/>
   </topicref>
   <topicref href="../Origins/HadoopFS-origin.dita" chunk="to-content">   
@@ -57,15 +61,14 @@
    <topicref href="../Origins/HadoopFS-Kerberos.dita"/>
    <topicref href="../Origins/HadoopFS-HDFSUser-origin.dita"/>
    <topicref href="../Origins/HadoopFS-HadoopProperties-origin.dita"/>
-   <topicref href="../Origins/HadoopFS-DataFormat.dita">
-    <topicref href="../Origins/HadoopFS-LogFormats.dita"/>
-   </topicref>
+   <topicref href="../Origins/HadoopFS-DataFormat.dita"/>
    <topicref href="../Origins/HadoopFS-Configuring.dita"/>
   </topicref>
   <topicref href="../Origins/HTTPClient.dita" chunk="to-content">
    <topicmeta><shortdesc></shortdesc></topicmeta>
    <topicref href="../Origins/HTTPClient-ProcessingMode.dita"/>
    <topicref href="../Origins/HTTPClient-Method.dita"/>
+   <topicref href="../Origins/HTTPClient-DataFormats.dita"/>
    <topicref href="../Origins/HTTPClient-Configuring.dita"/>
   </topicref>
   <topicref href="../Origins/JDBCConsumer.dita" chunk="to-content"> <topicmeta><shortdesc></shortdesc></topicmeta>
@@ -75,6 +78,7 @@
    <topicref href="../Origins/JDBCConsumer-Full-IncrementalQueries.dita"/>
    <topicref href="../Origins/JDBC-SQLQuery.dita"/>
    <topicref href="../Origins/JDBCConsumer-CDC.dita"/>
+   <topicref href="../Origins/JDBCConsumer-HeaderAttributes.dita"/>
    <topicref href="../Origins/JDBCConsumer-Configuring.dita"/>
   </topicref>
   <topicref href="../Origins/JMS.dita" chunk="to-content">
@@ -92,12 +96,27 @@
     <topicref href="../Origins/LogFormats.dita"/>
    </topicref>
    <topicref href="../Origins/KConsumer_AdditionalKProp.dita"/>
+   <topicref href="../Origins/KConsumer-EnablingSecurity.dita">
+    <topicref href="../Origins/KafkaC-EnablingSSL.dita"/>
+    <topicref href="../Origins/KafkaC-EnablingKerberos.dita"/>
+    <topicref href="../Origins/KafkaC-EnablingSSLKerb.dita"/>
+   </topicref>
    <topicref href="../Origins/KConsumer-Configuring.dita"/>
   </topicref>
   <topicref href="../Origins/KinConsumer.dita" chunk="to-content">  
    <topicmeta><shortdesc></shortdesc></topicmeta>
    <topicref href="../Origins/KinConsumer-ReadInterval.dita"/>
+   <topicref href="../Origins/KinConsumer-DataFormats.dita"/>
    <topicref href="../Origins/KinConsumer-Configuring.dita"/></topicref>
+  <topicref href="../Origins/MapRStreamsCons.dita" chunk="to-content">
+   <topicmeta><shortdesc></shortdesc></topicmeta>
+   <topicref href="../Origins/MapRStreamsCons-AddProps.dita"/>
+   <topicref href="../Origins/MapRStreamsCons-DataFormats.dita">
+    <topicref href="../Origins/LogFormats.dita"/>
+   </topicref>
+   <topicref href="../Origins/MapRStreamsCons-AllData.dita"/>
+   <topicref href="../Origins/MapRStreamsCons-Configuring.dita"/>
+  </topicref>
   <topicref href="../Origins/MongoDB.dita" chunk="to-content">
    <topicmeta><shortdesc></shortdesc></topicmeta>
    <topicref href="../Origins/MongoDB-OffsetField.dita"/>
@@ -108,9 +127,29 @@
    <topicmeta><shortdesc></shortdesc></topicmeta>
    <topicref href="../Origins/Omniture-Configuring.dita"/>
   </topicref>
+  <topicref href="../Origins/RabbitMQ.dita" chunk="to-content">
+   <topicmeta><shortdesc></shortdesc></topicmeta>
+   <topicref href="../Origins/RabbitMQ-Queue.dita"/>
+   <topicref href="../Origins/RabbitMQ-DataFormat.dita"/>
+   <topicref href="../Origins/RabbitMQ-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Origins/Redis.dita" chunk="to-content">
+   <topicmeta><shortdesc></shortdesc></topicmeta>
+   <topicref href="../Origins/Redis-ChannelPattern.dita"/>
+   <topicref href="../Origins/Redis-DataFormats.dita">
+    <topicref href="../Origins/LogFormats.dita"/>
+   </topicref>
+   <topicref href="../Origins/Redis-Configuring.dita"/>
+  </topicref>
   <topicref href="../Origins/SDC_RPCorigin.dita" chunk="to-content">
    <topicmeta><shortdesc></shortdesc></topicmeta>
    <topicref href="../Origins/RPCorigin-Configuring.dita"/>
+  </topicref>
+  <topicref href="../Origins/SFTP.dita" chunk="to-content">
+   <topicmeta><shortdesc></shortdesc></topicmeta>
+   <topicref href="../Origins/SFTP-Credentials.dita"/>
+   <topicref href="../Origins/SFTPClient-DataFormats.dita"/>
+   <topicref href="../Origins/SFTP-Configuring.dita"/>
   </topicref>
   <topicref href="../Origins/UDP.dita" chunk="to-content">
    <topicmeta><shortdesc></shortdesc></topicmeta>

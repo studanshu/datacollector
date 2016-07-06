@@ -24,14 +24,17 @@ import com.streamsets.datacollector.execution.SnapshotInfo;
 public class SnapshotInfoImpl implements SnapshotInfo {
 
   private final String id;
+  private final String label;
   private final String name;
   private final String rev;
   private final long timestamp;
   private final String user;
   private final boolean inProgress;
 
-  public SnapshotInfoImpl(String user, String id, String name, String rev, long timestamp, boolean inProgress) {
+  public SnapshotInfoImpl(String user, String id, String label, String name, String rev, long timestamp,
+                          boolean inProgress) {
     this.id = id;
+    this.label = label;
     this.name = name;
     this.rev = rev;
     this.timestamp = timestamp;
@@ -45,6 +48,11 @@ public class SnapshotInfoImpl implements SnapshotInfo {
   }
 
   @Override
+  public String getLabel() {
+    return label;
+  }
+
+  @Override
   public String getName() {
     return name;
   }
@@ -54,6 +62,7 @@ public class SnapshotInfoImpl implements SnapshotInfo {
     return rev;
   }
 
+  @Override
   public long getTimeStamp() {
     return timestamp;
   }

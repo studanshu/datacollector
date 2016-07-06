@@ -19,38 +19,29 @@
  */
 package com.streamsets.pipeline.stage.origin.logtail;
 
+import com.codahale.metrics.Counter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streamsets.pipeline.api.BatchMaker;
 import com.streamsets.pipeline.api.Field;
 import com.streamsets.pipeline.api.Record;
 import com.streamsets.pipeline.api.StageException;
 import com.streamsets.pipeline.api.base.BaseSource;
-import com.streamsets.pipeline.api.el.ELEval;
-import com.streamsets.pipeline.api.el.ELEvalException;
-import com.streamsets.pipeline.api.el.ELVars;
-import com.streamsets.pipeline.api.impl.Utils;
 import com.streamsets.pipeline.config.DataFormat;
 import com.streamsets.pipeline.config.FileRollMode;
-import com.streamsets.pipeline.config.JsonMode;
-import com.streamsets.pipeline.config.LogMode;
-import com.streamsets.pipeline.config.OnParseError;
 import com.streamsets.pipeline.config.PostProcessingOptions;
 import com.streamsets.pipeline.lib.io.FileEvent;
-import com.streamsets.pipeline.lib.io.FileFinder;
 import com.streamsets.pipeline.lib.io.FileLine;
 import com.streamsets.pipeline.lib.io.LiveFile;
 import com.streamsets.pipeline.lib.io.LiveFileChunk;
 import com.streamsets.pipeline.lib.io.MultiFileInfo;
 import com.streamsets.pipeline.lib.io.MultiFileReader;
 import com.streamsets.pipeline.lib.io.RollMode;
-import com.streamsets.pipeline.lib.parser.DataParserFactory;
 import com.streamsets.pipeline.lib.parser.DataParser;
 import com.streamsets.pipeline.lib.parser.DataParserException;
-import com.streamsets.pipeline.lib.parser.DataParserFactoryBuilder;
-import com.streamsets.pipeline.lib.parser.log.LogDataFormatValidator;
-import com.streamsets.pipeline.lib.parser.log.LogDataParserFactory;
-import com.streamsets.pipeline.lib.parser.log.RegExConfig;
-import com.streamsets.pipeline.lib.parser.text.TextDataParserFactory;
+import com.streamsets.pipeline.lib.parser.DataParserFactory;
+import com.streamsets.pipeline.stage.common.DefaultErrorRecordHandler;
+import com.streamsets.pipeline.stage.common.ErrorRecordHandler;
+import com.streamsets.pipeline.stage.common.HeaderAttributeConstants;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +51,6 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -72,159 +62,204 @@ import java.util.regex.PatternSyntaxException;
 
 public class FileTailSource extends BaseSource {
   private static final Logger LOG = LoggerFactory.getLogger(FileTailSource.class);
+  public static final String FILE_TAIL_CONF_PREFIX = "conf.";
+  public static final String FILE_TAIL_DATA_FORMAT_CONFIG_PREFIX = FILE_TAIL_CONF_PREFIX + "dataFormatConfig.";
+  private static final String OFFSETS_LAG = "offsets.lag";
+  private static final String PENDING_FILES = "pending.files";
 
-  private final DataFormat dataFormat;
-  private final String multiLineMainPattern;
-  private final String charset;
-  private final boolean removeCtrlChars;
-  private final int maxLineLength;
-  private final int batchSize;
-  private final int maxWaitTimeSecs;
-  private final List<FileInfo> fileInfos;
-  private final PostProcessingOptions postProcessing;
-  private final String archiveDir;
-  private final LogMode logMode;
-  private final boolean logRetainOriginalLine;
-  private final String customLogFormat;
-  private final String regex;
-  private final String grokPatternDefinition;
-  private final String grokPattern;
-  private final List<RegExConfig> fieldPathsToGroupName;
-  private final boolean enableLog4jCustomLogFormat;
-  private final String log4jCustomLogFormat;
+
+  private final FileTailConfigBean conf;
   private final int scanIntervalSecs;
 
-  public FileTailSource(DataFormat dataFormat, String multiLineMainPattern, String charset,  boolean removeCtrlChars,
-      int maxLineLength, int batchSize,
-      int maxWaitTimeSecs, List<FileInfo> fileInfos, PostProcessingOptions postProcessing, String archiveDir,
-      LogMode logMode,
-      boolean retainOriginalLine, String customLogFormat, String regex,
-      List<RegExConfig> fieldPathsToGroupName,
-      String grokPatternDefinition, String grokPattern, boolean enableLog4jCustomLogFormat,
-      String log4jCustomLogFormat) {
-    this(dataFormat, multiLineMainPattern, charset, removeCtrlChars, maxLineLength, batchSize, maxWaitTimeSecs,
-         fileInfos, postProcessing, archiveDir,
-         logMode, retainOriginalLine, customLogFormat, regex, fieldPathsToGroupName, grokPatternDefinition,
-         grokPattern, enableLog4jCustomLogFormat, log4jCustomLogFormat, 20);
+  public FileTailSource(FileTailConfigBean conf) {
+    this(conf, 20);
   }
 
-
-  FileTailSource(DataFormat dataFormat, String multiLineMainPattern, String charset, boolean removeCtrlChars,
-      int maxLineLength, int batchSize, int maxWaitTimeSecs, List<FileInfo> fileInfos,
-      PostProcessingOptions postProcessing, String archiveDir, LogMode logMode,
-      boolean retainOriginalLine, String customLogFormat, String regex,
-      List<RegExConfig> fieldPathsToGroupName,
-      String grokPatternDefinition, String grokPattern, boolean enableLog4jCustomLogFormat,
-      String log4jCustomLogFormat, int scanIntervalSecs) {
-    this.dataFormat = dataFormat;
-    this.multiLineMainPattern = multiLineMainPattern;
-    this.charset = charset;
-    this.removeCtrlChars = removeCtrlChars;
-    this.maxLineLength = maxLineLength;
-    this.batchSize = batchSize;
-    this.maxWaitTimeSecs = maxWaitTimeSecs;
-    this.fileInfos = fileInfos;
-    this.postProcessing = postProcessing;
-    this.archiveDir = archiveDir;
-    this.logMode = logMode;
-    this.logRetainOriginalLine = retainOriginalLine;
-    this.customLogFormat = customLogFormat;
-    this.regex = regex;
-    this.fieldPathsToGroupName = fieldPathsToGroupName;
-    this.grokPatternDefinition = grokPatternDefinition;
-    this.grokPattern = grokPattern;
-    this.enableLog4jCustomLogFormat = enableLog4jCustomLogFormat;
-    this.log4jCustomLogFormat = log4jCustomLogFormat;
+  FileTailSource(FileTailConfigBean conf, int scanIntervalSecs) {
+    this.conf = conf;
     this.scanIntervalSecs = scanIntervalSecs;
   }
 
   private MultiFileReader multiDirReader;
 
-  private LogDataFormatValidator logDataFormatValidator;
-
   private long maxWaitTimeMillis;
 
+  private ErrorRecordHandler errorRecordHandler;
   private DataParserFactory parserFactory;
   private String outputLane;
   private String metadataLane;
+  private Map<String, Counter> offsetLagMetric;
+  private Map<String, Counter> pendingFilesMetric;
 
   private boolean validateFileInfo(FileInfo fileInfo, List<ConfigIssue> issues) {
     boolean ok = true;
     String fileName = Paths.get(fileInfo.fileFullPath).getFileName().toString();
     String token = fileInfo.fileRollMode.getTokenForPattern();
-    if (!token.isEmpty() && !fileName.contains(token)) {
-      ok = false;
-      issues.add(getContext().createConfigIssue(Groups.FILES.name(), "fileInfo", Errors.TAIL_08, fileInfo.fileFullPath,
-                                                fileInfo.fileRollMode.getTokenForPattern(), fileName));
+
+    if (!validateFilePathNoNull(fileInfo, fileName, issues)) {
+      return false;
     }
-    String fileParentDir = Paths.get(fileInfo.fileFullPath).getParent().toString();
-    if (!token.isEmpty() && fileParentDir.contains(token)) {
-      issues.add(getContext().createConfigIssue(Groups.FILES.name(), "fileInfo", Errors.TAIL_16, fileInfo.fileFullPath,
-                                                fileInfo.fileRollMode.getTokenForPattern()));
+    ok &= validateTokenInFilePath(fileInfo, issues, fileName, token);
+    ok &= validateTokenNotInParentDir(fileInfo, issues, token);
+    ok &= validatePatternForToken(fileInfo, issues);
+
+    return ok;
+  }
+
+  private boolean validateFilePathNoNull(FileInfo fileInfo, String fileName, List<ConfigIssue> issues) {
+    if (fileName == null || fileName.isEmpty()) {
+      issues.add(
+          getContext().createConfigIssue(
+              Groups.FILES.name(),
+              FILE_TAIL_CONF_PREFIX + "fileInfos",
+              Errors.TAIL_20,
+              fileInfo.fileFullPath
+          )
+      );
+      return false;
     }
+    return true;
+  }
+
+  private boolean validatePatternForToken(FileInfo fileInfo, List<ConfigIssue> issues) {
+    boolean ok = true;
     if (fileInfo.fileRollMode == FileRollMode.PATTERN) {
+      // must provide a pattern if using this roll mode
       if (fileInfo.patternForToken == null || fileInfo.patternForToken.isEmpty()) {
-        ok = false;
-        issues.add(getContext().createConfigIssue(Groups.FILES.name(), "fileInfo", Errors.TAIL_08, fileInfo.fileFullPath));
+        ok &= false;
+        issues.add(
+            getContext().createConfigIssue(
+                Groups.FILES.name(),
+                FILE_TAIL_CONF_PREFIX + "fileInfos",
+                Errors.TAIL_08,
+                fileInfo.fileFullPath
+            )
+        );
       } else {
-        try {
-          Pattern.compile(fileInfo.patternForToken);
-        } catch (PatternSyntaxException ex) {
-          ok = false;
-          issues.add(getContext().createConfigIssue(Groups.FILES.name(), "fileInfo", Errors.TAIL_09,
-                                                    fileInfo.fileFullPath, fileInfo.patternForToken,
-                                                    ex.toString()));
-        }
-        ELVars elVars = getContext().createELVars();
-        elVars.addVariable("PATTERN", "");
-        ELEval elEval = getContext().createELEval("fileFullPath");
-        try {
-          String pathWithoutPattern = elEval.eval(elVars, fileInfo.fileFullPath, String.class);
-          if (FileFinder.hasGlobWildcard(pathWithoutPattern)) {
-            ok = false;
-            issues.add(getContext().createConfigIssue(Groups.FILES.name(), "fileInfo", Errors.TAIL_17,
-                                                      fileInfo.fileFullPath));
-          }
-        } catch (ELEvalException ex) {
-          ok = false;
-          issues.add(getContext().createConfigIssue(Groups.FILES.name(), "fileInfo", Errors.TAIL_18,
-                                                    fileInfo.fileFullPath, ex.toString()));
-        }
+        // valid patternForTokens must be parseable regexes
+        ok &= validatePatternIsValidRegex(fileInfo, issues);
       }
+
+      // if firstFile is provided, make sure it's possible to use it
       if (ok && fileInfo.firstFile != null && !fileInfo.firstFile.isEmpty()) {
         RollMode rollMode = fileInfo.fileRollMode.createRollMode(fileInfo.fileFullPath, fileInfo.patternForToken);
         if (!rollMode.isFirstAcceptable(fileInfo.firstFile)) {
           ok = false;
-          issues.add(getContext().createConfigIssue(Groups.FILES.name(), "fileInfo", Errors.TAIL_19,
-                                                    fileInfo.fileFullPath));
+          issues.add(
+              getContext().createConfigIssue(
+                  Groups.FILES.name(),
+                  FILE_TAIL_CONF_PREFIX + "fileInfos",
+                  Errors.TAIL_19,
+                  fileInfo.fileFullPath
+              )
+          );
         }
       }
     }
     return ok;
   }
 
+  private boolean validatePatternIsValidRegex(FileInfo fileInfo, List<ConfigIssue> issues) {
+    try {
+      Pattern.compile(fileInfo.patternForToken);
+    } catch (PatternSyntaxException ex) {
+      issues.add(
+          getContext().createConfigIssue(
+              Groups.FILES.name(),
+              FILE_TAIL_CONF_PREFIX + "fileInfos",
+              Errors.TAIL_09,
+              fileInfo.fileFullPath,
+              fileInfo.patternForToken,
+              ex.toString()
+          )
+      );
+      return false;
+    }
+    return true;
+  }
+
+  private boolean validateTokenNotInParentDir(FileInfo fileInfo, List<ConfigIssue> issues, String token) {
+    String fileParentDir = Paths.get(fileInfo.fileFullPath).getParent().toString();
+    if (!token.isEmpty() && fileParentDir.contains(token)) {
+      issues.add(
+          getContext().createConfigIssue(
+              Groups.FILES.name(),
+              FILE_TAIL_CONF_PREFIX + "fileInfos",
+              Errors.TAIL_16,
+              fileInfo.fileFullPath,
+              fileInfo.fileRollMode.getTokenForPattern()
+          )
+      );
+      return false;
+    }
+    return true;
+  }
+
+  private boolean validateTokenInFilePath(FileInfo fileInfo, List<ConfigIssue> issues, String fileName, String token) {
+    if (!token.isEmpty() && !fileName.contains(token)) {
+      issues.add(
+          getContext().createConfigIssue(
+              Groups.FILES.name(),
+              FILE_TAIL_CONF_PREFIX + "fileInfos",
+              Errors.TAIL_08,
+              fileInfo.fileFullPath,
+              fileInfo.fileRollMode.getTokenForPattern(),
+              fileName
+          )
+      );
+      return false;
+    }
+    return true;
+  }
+
   @Override
   protected List<ConfigIssue> init() {
     List<ConfigIssue> issues = super.init();
-    if (postProcessing == PostProcessingOptions.ARCHIVE) {
-      if (archiveDir == null || archiveDir.isEmpty()) {
-        issues.add(getContext().createConfigIssue(Groups.POST_PROCESSING.name(), "archiveDir", Errors.TAIL_05));
+    errorRecordHandler = new DefaultErrorRecordHandler(getContext());
+
+    if (conf.postProcessing == PostProcessingOptions.ARCHIVE) {
+      if (conf.archiveDir == null || conf.archiveDir.isEmpty()) {
+        issues.add(
+            getContext().createConfigIssue(
+                Groups.POST_PROCESSING.name(),
+                FILE_TAIL_CONF_PREFIX + "archiveDir",
+                Errors.TAIL_05
+            )
+        );
       } else {
-        File dir = new File(archiveDir);
+        File dir = new File(conf.archiveDir);
         if (!dir.exists()) {
-          issues.add(getContext().createConfigIssue(Groups.POST_PROCESSING.name(), "archiveDir", Errors.TAIL_06));
+          issues.add(
+              getContext().createConfigIssue(
+                  Groups.POST_PROCESSING.name(),
+                  FILE_TAIL_CONF_PREFIX + "archiveDir",
+                  Errors.TAIL_06
+              )
+          );
         }
         if (!dir.isDirectory()) {
-          issues.add(getContext().createConfigIssue(Groups.POST_PROCESSING.name(), "archiveDir", Errors.TAIL_07));
+          issues.add(
+              getContext().createConfigIssue(
+                  Groups.POST_PROCESSING.name(),
+                  FILE_TAIL_CONF_PREFIX + "archiveDir",
+                  Errors.TAIL_07
+              )
+          );
         }
       }
     }
-    if (fileInfos.isEmpty()) {
-      issues.add(getContext().createConfigIssue(Groups.FILES.name(), "fileInfos", Errors.TAIL_01));
+    if (conf.fileInfos.isEmpty()) {
+      issues.add(
+          getContext().createConfigIssue(
+              Groups.FILES.name(),
+              FILE_TAIL_CONF_PREFIX + "fileInfos",
+              Errors.TAIL_01
+          )
+      );
     } else {
       Set<String> fileKeys = new LinkedHashSet<>();
       List<MultiFileInfo> dirInfos = new ArrayList<>();
-      for (FileInfo fileInfo : fileInfos) {
+      for (FileInfo fileInfo : conf.fileInfos) {
         if (validateFileInfo(fileInfo, issues)) {
           MultiFileInfo directoryInfo = new MultiFileInfo(
               fileInfo.tag,
@@ -232,13 +267,13 @@ public class FileTailSource extends BaseSource {
               fileInfo.fileRollMode,
               fileInfo.patternForToken,
               fileInfo.firstFile,
-              multiLineMainPattern
+              conf.multiLineMainPattern
           );
           dirInfos.add(directoryInfo);
           if (fileKeys.contains(directoryInfo.getFileKey())) {
             issues.add(getContext().createConfigIssue(
                 Groups.FILES.name(),
-                "fileInfos",
+                FILE_TAIL_CONF_PREFIX + "fileInfos",
                 Errors.TAIL_04,
                 fileInfo.fileFullPath
             ));
@@ -248,54 +283,54 @@ public class FileTailSource extends BaseSource {
       }
       if (!dirInfos.isEmpty()) {
         try {
+          int maxLineLength = Integer.MAX_VALUE;
+          if (conf.dataFormat == DataFormat.TEXT) {
+            maxLineLength = conf.dataFormatConfig.textMaxLineLen;
+          } else if (conf.dataFormat == DataFormat.JSON) {
+            maxLineLength = conf.dataFormatConfig.jsonMaxObjectLen;
+          } else if (conf.dataFormat == DataFormat.LOG) {
+            maxLineLength = conf.dataFormatConfig.logMaxObjectLen;
+          }
           int scanIntervalSecs = (getContext().isPreview()) ? 0 : this.scanIntervalSecs;
-          multiDirReader = new MultiFileReader(dirInfos, Charset.forName(charset), maxLineLength,
-                                                    postProcessing, archiveDir, true, scanIntervalSecs);
+          multiDirReader = new MultiFileReader(
+              dirInfos,
+              Charset.forName(conf.dataFormatConfig.charset),
+              maxLineLength,
+              conf.postProcessing,
+              conf.archiveDir,
+              true,
+              scanIntervalSecs,
+              conf.allowLateDirectories
+          );
         } catch (IOException ex) {
-          issues.add(getContext().createConfigIssue(Groups.FILES.name(), "fileInfos", Errors.TAIL_02, ex.toString(), ex));
+          issues.add(
+              getContext().createConfigIssue(
+                  Groups.FILES.name(),
+                  FILE_TAIL_CONF_PREFIX + "fileInfos",
+                  Errors.TAIL_02,
+                  ex.toString(),
+                  ex
+              )
+          );
         }
       }
     }
-    switch (dataFormat) {
-      case TEXT:
-      case JSON:
-        break;
-      case LOG:
-        logDataFormatValidator = new LogDataFormatValidator(logMode, maxLineLength, logRetainOriginalLine,
-                                                            customLogFormat, regex, grokPatternDefinition, grokPattern,
-                                                            enableLog4jCustomLogFormat, log4jCustomLogFormat,
-                                                            OnParseError.ERROR, 0, Groups.LOG.name(),
-                                                            getFieldPathToGroupMap(fieldPathsToGroupName));
-        logDataFormatValidator.validateLogFormatConfig(issues, getContext());
-        break;
-      default:
-        issues.add(getContext().createConfigIssue(Groups.FILES.name(), "dataFormat", Errors.TAIL_03, dataFormat,
-                                                  Arrays.asList(DataFormat.TEXT, DataFormat.JSON)));
-    }
 
-    maxWaitTimeMillis = maxWaitTimeSecs * 1000;
+    conf.dataFormatConfig.init(
+        getContext(),
+        conf.dataFormat,
+        Groups.FILES.name(),
+        FILE_TAIL_DATA_FORMAT_CONFIG_PREFIX,
+        !conf.multiLineMainPattern.isEmpty(),
+        issues
+    );
+    parserFactory = conf.dataFormatConfig.getParserFactory();
 
-    DataParserFactoryBuilder builder = new DataParserFactoryBuilder(getContext(), dataFormat.getParserFormat())
-        .setCharset(Charset.defaultCharset()).setRemoveCtrlChars(removeCtrlChars).setMaxDataLen(-1);
-    switch (dataFormat) {
-      case TEXT:
-        builder.setConfig(TextDataParserFactory.MULTI_LINE_KEY, !multiLineMainPattern.isEmpty());
-        break;
-      case JSON:
-        builder.setMode(JsonMode.MULTIPLE_OBJECTS);
-        break;
-      case LOG:
-        builder.setConfig(LogDataParserFactory.MULTI_LINES_KEY, !multiLineMainPattern.isEmpty());
-        logDataFormatValidator.populateBuilder(builder);
-        break;
-      default:
-        issues.add(getContext().createConfigIssue(Groups.FILES.name(), "dataFormat", Errors.TAIL_03, dataFormat,
-                                                  dataFormat));
-    }
-    parserFactory = builder.build();
-
+    maxWaitTimeMillis = conf.maxWaitTimeSecs * 1000;
     outputLane = getContext().getOutputLanes().get(0);
     metadataLane = getContext().getOutputLanes().get(1);
+    offsetLagMetric = new HashMap<String, Counter>();
+    pendingFilesMetric = new HashMap<String, Counter>();
 
     return issues;
   }
@@ -363,7 +398,7 @@ public class FileTailSource extends BaseSource {
   public String produce(String lastSourceOffset, int maxBatchSize, BatchMaker batchMaker) throws StageException {
     int recordCounter = 0;
     long startTime = System.currentTimeMillis();
-    maxBatchSize = Math.min(batchSize, maxBatchSize);
+    maxBatchSize = Math.min(conf.batchSize, maxBatchSize);
 
     // deserializing offsets of all directories
     Map<String, String> offsetMap = deserializeOffsetMap(lastSourceOffset);
@@ -390,7 +425,7 @@ public class FileTailSource extends BaseSource {
         List<FileLine> lines = chunk.getLines();
         int truncatedLine = chunk.isTruncated() ? lines.size()-1 : -1;
 
-        for(int i = 0; i < lines.size(); i++) {
+        for (int i = 0; i < lines.size(); i++) {
           FileLine line = lines.get(i);
           String sourceId = liveFileStr + "::" + line.getFileOffset();
           try (DataParser parser = parserFactory.getParser(sourceId, line.getText())) {
@@ -403,12 +438,14 @@ public class FileTailSource extends BaseSource {
               if (tag != null) {
                 record.getHeader().setAttribute("tag", tag);
               }
-              record.getHeader().setAttribute("file", chunk.getFile().getPath().toString());
+              record.getHeader().setAttribute(HeaderAttributeConstants.FILE, chunk.getFile().getPath().toString());
+              record.getHeader().setAttribute(HeaderAttributeConstants.FILE_NAME, chunk.getFile().getPath().getFileName().toString());
+              record.getHeader().setAttribute(HeaderAttributeConstants.OFFSET, String.valueOf(line.getFileOffset()));
               batchMaker.addRecord(record, outputLane);
               recordCounter++;
             }
           } catch (IOException | DataParserException ex) {
-            handleException(sourceId, ex);
+            errorRecordHandler.onError(Errors.TAIL_12, sourceId, ex.toString(), ex);
           }
         }
       }
@@ -447,38 +484,44 @@ public class FileTailSource extends BaseSource {
       }
     }
 
+    //Calculate Offset lag Metric.
+    calculateOffsetLagMetric(offsetMap);
+
+    //Calculate Pending Files Metric
+    calculatePendingFilesMetric();
+
     // serializing offsets of all directories
     return serializeOffsetMap(offsetMap);
   }
 
-  private void handleException(String sourceId, Exception ex) throws StageException {
-    switch (getContext().getOnErrorRecord()) {
-      case DISCARD:
-        break;
-      case TO_ERROR:
-        getContext().reportError(Errors.TAIL_12, sourceId, ex.toString(), ex);
-        break;
-      case STOP_PIPELINE:
-        if (ex instanceof StageException) {
-          throw (StageException) ex;
-        } else {
-          throw new StageException(Errors.TAIL_12, sourceId, ex.toString(), ex);
-        }
-      default:
-        throw new IllegalStateException(Utils.format("Unknown OnError value '{}'",
-          getContext().getOnErrorRecord(), ex));
+
+  private void calibrateMetric(Map<String, Long> resultMap, Map<String, Counter> metricMap, String metricPrefix) {
+    for (Map.Entry<String, Long> mapEntry : resultMap.entrySet()) {
+      String fileKey = mapEntry.getKey();
+      Long currValue = mapEntry.getValue();
+      Counter counter = metricMap.get(fileKey);
+      if (counter == null) {
+        counter = getContext().createCounter(metricPrefix + "." + fileKey);
+      }
+      //Counter only supports inc/dec by a number from an existing count value.
+      counter.inc(currValue - counter.getCount());
+      metricMap.put(fileKey, counter);
     }
   }
 
-  private Map<String, Integer> getFieldPathToGroupMap(List<RegExConfig> fieldPathsToGroupName) {
-    if(fieldPathsToGroupName == null) {
-      return new HashMap<>();
+  private void calculateOffsetLagMetric(Map<String, String> offsetMap) {
+    try {
+      calibrateMetric(multiDirReader.getOffsetsLag(offsetMap), offsetLagMetric, OFFSETS_LAG);
+    } catch (IOException ex) {
+      LOG.warn("Error while Calculating Offset Lag {}", ex.toString(), ex);
     }
-    Map<String, Integer> fieldPathToGroup = new HashMap<>();
-    for(RegExConfig r : fieldPathsToGroupName) {
-      fieldPathToGroup.put(r.fieldPath, r.group);
-    }
-    return fieldPathToGroup;
   }
 
+  private void calculatePendingFilesMetric() {
+    try {
+      calibrateMetric(multiDirReader.getPendingFiles(), pendingFilesMetric, PENDING_FILES);
+    } catch (IOException ex) {
+      LOG.warn("Error while Calculating Pending Files Metric {}", ex.toString(), ex);
+    }
+  }
 }

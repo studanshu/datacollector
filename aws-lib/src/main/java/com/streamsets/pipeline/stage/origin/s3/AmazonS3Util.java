@@ -30,8 +30,6 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.streamsets.pipeline.common.InterfaceAudience;
 import com.streamsets.pipeline.common.InterfaceStability;
 
-import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
@@ -43,6 +41,8 @@ import java.util.TreeSet;
 public class AmazonS3Util {
 
   public static final int BATCH_SIZE = 1000;
+
+  private AmazonS3Util() {}
 
   /**
    * Lists objects from AmazonS3 in chronological order [lexicographical order if 2 files have same timestamp] which are
@@ -56,10 +56,13 @@ public class AmazonS3Util {
    * @return
    * @throws AmazonClientException
    */
-  static List<S3ObjectSummary> listObjectsChronologically(AmazonS3Client s3Client, S3ConfigBean s3ConfigBean,
-                                                          PathMatcher pathMatcher, AmazonS3Source.S3Offset s3Offset,
-                                                          int fetchSize)
-    throws AmazonClientException {
+  static List<S3ObjectSummary> listObjectsChronologically(
+      AmazonS3Client s3Client,
+      S3ConfigBean s3ConfigBean,
+      AntPathMatcher pathMatcher,
+      AmazonS3Source.S3Offset s3Offset,
+      int fetchSize
+  ) {
 
     //Algorithm:
     // - Full scan all objects that match the file name pattern and which are later than the file in the offset
@@ -78,20 +81,21 @@ public class AmazonS3Util {
       });
 
     S3Objects s3ObjectSummaries = S3Objects
-      .withPrefix(s3Client, s3ConfigBean.s3Config.bucket, s3ConfigBean.s3Config.folder)
+      .withPrefix(s3Client, s3ConfigBean.s3Config.bucket, s3ConfigBean.s3Config.commonPrefix)
       .withBatchSize(BATCH_SIZE);
-    for(S3ObjectSummary s : s3ObjectSummaries) {
-      String fileName = s.getKey().substring(s3ConfigBean.s3Config.folder.length(), s.getKey().length());
-      if(!fileName.isEmpty()) {
-        //fileName can be empty.
-        //If the user manually creates a folder "myFolder/mySubFolder" in bucket "myBucket" and uploads "myObject",
+    for (S3ObjectSummary s : s3ObjectSummaries) {
+      String commonPrefix = s.getKey();
+      String remainingPrefix = commonPrefix.substring(s3ConfigBean.s3Config.commonPrefix.length(), commonPrefix.length());
+      if (!remainingPrefix.isEmpty()) {
+        // remainingPrefix can be empty.
+        // If the user manually creates a prefix "myFolder/mySubFolder" in bucket "myBucket" and uploads "myObject",
         // then the first objects returned here are:
         // myFolder/mySubFolder
         // myFolder/mySubFolder/myObject
         //
         // All is good when pipeline is run but preview returns with no data. So we should ignore the empty file as it
         // has no data
-        if (pathMatcher.matches(Paths.get(fileName)) && isEligible(s, s3Offset)) {
+        if (pathMatcher.match(s3ConfigBean.s3FileConfig.prefixPattern, remainingPrefix) && isEligible(s, s3Offset)) {
           treeSet.add(s);
         }
         if (treeSet.size() > fetchSize) {
@@ -118,31 +122,32 @@ public class AmazonS3Util {
       //compare names
       if(s.getKey().compareTo(s3Offset.getKey()) > 0) {
         isEligible = true;
-      } else if (s.getKey().compareTo(s3Offset.getKey()) == 0) {
+      } else if (s.getKey().compareTo(s3Offset.getKey()) == 0 && !"-1".equals(s3Offset.getOffset())) {
         //same time stamp, same name
         //If the current offset is not -1, return the file. It means the previous file was partially processed.
-        if(!s3Offset.getOffset().equals("-1")) {
-          isEligible = true;
-        }
+        isEligible = true;
       }
     }
     return isEligible;
   }
 
-  static void move(AmazonS3Client s3Client, String srcBucket, String sourceKey, String destBucket,
-                          String destKey) throws AmazonClientException {
+  static void move(
+      AmazonS3Client s3Client,
+      String srcBucket,
+      String sourceKey,
+      String destBucket,
+      String destKey
+  ) {
     CopyObjectRequest cp = new CopyObjectRequest(srcBucket, sourceKey, destBucket, destKey);
     s3Client.copyObject(cp);
     s3Client.deleteObject(new DeleteObjectRequest(srcBucket, sourceKey));
   }
 
-  static S3Object getObject(AmazonS3Client s3Client, String bucket, String objectKey)
-    throws AmazonClientException {
+  static S3Object getObject(AmazonS3Client s3Client, String bucket, String objectKey) {
     return s3Client.getObject(bucket, objectKey);
   }
 
-  static S3Object getObjectRange(AmazonS3Client s3Client, String bucket, String objectKey, long range)
-    throws AmazonClientException {
+  static S3Object getObjectRange(AmazonS3Client s3Client, String bucket, String objectKey, long range) {
     GetObjectRequest getObjectRequest = new GetObjectRequest(bucket, objectKey).withRange(0, range);
     return s3Client.getObject(getObjectRequest);
   }
@@ -150,9 +155,9 @@ public class AmazonS3Util {
   static S3ObjectSummary getObjectSummary(AmazonS3Client s3Client, String bucket, String objectKey) {
     S3ObjectSummary s3ObjectSummary = null;
     S3Objects s3ObjectSummaries = S3Objects
-      .withPrefix(s3Client, bucket, objectKey);
-    for(S3ObjectSummary s : s3ObjectSummaries) {
-      if(s.getKey().equals(objectKey)) {
+        .withPrefix(s3Client, bucket, objectKey);
+    for (S3ObjectSummary s : s3ObjectSummaries) {
+      if (s.getKey().equals(objectKey)) {
         s3ObjectSummary = s;
         break;
       }

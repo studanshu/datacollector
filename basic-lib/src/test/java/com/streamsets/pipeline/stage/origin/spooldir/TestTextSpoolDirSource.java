@@ -22,7 +22,6 @@ package com.streamsets.pipeline.stage.origin.spooldir;
 import com.streamsets.pipeline.api.BatchMaker;
 import com.streamsets.pipeline.api.Record;
 import com.streamsets.pipeline.config.Compression;
-import com.streamsets.pipeline.config.CsvRecordType;
 import com.streamsets.pipeline.config.DataFormat;
 import com.streamsets.pipeline.config.OnParseError;
 import com.streamsets.pipeline.config.PostProcessingOptions;
@@ -32,8 +31,11 @@ import org.apache.commons.io.IOUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.List;
@@ -50,6 +52,9 @@ public class TestTextSpoolDirSource {
   private final static String LINE1 = "1234567890";
   private final static String LINE2 = "A1234567890";
 
+  private final static String GBK_STRING = "ÓÃ»§Ãû:ôâÈ»12";
+  private final static String UTF_STRING = "脫脙禄搂脙没:么芒脠禄12";
+
   private File createLogFile(String charset) throws Exception {
     File f = new File(createTestDir(), "test.log");
     Writer writer = new OutputStreamWriter(new FileOutputStream(f), charset);
@@ -60,11 +65,28 @@ public class TestTextSpoolDirSource {
   }
 
   private SpoolDirSource createSource(String charset) {
-    return new SpoolDirSource(DataFormat.TEXT, charset, false, 100, createTestDir(), 10, 1, "file-[0-9].log", 10, null,
-      Compression.NONE, "*",  null,
-      PostProcessingOptions.ARCHIVE, createTestDir(), 10, null, null, -1, '^', '^', '^', null, 0, 10,
-      null, 0, null, 0, false, null, null, null, null, null, false, null, OnParseError.ERROR,
-      -1, null, CsvRecordType.LIST);
+    SpoolDirConfigBean conf = new SpoolDirConfigBean();
+    conf.dataFormat = DataFormat.TEXT;
+    conf.dataFormatConfig.charset = charset;
+    conf.dataFormatConfig.removeCtrlChars = false;
+    conf.overrunLimit = 100;
+    conf.spoolDir = createTestDir();
+    conf.batchSize = 10;
+    conf.poolingTimeoutSecs = 1;
+    conf.filePattern = "file-[0-9].log";
+    conf.maxSpoolFiles = 10;
+    conf.initialFileToProcess = null;
+    conf.dataFormatConfig.compression = Compression.NONE;
+    conf.dataFormatConfig.filePatternInArchive = "*";
+    conf.errorArchiveDir = null;
+    conf.postProcessing = PostProcessingOptions.ARCHIVE;
+    conf.archiveDir = createTestDir();
+    conf.retentionTimeMins = 10;
+    conf.dataFormatConfig.textMaxLineLen = 10;
+    conf.dataFormatConfig.onParseError = OnParseError.ERROR;
+    conf.dataFormatConfig.maxStackTraceLines = 0;
+
+    return new SpoolDirSource(conf);
   }
 
   public void testProduceFullFile(String charset) throws Exception {
@@ -136,4 +158,36 @@ public class TestTextSpoolDirSource {
     }
   }
 
+  @Test
+  public void testGbkEncodedFile() throws Exception {
+    SpoolDirSource source = createSource("GBK");
+    SourceRunner runner = new SourceRunner.Builder(SpoolDirDSource.class, source).addOutputLane("lane").build();
+    runner.runInit();
+    try {
+      // Write out a gbk-encoded file.
+      File f = new File(createTestDir(), "test_gbk.log");
+      Writer writer = new OutputStreamWriter(new FileOutputStream(f), "GBK");
+      IOUtils.write(UTF_STRING, writer);
+      writer.close();
+
+      // Read back the file to verify its content is gbk-encoded.
+      BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(f), "UTF8"));
+      Assert.assertEquals(GBK_STRING, reader.readLine());
+      reader.close();
+
+      BatchMaker batchMaker = SourceRunner.createTestBatchMaker("lane");
+      Assert.assertEquals("-1", source.produce(f, "0", 10, batchMaker));
+      StageRunner.Output output = SourceRunner.getOutput(batchMaker);
+      List<Record> records = output.getRecords().get("lane");
+      Assert.assertNotNull(records);
+      Assert.assertEquals(1, records.size());
+      Assert.assertEquals(
+          UTF_STRING.substring(0, 10),
+          records.get(0).get().getValueAsMap().get("text").getValueAsString()
+      );
+      Assert.assertTrue(records.get(0).has("/truncated"));
+    } finally {
+      runner.runDestroy();
+    }
+  }
 }

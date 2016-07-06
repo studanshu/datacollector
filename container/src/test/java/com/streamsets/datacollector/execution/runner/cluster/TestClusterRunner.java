@@ -27,7 +27,11 @@ import com.streamsets.datacollector.cluster.MockClusterProvider;
 import com.streamsets.datacollector.cluster.MockSystemProcess;
 import com.streamsets.datacollector.cluster.MockSystemProcessFactory;
 import com.streamsets.datacollector.config.PipelineConfiguration;
-import com.streamsets.datacollector.execution.*;
+import com.streamsets.datacollector.execution.EventListenerManager;
+import com.streamsets.datacollector.execution.PipelineState;
+import com.streamsets.datacollector.execution.PipelineStateStore;
+import com.streamsets.datacollector.execution.PipelineStatus;
+import com.streamsets.datacollector.execution.Runner;
 import com.streamsets.datacollector.execution.cluster.ClusterHelper;
 import com.streamsets.datacollector.execution.common.ExecutorConstants;
 import com.streamsets.datacollector.execution.runner.cluster.ClusterRunner.ClusterSourceInfo;
@@ -36,10 +40,10 @@ import com.streamsets.datacollector.execution.runner.common.PipelineRunnerExcept
 import com.streamsets.datacollector.execution.store.CachePipelineStateStore;
 import com.streamsets.datacollector.execution.store.FilePipelineStateStore;
 import com.streamsets.datacollector.main.RuntimeInfo;
+import com.streamsets.datacollector.main.StandaloneRuntimeInfo;
 import com.streamsets.datacollector.runner.MockStages;
 import com.streamsets.datacollector.runner.PipelineRuntimeException;
 import com.streamsets.datacollector.stagelibrary.StageLibraryTask;
-import com.streamsets.datacollector.store.PipelineStoreException;
 import com.streamsets.datacollector.store.PipelineStoreTask;
 import com.streamsets.datacollector.store.impl.FilePipelineStoreTask;
 import com.streamsets.datacollector.util.Configuration;
@@ -52,7 +56,6 @@ import com.streamsets.pipeline.api.Config;
 import com.streamsets.pipeline.api.ExecutionMode;
 import com.streamsets.pipeline.api.StageException;
 import com.streamsets.pipeline.lib.executor.SafeScheduledExecutorService;
-
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
@@ -68,7 +71,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.*;
+import static com.streamsets.datacollector.util.AwaitConditionUtil.desiredPipelineState;
+import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class TestClusterRunner {
 
@@ -108,7 +117,7 @@ public class TestClusterRunner {
     MockSystemProcess.isAlive = false;
     MockSystemProcess.output.clear();
     MockSystemProcess.error.clear();
-    runtimeInfo = new RuntimeInfo("dummy", null, Arrays.asList(emptyCL), tempDir);
+    runtimeInfo = new StandaloneRuntimeInfo("dummy", null, Arrays.asList(emptyCL), tempDir);
     clusterProvider = new MockClusterProvider();
     conf = new Configuration();
     pipelineStateStore = new CachePipelineStateStore(new FilePipelineStateStore(runtimeInfo, conf));
@@ -116,21 +125,22 @@ public class TestClusterRunner {
     stageLibraryTask = MockStages.createStageLibrary(emptyCL);
     pipelineStoreTask = new FilePipelineStoreTask(runtimeInfo, stageLibraryTask, pipelineStateStore, new LockCache<String>());
     pipelineStoreTask.init();
-    pipelineStoreTask.create("admin", NAME, "some desc");
-
-    //Create an invalid pipeline
+    pipelineStoreTask.create("admin", NAME, "some desc", false);
+   //Create an invalid pipeline
     PipelineConfiguration pipelineConfiguration = pipelineStoreTask.create("user2", TestUtil.HIGHER_VERSION_PIPELINE,
-      "description2");
+      "description2", false);
     PipelineConfiguration mockPipelineConf = MockStages.createPipelineConfigurationSourceProcessorTargetHigherVersion();
     mockPipelineConf.getConfiguration().add(new Config("executionMode",
       ExecutionMode.CLUSTER_BATCH.name()));
+    mockPipelineConf.getConfiguration().add(new Config("shouldRetry", "true"));
+    mockPipelineConf.getConfiguration().add(new Config("retryAttempts", "3"));
     mockPipelineConf.setUuid(pipelineConfiguration.getUuid());
     pipelineStoreTask.save("user2", TestUtil.HIGHER_VERSION_PIPELINE, "0", "description"
       , mockPipelineConf);
 
     clusterHelper = new ClusterHelper(new MockSystemProcessFactory(), clusterProvider, tempDir, sparkManagerShell,
       emptyCL, emptyCL, null);
-    setExecMode(ExecutionMode.CLUSTER_BATCH);
+    setExecModeAndRetries(ExecutionMode.CLUSTER_BATCH);
   }
 
   @After
@@ -148,12 +158,31 @@ public class TestClusterRunner {
     }
   }
 
-  private void setExecMode(ExecutionMode mode) throws Exception {
+  private void setExecModeAndRetries(ExecutionMode mode) throws Exception {
     PipelineConfiguration pipelineConf = pipelineStoreTask.load(NAME, REV);
     PipelineConfiguration conf = MockStages.createPipelineConfigurationWithClusterOnlyStage(mode);
     conf.setUuid(pipelineConf.getUuid());
     pipelineStoreTask.save("admin", NAME, REV, "", conf);
+  }
 
+  @Test
+  public void testPipelineRetry() throws Exception {
+    Runner clusterRunner = createClusterRunner();
+    clusterRunner.prepareForStart();
+    Assert.assertEquals(PipelineStatus.STARTING, clusterRunner.getState().getStatus());
+    clusterRunner.start();
+    Assert.assertEquals(PipelineStatus.RUNNING, clusterRunner.getState().getStatus());
+    ((ClusterRunner)clusterRunner).validateAndSetStateTransition(PipelineStatus.RUN_ERROR, "a", attributes);
+    assertEquals(PipelineStatus.RETRY, clusterRunner.getState().getStatus());
+    pipelineStateStore.saveState("admin", NAME, "0", PipelineStatus.RUNNING, null, attributes, ExecutionMode.CLUSTER_MESOS_STREAMING, null, 1, 0);
+    ((ClusterRunner)clusterRunner).validateAndSetStateTransition(PipelineStatus.RUN_ERROR, "a", attributes);
+    assertEquals(PipelineStatus.RETRY, clusterRunner.getState().getStatus());
+    pipelineStateStore.saveState("admin", NAME, "0", PipelineStatus.RUNNING, null, attributes, ExecutionMode.CLUSTER_MESOS_STREAMING, null, 2, 0);
+    ((ClusterRunner)clusterRunner).validateAndSetStateTransition(PipelineStatus.RUN_ERROR, "a", attributes);
+    assertEquals(PipelineStatus.RETRY, clusterRunner.getState().getStatus());
+    pipelineStateStore.saveState("admin", NAME, "0", PipelineStatus.RUNNING, null, attributes, ExecutionMode.CLUSTER_MESOS_STREAMING, null, 3, 0);
+    ((ClusterRunner)clusterRunner).validateAndSetStateTransition(PipelineStatus.RUN_ERROR, "a", attributes);
+    assertEquals(PipelineStatus.RUN_ERROR, clusterRunner.getState().getStatus());
   }
 
   @Test
@@ -308,6 +337,25 @@ public class TestClusterRunner {
   }
 
   @Test
+  public void testPipelineStartMultipleTimes() throws Exception {
+    setState(PipelineStatus.EDITED);
+    Runner clusterRunner = createClusterRunner();
+    clusterRunner.prepareForStart();
+    clusterRunner.start();
+    Assert.assertEquals(PipelineStatus.RUNNING, clusterRunner.getState().getStatus());
+
+    // call start on the already running pipeline and make sure it doesn't request new resource each time
+    for (int counter =0; counter < 10; counter++) {
+      try {
+        clusterRunner.prepareForStart();
+        Assert.fail("Expected exception but didn't get any");
+      } catch (PipelineRunnerException ex) {
+        Assert.assertTrue(ex.getMessage().contains("CONTAINER_0102"));
+      }
+    }
+  }
+
+  @Test
   public void testPipelineStatusStartError() throws Exception {
     setState(PipelineStatus.EDITED);
     Runner clusterRunner = createClusterRunner();
@@ -346,12 +394,13 @@ public class TestClusterRunner {
   public void testSlaveList() throws Exception {
     ClusterRunner clusterRunner = (ClusterRunner) createClusterRunner();
     CallbackInfo callbackInfo = new CallbackInfo("user", "name", "rev", "myToken", "slaveToken", "",
-      "", "", "", "", "");
+      "", "", "", "", "","sdc_id");
     clusterRunner.updateSlaveCallbackInfo(callbackInfo);
     List<CallbackInfo> slaves = new ArrayList<CallbackInfo>(clusterRunner.getSlaveCallbackList());
     assertFalse(slaves.isEmpty());
     assertEquals("slaveToken", slaves.get(0).getSdcSlaveToken());
     assertEquals("myToken", slaves.get(0).getSdcClusterToken());
+    assertEquals("sdc_id", slaves.get(0).getSlaveSdcId());
     clusterRunner.prepareForStart();
     clusterRunner.start();
     slaves = new ArrayList<>(clusterRunner.getSlaveCallbackList());
@@ -396,9 +445,7 @@ public class TestClusterRunner {
     pipelineStateStore.saveState("admin", TestUtil.HIGHER_VERSION_PIPELINE, REV, PipelineStatus.EDITED, null, attributes, ExecutionMode.CLUSTER_BATCH,
       null, 0, 0);
     runner.start();
-    while(runner.getState().getStatus() != PipelineStatus.START_ERROR) {
-      Thread.sleep(100);
-    }
+    await().until(desiredPipelineState(runner, PipelineStatus.START_ERROR));
     PipelineState state = runner.getState();
     Assert.assertTrue(state.getStatus() == PipelineStatus.START_ERROR);
     Assert.assertTrue(state.getMessage().contains("CONTAINER_0158"));
@@ -412,9 +459,7 @@ public class TestClusterRunner {
     clusterRunner.prepareForDataCollectorStart();
     clusterProvider.submitTimesOut = true;
     clusterRunner.onDataCollectorStart();
-    while(clusterRunner.getState().getStatus() != PipelineStatus.START_ERROR) {
-      Thread.sleep(100);
-    }
+    await().until(desiredPipelineState(clusterRunner, PipelineStatus.START_ERROR));
     PipelineState state = clusterRunner.getState();
     Assert.assertTrue(state.getStatus() == PipelineStatus.START_ERROR);
     Assert.assertTrue(state.getMessage().contains("CONTAINER_0158"));
@@ -428,9 +473,7 @@ public class TestClusterRunner {
     clusterRunner.prepareForDataCollectorStart();
     clusterProvider.submitTimesOut = true;
     clusterRunner.onDataCollectorStart();
-    while (clusterRunner.getState().getStatus() != PipelineStatus.START_ERROR) {
-      Thread.sleep(100);
-    }
+    await().until(desiredPipelineState(clusterRunner, PipelineStatus.START_ERROR));
     PipelineState state = clusterRunner.getState();
     Assert.assertTrue(state.getStatus() == PipelineStatus.START_ERROR);
     Assert.assertTrue(state.getMessage().contains("CONTAINER_0158"));
@@ -445,22 +488,22 @@ public class TestClusterRunner {
     PipelineStoreTask pipelineStoreTask = new FilePipelineStoreTask(runtimeInfo, stageLibraryTask, pipelineStateStore,
       new LockCache<String>());
     pipelineStoreTask.init();
-    pipelineStoreTask.create("admin", "a", "some desc");
+    pipelineStoreTask.create("admin", "a", "some desc", false);
     pipelineStateStore.saveState("admin", "a", "0", PipelineStatus.EDITED, null,
       attributes, ExecutionMode.CLUSTER_BATCH, null, 0, 0);
-    pipelineStoreTask.create("admin", "b", "some desc");
+    pipelineStoreTask.create("admin", "b", "some desc", false);
     pipelineStateStore.saveState("admin", "b", "0", PipelineStatus.EDITED, null,
       attributes, ExecutionMode.CLUSTER_BATCH, null, 0, 0);
-    pipelineStoreTask.create("admin", "c", "some desc");
+    pipelineStoreTask.create("admin", "c", "some desc", false);
     pipelineStateStore.saveState("admin", "c", "0", PipelineStatus.EDITED, null,
       attributes, ExecutionMode.CLUSTER_BATCH, null, 0, 0);
-    pipelineStoreTask.create("admin", "d", "some desc");
+    pipelineStoreTask.create("admin", "d", "some desc", false);
     pipelineStateStore.saveState("admin", "d", "0", PipelineStatus.EDITED, null,
       attributes, ExecutionMode.CLUSTER_BATCH, null, 0, 0);
-    pipelineStoreTask.create("admin", "e", "some desc");
+    pipelineStoreTask.create("admin", "e", "some desc", false);
     pipelineStateStore.saveState("admin", "e", "0", PipelineStatus.EDITED, null,
       attributes, ExecutionMode.CLUSTER_BATCH, null, 0, 0);
-    pipelineStoreTask.create("admin", "f", "some desc");
+    pipelineStoreTask.create("admin", "f", "some desc", false);
     pipelineStateStore.saveState("admin", "f", "0", PipelineStatus.EDITED, null,
       attributes, ExecutionMode.CLUSTER_BATCH, null, 0, 0);
 

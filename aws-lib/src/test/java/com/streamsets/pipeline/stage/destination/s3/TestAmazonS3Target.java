@@ -35,7 +35,9 @@ import com.streamsets.pipeline.sdk.TargetRunner;
 import com.streamsets.pipeline.stage.common.FakeS3;
 import com.streamsets.pipeline.stage.common.TestUtil;
 import com.streamsets.pipeline.stage.destination.lib.DataGeneratorFormatConfig;
-import com.streamsets.pipeline.stage.origin.s3.S3AdvancedConfig;
+import com.streamsets.pipeline.stage.lib.aws.AWSConfig;
+import com.streamsets.pipeline.stage.lib.aws.ProxyConfig;
+import com.streamsets.pipeline.stage.lib.aws.SSEConfigBean;
 import com.streamsets.pipeline.stage.origin.s3.S3Config;
 import org.apache.commons.io.IOUtils;
 import org.junit.AfterClass;
@@ -98,22 +100,22 @@ public class TestAmazonS3Target {
   @Test
   public void testWriteTextData() throws Exception {
 
-    String folder = "textFolder";
-    AmazonS3Target amazonS3Target = createS3targetWithTextData(folder, false);
+    String prefix = "textPrefix";
+    AmazonS3Target amazonS3Target = createS3targetWithTextData(prefix, false);
     TargetRunner targetRunner = new TargetRunner.Builder(AmazonS3DTarget.class, amazonS3Target).build();
     targetRunner.runInit();
 
     List<Record> logRecords = TestUtil.createStringRecords();
 
-    //Make sure the folder is empty
-    ObjectListing objectListing = s3client.listObjects(BUCKET_NAME, folder);
+    //Make sure the prefix is empty
+    ObjectListing objectListing = s3client.listObjects(BUCKET_NAME, prefix);
     Assert.assertTrue(objectListing.getObjectSummaries().isEmpty());
 
     targetRunner.runWrite(logRecords);
     targetRunner.runDestroy();
 
-    //check that folder contains 1 file
-    objectListing = s3client.listObjects(BUCKET_NAME, folder);
+    //check that prefix contains 1 file
+    objectListing = s3client.listObjects(BUCKET_NAME, prefix);
     Assert.assertEquals(1, objectListing.getObjectSummaries().size());
     S3ObjectSummary objectSummary = objectListing.getObjectSummaries().get(0);
 
@@ -129,24 +131,53 @@ public class TestAmazonS3Target {
   }
 
   @Test
-  public void testWriteTextDataWithCompression() throws Exception {
+  public void testWriteTextDataWithPartitionPrefix() throws Exception {
 
-    String folder = "textFolderCompression";
-    AmazonS3Target amazonS3Target = createS3targetWithTextData(folder, true);
+    String prefix = "textPrefix";
+    //partition by the record id
+    String partition = "${record:id()}";
+    AmazonS3Target amazonS3Target = createS3targetWithTextData(prefix, partition, false);
     TargetRunner targetRunner = new TargetRunner.Builder(AmazonS3DTarget.class, amazonS3Target).build();
     targetRunner.runInit();
 
     List<Record> logRecords = TestUtil.createStringRecords();
 
-    //Make sure the folder is empty
-    ObjectListing objectListing = s3client.listObjects(BUCKET_NAME, folder);
+    //Make sure the prefix is empty
+    ObjectListing objectListing = s3client.listObjects(BUCKET_NAME, prefix);
     Assert.assertTrue(objectListing.getObjectSummaries().isEmpty());
 
     targetRunner.runWrite(logRecords);
     targetRunner.runDestroy();
 
-    //check that folder contains 1 file
-    objectListing = s3client.listObjects(BUCKET_NAME, folder);
+    //check that prefix contains 9 partitions
+    objectListing = s3client.listObjects(BUCKET_NAME, prefix);
+    List<S3ObjectSummary> objectSummaries = objectListing.getObjectSummaries();
+    Assert.assertEquals(9, objectSummaries.size());
+    //check that full path is prefix / partition / filename
+    for (int i = 0; i < objectSummaries.size(); i++) {
+      Assert.assertTrue(objectSummaries.get(i).getKey().startsWith(prefix + DELIMITER + "s:" + i + DELIMITER + "sdc"));
+    }
+  }
+
+  @Test
+  public void testWriteTextDataWithCompression() throws Exception {
+
+    String prefix = "textPrefixrCompression";
+    AmazonS3Target amazonS3Target = createS3targetWithTextData(prefix, true);
+    TargetRunner targetRunner = new TargetRunner.Builder(AmazonS3DTarget.class, amazonS3Target).build();
+    targetRunner.runInit();
+
+    List<Record> logRecords = TestUtil.createStringRecords();
+
+    //Make sure the prefix is empty
+    ObjectListing objectListing = s3client.listObjects(BUCKET_NAME, prefix);
+    Assert.assertTrue(objectListing.getObjectSummaries().isEmpty());
+
+    targetRunner.runWrite(logRecords);
+    targetRunner.runDestroy();
+
+    //check that prefix contains 1 file
+    objectListing = s3client.listObjects(BUCKET_NAME, prefix);
     Assert.assertEquals(1, objectListing.getObjectSummaries().size());
     S3ObjectSummary objectSummary = objectListing.getObjectSummaries().get(0);
 
@@ -166,45 +197,48 @@ public class TestAmazonS3Target {
   @Test
   public void testWriteEmptyBatch() throws Exception {
 
-    String folder = "textFolder";
-    AmazonS3Target amazonS3Target = createS3targetWithTextData(folder, false);
+    String prefix = "textPrefix";
+    AmazonS3Target amazonS3Target = createS3targetWithTextData(prefix, false);
     TargetRunner targetRunner = new TargetRunner.Builder(AmazonS3DTarget.class, amazonS3Target).build();
     targetRunner.runInit();
 
     List<Record> logRecords = new ArrayList<>();
 
-    //Make sure the folder is empty
-    ObjectListing objectListing = s3client.listObjects(BUCKET_NAME, folder);
+    //Make sure the prefix is empty
+    ObjectListing objectListing = s3client.listObjects(BUCKET_NAME, prefix);
     Assert.assertTrue(objectListing.getObjectSummaries().isEmpty());
 
     targetRunner.runWrite(logRecords);
     targetRunner.runDestroy();
 
-    //Make sure the folder is empty as no records were written
-    objectListing = s3client.listObjects(BUCKET_NAME, folder);
+    //Make sure the prefix is empty as no records were written
+    objectListing = s3client.listObjects(BUCKET_NAME, prefix);
     Assert.assertTrue(objectListing.getObjectSummaries().isEmpty());
 
   }
+  private AmazonS3Target createS3targetWithTextData(String commonPrefix, boolean useCompression) {
+    return createS3targetWithTextData(commonPrefix, "", useCompression);
+  }
 
-  private AmazonS3Target createS3targetWithTextData(String folder, boolean useCompression) {
+  private AmazonS3Target createS3targetWithTextData(String commonPrefix, String partition, boolean useCompression) {
 
     S3Config s3Config = new S3Config();
     s3Config.setEndPointForTest("http://localhost:" + port);
     s3Config.bucket = BUCKET_NAME;
-    s3Config.accessKeyId = "foo";
-    s3Config.secretAccessKey = "bar";
-    s3Config.folder = folder;
+    s3Config.awsConfig = new AWSConfig();
+    s3Config.awsConfig.awsAccessKeyId = "foo";
+    s3Config.awsConfig.awsSecretAccessKey = "bar";
+    s3Config.commonPrefix = commonPrefix;
     s3Config.delimiter = DELIMITER;
 
-    S3AdvancedConfig advancedConfig = new S3AdvancedConfig();
-    advancedConfig.useProxy = false;
-
     S3TargetConfigBean s3TargetConfigBean = new S3TargetConfigBean();
-    s3TargetConfigBean.advancedConfig = advancedConfig;
     s3TargetConfigBean.compress = useCompression;
     s3TargetConfigBean.dataFormat = DataFormat.TEXT;
+    s3TargetConfigBean.partitionTemplate = partition;
     s3TargetConfigBean.fileNamePrefix = "sdc-";
     s3TargetConfigBean.s3Config = s3Config;
+    s3TargetConfigBean.sseConfig = new SSEConfigBean();
+    s3TargetConfigBean.advancedConfig = new ProxyConfig();
 
     DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
     dataGeneratorFormatConfig.avroSchema = null;

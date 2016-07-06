@@ -37,7 +37,7 @@ public class SlavePipelineStateStore implements PipelineStateStore {
   private volatile PipelineState pipelineState;
 
   @Override
-  public PipelineState edited(String user, String name, String rev, ExecutionMode executionMode)
+  public PipelineState edited(String user, String name, String rev, ExecutionMode executionMode, boolean isRemote)
     throws PipelineStoreException {
     throw new UnsupportedOperationException();
   }
@@ -53,6 +53,9 @@ public class SlavePipelineStateStore implements PipelineStateStore {
     if (pipelineState != null && (!pipelineState.getName().equals(name) || !pipelineState.getRev().equals(rev))) {
       throw new PipelineStoreException(ContainerError.CONTAINER_0212, name, rev, ExecutionMode.SLAVE,
         pipelineState.getName(), pipelineState.getRev());
+    }
+    if (attributes == null) {
+      attributes = getState(name, rev).getAttributes();
     }
     pipelineState =
       new PipelineStateImpl(user, name, rev, status, message, System.currentTimeMillis(), attributes,

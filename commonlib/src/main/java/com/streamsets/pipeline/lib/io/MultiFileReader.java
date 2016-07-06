@@ -72,9 +72,16 @@ public class MultiFileReader implements Closeable {
    * @param maxLineLength the maximum line length (for all files)
    * @throws IOException thrown if there was an IO error while creating the reader.
    */
-  public MultiFileReader(List<MultiFileInfo> fileInfos, Charset charset, int maxLineLength,
-      PostProcessingOptions postProcessing, String archiveDir, boolean globbing, int scanIntervalSecs)
-      throws IOException {
+  public MultiFileReader(
+      List<MultiFileInfo> fileInfos,
+      Charset charset,
+      int maxLineLength,
+      PostProcessingOptions postProcessing,
+      String archiveDir,
+      boolean globbing,
+      int scanIntervalSecs,
+      boolean allowForLateDirectoryCreation
+  ) throws IOException {
     Utils.checkNotNull(fileInfos, "fileInfos");
     Utils.checkArgument(!fileInfos.isEmpty(), "fileInfos cannot be empty");
     Utils.checkNotNull(charset, "charset");
@@ -94,11 +101,26 @@ public class MultiFileReader implements Closeable {
       }
     };
 
-    fileContextProvider = (globbing)
-                          ? new GlobFileContextProvider(fileInfos, scanIntervalSecs, charset, maxLineLength,
-                                                        postProcessing, archiveDir, eventPublisher)
-                          : new ExactFileContextProvider(fileInfos, charset, maxLineLength, postProcessing,
-                                                         archiveDir, eventPublisher);
+    //We assume ExactFileContextProvider has fileInfo which are exact and present.
+    //We are using GlobFileInfo during FileTailSource which will allow for late Directory creation/ supports wild cards.
+    fileContextProvider = (globbing)? new GlobFileContextProvider(
+        allowForLateDirectoryCreation,
+        fileInfos,
+        scanIntervalSecs,
+        charset,
+        maxLineLength,
+        postProcessing,
+        archiveDir,
+        eventPublisher
+    ) : new ExactFileContextProvider(
+        fileInfos,
+        charset,
+        maxLineLength,
+        postProcessing,
+        archiveDir,
+        eventPublisher
+    );
+
     open = true;
   }
 
@@ -180,21 +202,21 @@ public class MultiFileReader implements Closeable {
               chunk = reader.next(0);
               if (LOG.isTraceEnabled()) {
                 LOG.trace("next(): directory '{}', file '{}', offset '{}' got data '{}'",
-                          fileContext.getMultiFileInfo().getFileFullPath(),
-                          reader.getLiveFile(), reader.getOffset(), chunk != null);
+                    fileContext.getMultiFileInfo().getFileFullPath(),
+                    reader.getLiveFile(), reader.getOffset(), chunk != null);
               }
             } else {
               if (LOG.isTraceEnabled()) {
                 LOG.trace("next(): directory '{}', file '{}', offset '{}' EOF reached",
-                          fileContext.getMultiFileInfo().getFileFullPath(),
-                          reader.getLiveFile(), reader.getOffset());
+                    fileContext.getMultiFileInfo().getFileFullPath(),
+                    reader.getLiveFile(), reader.getOffset());
               }
             }
             fileContext.releaseReader(false);
           } else {
             if (LOG.isTraceEnabled()) {
               LOG.trace("next(): directory '{}', no reader available",
-                        fileContext.getMultiFileInfo().getFileFullPath());
+                  fileContext.getMultiFileInfo().getFileFullPath());
             }
           }
         } catch (IOException ex) {
@@ -225,8 +247,28 @@ public class MultiFileReader implements Closeable {
   }
 
   /**
+   * Determines the offset lag for each active file being read.
+   *
+   * @param offsetMap the current Offset for file keys.
+   * @return map of fileKey to offset.
+   */
+  public Map<String, Long> getOffsetsLag(Map<String, String> offsetMap) throws IOException{
+    return fileContextProvider.getOffsetsLag(offsetMap);
+  }
+
+  /**
+   * Determines the number of files yet to be processed.
+   *
+   * @return map of file key (One per directory where files are located) to the number of files
+   */
+  public Map<String, Long> getPendingFiles() throws IOException{
+    return fileContextProvider.getPendingFiles();
+  }
+
+  /**
    * Closes all open readers.
    */
+  @Override
   public void close() throws IOException {
     if (open) {
       open = false;

@@ -31,6 +31,7 @@ public class ELVariables implements ELVars {
 
   private final Map<String, Object> constants;
   private final Map<String, Object> variables;
+  private final Map<String, Object> contextVariables;
 
   @SuppressWarnings("unchecked")
   public ELVariables() {
@@ -40,6 +41,7 @@ public class ELVariables implements ELVars {
   public ELVariables(Map<String, Object> constants) {
     this.constants = new HashMap<>(constants);
     variables = new HashMap<>();
+    contextVariables = new HashMap<>();
   }
 
   private final void checkVariableName(String name) {
@@ -48,6 +50,7 @@ public class ELVariables implements ELVars {
       name, TextUtils.VALID_NAME));
   }
 
+  @Override
   public Object getConstant(String name) {
     Utils.checkNotNull(name, "name");
     Utils.checkArgument(TextUtils.isValidName(name), Utils.formatL("Invalid name '{}', must be '{}'",
@@ -55,34 +58,39 @@ public class ELVariables implements ELVars {
     return constants.get(name);
   }
 
-
+  @Override
   public void addVariable(String name, Object value) {
     checkVariableName(name);
     variables.put(name, value);
   }
 
+  @Override
   public void addContextVariable(String name, Object value) {
     checkVariableName(name);
-    variables.put(":" + name, value);
+    contextVariables.put(name, value);
   }
 
+  @Override
   public Object getVariable(String name) {
     checkVariableName(name);
     return variables.get(name);
   }
 
+  @Override
   public boolean hasVariable(String name) {
     checkVariableName(name);
     return variables.containsKey(name);
   }
 
+  @Override
   public boolean hasContextVariable(String name) {
     checkVariableName(name);
-    return variables.containsKey(":" + name);
+    return contextVariables.containsKey(name);
   }
 
+  @Override
   public Object getContextVariable(String name) {
     checkVariableName(name);
-    return variables.get(":" + name);
+    return contextVariables.get(name);
   }
 }

@@ -72,6 +72,12 @@ angular
         iconClass: 'fa fa-list',
         helpId: 'data-rules-tab'
       },
+      dataDriftRulesTab = {
+        name:'dataDriftRules',
+        template:'app/home/detail/rules/dataDriftRules/dataDriftRules.tpl.html',
+        iconClass: 'fa fa-list',
+        helpId: 'data-drift-rules-tab'
+      },
       rulesTab = {
         name:'rules',
         template:'app/home/detail/rules/rules.tpl.html',
@@ -92,7 +98,8 @@ angular
       switch(type) {
         case pipelineConstant.PIPELINE:
           if(isPipelineRunning) {
-            if(executionMode === pipelineConstant.CLUSTER ) {
+            if(executionMode === pipelineConstant.CLUSTER || executionMode === pipelineConstant.CLUSTER_BATCH ||
+                executionMode === pipelineConstant.CLUSTER_YARN_STREAMING || executionMode === pipelineConstant.CLUSTER_MESOS_STREAMING) {
               tabsList = [summaryTab, infoTab, configurationTab, historyTab];
             } else {
               tabsList = [summaryTab, errorTab, infoTab, configurationTab, rulesTab, historyTab];
@@ -104,7 +111,8 @@ angular
           return tabsList;
         case pipelineConstant.STAGE_INSTANCE:
           if(isPipelineRunning) {
-            if(executionMode === pipelineConstant.CLUSTER ) {
+            if(executionMode === pipelineConstant.CLUSTER || executionMode === pipelineConstant.CLUSTER_BATCH ||
+              executionMode === pipelineConstant.CLUSTER_YARN_STREAMING || executionMode === pipelineConstant.CLUSTER_MESOS_STREAMING) {
               tabsList = [summaryTab, infoTab, configurationTab];
             } else {
               tabsList = [summaryTab, errorTab, infoTab, configurationTab];
@@ -120,13 +128,14 @@ angular
           return tabsList;
         case pipelineConstant.LINK:
           if(isPipelineRunning) {
-            if(executionMode === pipelineConstant.CLUSTER ) {
-              return [dataRulesTab, infoTab];
+            if(executionMode === pipelineConstant.CLUSTER || executionMode === pipelineConstant.CLUSTER_BATCH ||
+              executionMode === pipelineConstant.CLUSTER_YARN_STREAMING || executionMode === pipelineConstant.CLUSTER_MESOS_STREAMING) {
+              return [dataRulesTab, dataDriftRulesTab, infoTab];
             } else {
-              return [dataSummaryTab, dataRulesTab, infoTab];
+              return [dataSummaryTab, dataRulesTab, dataDriftRulesTab, infoTab];
             }
           } else {
-            return [infoTab, dataRulesTab];
+            return [infoTab, dataRulesTab, dataDriftRulesTab];
           }
           break;
       }
@@ -269,6 +278,9 @@ angular
 
             if(config.errorStage && issuesMap.stageIssues && issuesMap.stageIssues[config.errorStage.instanceName]) {
               issues.push.apply(issues, issuesMap.stageIssues[config.errorStage.instanceName]);
+            } else if(config.statsAggregatorStage && issuesMap.stageIssues && 
+              issuesMap.stageIssues[config.statsAggregatorStage.instanceName]) {
+              issues.push.apply(issues, issuesMap.stageIssues[config.statsAggregatorStage.instanceName]);
             }
           }
         }
@@ -296,8 +308,9 @@ angular
        * @param triggeredAlert
        */
       selectRulesTab: function(triggeredAlert) {
+        var rulesTabName = (triggeredAlert && triggeredAlert.type === 'DATA_DRIFT_ALERT' ? 'dataDriftRules' : 'dataRules');
         angular.forEach($scope.detailPaneTabs, function(tab) {
-          if(tab.name === 'rules' || tab.name === 'dataRules') {
+          if(tab.name === 'rules' || tab.name === rulesTabName) {
             tab.active = true;
           }
         });
@@ -322,7 +335,7 @@ angular
             }
             break;
           case pipelineConstant.STAGE_INSTANCE:
-            helpId = selectedObject.library + '@' + selectedObject.stageName + '@' + selectedObject.stageVersion;
+            helpId = selectedObject.stageName;
             break;
           case pipelineConstant.LINK:
             helpId = activeTab.helpId;

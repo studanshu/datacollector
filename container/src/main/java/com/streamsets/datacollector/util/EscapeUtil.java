@@ -23,7 +23,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class EscapeUtil {
-  public static Pattern pattern = Pattern.compile("\\W", Pattern.CASE_INSENSITIVE);
+  public static final Pattern pattern = Pattern.compile("\\W", Pattern.CASE_INSENSITIVE);
+
+  private EscapeUtil() {}
 
   public static String singleQuoteEscape(String path) {
     if(path != null) {

@@ -26,6 +26,7 @@ import com.streamsets.pipeline.api.GenerateResourceBundle;
 import com.streamsets.pipeline.api.StageDef;
 import com.streamsets.pipeline.api.Target;
 import com.streamsets.pipeline.configurablestage.DTarget;
+import com.streamsets.pipeline.stage.lib.hive.Groups;
 
 import java.util.List;
 import java.util.Map;
@@ -35,7 +36,8 @@ import java.util.Map;
     label = "Hive Streaming",
     description = "Writes data to Hive tables using the streaming API. Requires ORC storage format.",
     icon = "hive.png",
-    privateClassLoader = true
+    privateClassLoader = true,
+    onlineHelpRefUrl = "index.html#Destinations/Hive.html#task_cx3_lhh_ht"
 )
 @ConfigGroups(value = Groups.class)
 @GenerateResourceBundle

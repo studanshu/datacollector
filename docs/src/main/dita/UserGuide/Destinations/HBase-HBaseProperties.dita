@@ -19,7 +19,9 @@
   <p><indexterm>HBase destination<indexterm>additional
                 properties</indexterm></indexterm><indexterm>custom properties<indexterm>HBase
                     destination</indexterm></indexterm>You can configure the HBase destination to
-            use individual HDFS properties or HDFS configuration files:</p>
+            use individual HDFS properties or HDFS configuration files:<draft-comment
+                author="alisontaylor">similar topic in HBase Lookup, make same updates to
+                both</draft-comment></p>
         <p>
             <dl>
                 <dlentry>
@@ -34,7 +36,13 @@
                             <li>Store the files or a symlink to the files in the <ph
                                     conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
                                 /> resources directory. </li>
-                            <li>In the HBase destination, specify the location of the files. </li>
+                            <li>In the HBase destination, specify the location of the files.
+                                    <note>For a Cloudera Manager installation, <ph
+                                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                    /> automatically creates a symlink to the files named
+                                        <codeph>hbase-conf</codeph>. Enter
+                                        <codeph>hbase-conf</codeph> for the location of the files in
+                                    the HBase destination.</note></li>
                         </ol></dd>
                 </dlentry>
                 <dlentry>

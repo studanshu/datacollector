@@ -1,0 +1,363 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="concept_evs_xkm_s5">
+ <title>Available Stage Libraries</title>
+ <conbody>
+  <p>The following table describes the stages installed with each stage library:<table frame="all"
+                rowsep="1" colsep="1" id="table_kyr_blm_s5">
+                <tgroup cols="2">
+                    <colspec colname="c1" colnum="1" colwidth="1.0*"/>
+                    <colspec colname="c2" colnum="2" colwidth="1.0*"/>
+                    <thead>
+                        <row>
+                            <entry>Stage Library Name</entry>
+                            <entry>Included Stages </entry>
+                        </row>
+                    </thead>
+                    <tbody>
+                        <row>
+                            <entry>streamsets-datacollector-apache-kafka_0_8_1-lib </entry>
+                            <entry>For Kafka version 0.8.1.x.<p>Includes the Kafka Consumer and
+                                    Kafka Producer. </p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-apache-kafka_0_8_2-lib </entry>
+                            <entry>For Kafka version 0.8.2.x.<p>Includes the Kafka Consumer and
+                                    Kafka Producer.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-apache-kafka_0_9-lib</entry>
+                            <entry>For Kafka version 0.9.0.0.<p>Includes the Kafka Consumer and
+                                    Kafka Producer.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-apache-kudu-0_7-lib</entry>
+                            <entry>For Kudu version 0.7.1.<p>Includes the Kudu
+                                destination.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-aws-lib </entry>
+                            <entry>For Amazon Web Services 1.10.20. <p>Includes the Amazon S3 origin
+                                    and destination, the Kinesis Consumer, the Kinesis Firehose
+                                    destination, and the Kinesis Producer.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-basic-lib</entry>
+                            <entry>Installs automatically with the basic installation.<p>Includes
+                                    the following origins:<ul
+                                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/BasicOrigins"
+                                        id="ul_kkp_bqh_cw">
+                                        <li/>
+                                    </ul></p><p>Includes all processors <ph
+                                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/BasicNotProcessor"
+                                    /></p><p>Includes the following destinations:<ul
+                                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/BasicDestinations"
+                                        id="ul_bps_cqh_cw">
+                                        <li/>
+                                    </ul></p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-cassandra_2-lib</entry>
+                            <entry>For Cassandra 2.1.5. Can be used for Cassandra 1.2, 2.0, and
+                                2.1.x. <p>Includes the Cassandra destination.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-cdh_5_2-lib </entry>
+                            <entry>
+                                <p>For the Cloudera CDH version 5.2.6 distribution of Hadoop. </p>
+                                <p>Includes:</p>
+                                <ul id="ul_kqw_ghh_cw">
+                                    <li>Hadoop FS origin for cluster mode pipelines </li>
+                                    <li>HBase Lookup processor</li>
+                                    <li>Flume destination </li>
+                                    <li>Hadoop FS destination </li>
+                                    <li>HBase destination </li>
+                                    <li>Solr destination</li>
+                                </ul>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-cdh_5_3-lib</entry>
+                            <entry>
+                                <p>For the Cloudera CDH version 5.3.8 distribution of Hadoop. </p>
+                                <p>Includes:</p>
+                                <ul id="ul_mdq_ghh_cw">
+                                    <li>Hadoop FS origin for cluster mode pipelines </li>
+                                    <li>HBase Lookup processor</li>
+                                    <li>Flume destination </li>
+                                    <li>Hadoop FS destination </li>
+                                    <li>HBase destination </li>
+                                    <li>Solr destination</li>
+                                </ul>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-cdh_5_4-lib</entry>
+                            <entry>
+                                <p>For the Cloudera CDH version 5.4.8 distribution of Hadoop. </p>
+                                <p>Includes:</p>
+                                <ul id="ul_xqj_ghh_cw">
+                                    <li>Hadoop FS origin for cluster mode pipelines </li>
+                                    <li>HBase Lookup processor</li>
+                                    <li>Flume destination </li>
+                                    <li>Hadoop FS destination </li>
+                                    <li>HBase destination </li>
+                                    <li>Solr destination</li>
+                                </ul>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-cdh_5_5-lib</entry>
+                            <entry>
+                                <p>For the Cloudera CDH version 5.5.0 distribution of Hadoop. </p>
+                                <p>Includes:</p>
+                                <ul id="ul_dp2_ghh_cw">
+                                    <li>Hadoop FS origin for cluster mode pipelines </li>
+                                    <li>HBase Lookup processor</li>
+                                    <li>Flume destination </li>
+                                    <li>Hadoop FS destination </li>
+                                    <li>HBase destination </li>
+                                    <li>Solr destination</li>
+                                </ul>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-cdh_5_7-lib</entry>
+                            <entry>
+                                <p>For the Cloudera CDH version 5.7.0 distribution of Hadoop. </p>
+                                <p>Includes:</p>
+                                <ul id="ul_oxh_kfh_cw">
+                                    <li>Hadoop FS origin for cluster mode pipelines </li>
+                                    <li>HBase Lookup processor</li>
+                                    <li>Flume destination </li>
+                                    <li>Hadoop FS destination </li>
+                                    <li>HBase destination </li>
+                                    <li>Solr destination</li>
+                                </ul>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-cdh_5_4-cluster-cdh_kafka_1_2-lib</entry>
+                            <entry>
+                                <p>For the Cloudera version 5.4.8 distribution of Apache Kafka
+                                    1.2.0. </p>
+                                <p>Includes the Kafka Consumer origin for cluster mode pipelines.
+                                </p>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-cdh_5_4-cluster-cdh_kafka_1_3-lib </entry>
+                            <entry>
+                                <p>For the Cloudera version 5.4.8 distribution of Apache Kafka
+                                    1.3.2. </p>
+                                <p>Includes the Kafka Consumer origin for cluster mode pipelines.
+                                </p>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-cdh_5_5-cluster-cdh_kafka_1_3-lib</entry>
+                            <entry>
+                                <p>For the Cloudera version 5.5.0 distribution of Apache Kafka
+                                    1.3.2. </p>
+                                <p>Includes the Kafka Consumer origin for cluster mode
+                                    pipelines.</p>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-cdh_5_7-cluster-cdh_kafka_2_0-lib</entry>
+                            <entry>
+                                <p>For the Cloudera version 5.7.0 distribution of Apache Kafka
+                                    2.0.1. </p>
+                                <p>Includes the Kafka Consumer origin for cluster mode pipelines and
+                                    the Kafka Producer.</p>
+                            </entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-cdh_kafka_1_2-lib </entry>
+                            <entry>For the Cloudera distribution of Apache Kafka 1.2.0 (0.8.2.0).
+                                    <p>Includes the Kafka Consumer and Kafka Producer.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-cdh_kafka_1_3-lib </entry>
+                            <entry>For the Cloudera distribution of Apache Kafka 1.3.0 (0.8.2.0).
+                                    <p>Includes the Kafka Consumer and Kafka Producer.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-cdh_kafka_2_0-lib </entry>
+                            <entry>For the Cloudera distribution of Apache Kafka 2.0.1 (0.9.0).
+                                    <p>Includes the Kafka Consumer and Kafka Producer.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-elasticsearch_1_4-lib</entry>
+                            <entry>For Elasticsearch 1.4.5. <p>Includes the Elasticsearch
+                                    destination.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-elasticsearch_1_5-lib</entry>
+                            <entry>For Elasticsearch 1.5.2. <p>Includes the Elasticsearch
+                                    destination.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-elasticsearch_1_6-lib</entry>
+                            <entry>For Elasticsearch 1.6.<p>Includes the Elasticsearch
+                                    destination.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-elasticsearch_1_7-lib</entry>
+                            <entry>For Elasticsearch 1.7.<p>Includes the Elasticsearch
+                                    destination.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-elasticsearch_2_0-lib</entry>
+                            <entry>For Elasticsearch 2.0. <p>Includes the Elasticsearch
+                                    destination.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-elasticsearch_2_1-lib</entry>
+                            <entry>For Elasticsearch 2.1. <p>Includes the Elasticsearch
+                                    destination.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-elasticsearch_2_2-lib</entry>
+                            <entry>For Elasticsearch 2.2. <p>Includes the Elasticsearch
+                                    destination.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-elasticsearch_2_3-lib</entry>
+                            <entry>For Elasticsearch 2.3. <p>Includes the Elasticsearch
+                                    destination.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-groovy_2_4-lib</entry>
+                            <entry>For Groovy version 2.4.6.  Installs with the basic installation.
+                                    <p>Includes the Groovy Evaluator processor.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-hdp_2_2-lib</entry>
+                            <entry>For the Hortonworks version 2.2.x distribution of Apache Hadoop.
+                                        <p>Includes:<ul id="ul_j4w_kqm_s5">
+                                        <li>
+                                            <p>Hadoop FS origin for cluster mode pipelines</p>
+                                        </li>
+                                        <li>Kafka Consumer</li>
+                                        <li>HBase Lookup processor</li>
+                                        <li>Flume destination </li>
+                                        <li>Hadoop FS destination </li>
+                                        <li>HBase destination </li>
+                                        <li>Hive Streaming destination</li>
+                                        <li>Kafka Producer </li>
+                                    </ul></p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-hdp_2_3-lib </entry>
+                            <entry>For the Hortonworks version 2.3.x distribution of Apache Hadoop.
+                                        <p>Includes:<ul id="ul_nwd_jhh_cw">
+                                        <li>
+                                            <p>Hadoop FS origin for cluster mode pipelines</p>
+                                        </li>
+                                        <li>Kafka Consumer</li>
+                                        <li>HBase Lookup processor</li>
+                                        <li>Flume destination </li>
+                                        <li>Hadoop FS destination </li>
+                                        <li>HBase destination </li>
+                                        <li>Hive Streaming destination</li>
+                                        <li>Kafka Producer </li>
+                                    </ul></p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-hdp_2_4-lib </entry>
+                            <entry>For the Hortonworks version 2.4.x distribution of Apache Hadoop.
+                                        <p>Includes:<ul id="ul_uh3_lhh_cw">
+                                        <li>
+                                            <p>Hadoop FS origin for cluster mode pipelines</p>
+                                        </li>
+                                        <li>Kafka Consumer</li>
+                                        <li>HBase Lookup processor</li>
+                                        <li>Flume destination </li>
+                                        <li>Hadoop FS destination </li>
+                                        <li>HBase destination </li>
+                                        <li>Hive Streaming destination</li>
+                                        <li>Kafka Producer </li>
+                                    </ul></p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-influxdb-0_9-lib</entry>
+                            <entry>For InfluxDB version 0.9 or greater.<p>Includes the InfluxDB
+                                    destination.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-jdbc-lib</entry>
+                            <entry>Includes the JDBC Consumer and Producer.</entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-jms-lib </entry>
+                            <entry>Includes the JMS Consumer.</entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-jython_2_7-lib</entry>
+                            <entry>For Jython version 2.7.0. Installs with the basic installation.
+                                    <p>Includes the Jython Evaluator processor.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-mapr_5_0-lib</entry>
+                            <entry>For MapR version 5.0.<p>Includes: <ul id="ul_ynq_xhh_cw">
+                                        <li>MapR Streams Consumer</li>
+                                        <li>MapR Streams Producer</li>
+                                        <li>MapR FS destination</li>
+                                    </ul></p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-mapr_5_1-lib</entry>
+                            <entry>For MapR version 5.1.<p>Includes:</p><p>
+                                    <ul id="ul_egx_c3h_cw">
+                                        <li>MapR Streams Consumer</li>
+                                        <li>MapR Streams Producer</li>
+                                        <li>MapR DB destination</li>
+                                        <li>MapR FS destination</li>
+                                        <li>Hive Streaming using the MapR library.</li>
+                                    </ul>
+                                </p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-mongodb_3-lib</entry>
+                            <entry>For MongoDB 3.0.2. <p>Includes the MongoDB origin and
+                                    destination.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-omniture-lib </entry>
+                            <entry>Includes the Omniture origin.</entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-rabbitmq-lib </entry>
+                            <entry>For RabbitMQ version 3.5.6.<p>Includes the RabbitMQ Consumer and
+                                    Producer.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-redis-lib</entry>
+                            <entry>For Redis versions 2.8.x and 3.0.x.<p>Includes the Redis Consumer
+                                    origin, Redis Lookup processor, and the Redis
+                                destination.</p></entry>
+                        </row>
+                        <row>
+                            <entry>streamsets-datacollector-stats-lib</entry>
+                            <entry>Includes the Static Lookup processor. Installs with the basic
+                                installation. </entry>
+                        </row>
+                    </tbody>
+                </tgroup>
+            </table></p>
+ </conbody>
+</concept>

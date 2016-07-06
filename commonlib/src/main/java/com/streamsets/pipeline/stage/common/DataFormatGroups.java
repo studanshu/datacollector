@@ -31,6 +31,8 @@ public enum DataFormatGroups implements Label {
   LOG("Log"),
   AVRO("Avro"),
   BINARY("Binary"),
+  PROTOBUF("Protobuf"),
+  DATAGRAM("Datagram")
 
   ;
 

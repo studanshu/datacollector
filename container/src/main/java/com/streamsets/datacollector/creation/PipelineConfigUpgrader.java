@@ -36,12 +36,15 @@ public class PipelineConfigUpgrader implements StageUpgrader {
                               List<Config> configs) throws StageException {
     switch(fromVersion) {
       case 0:
+        // nothing to do from 0 to 1
       case 1:
         upgradeV1ToV2(configs);
       case 2:
         upgradeV2ToV3(configs);
       case 3:
         upgradeV3ToV4(configs);
+      case 4:
+        upgradeV4ToV5(configs);
         break;
       default:
         throw new IllegalStateException(Utils.format("Unexpected fromVersion {}", fromVersion));
@@ -50,7 +53,16 @@ public class PipelineConfigUpgrader implements StageUpgrader {
   }
 
   private void upgradeV1ToV2(List<Config> configs) {
-    configs.add(new Config("executionMode", ExecutionMode.STANDALONE));
+    boolean found = false;
+    for (Config config : configs) {
+      if (config.getName().equals("executionMode")) {
+        found = true;
+      }
+    }
+
+    if(!found) {
+      configs.add(new Config("executionMode", ExecutionMode.STANDALONE));
+    }
   }
 
   private void upgradeV3ToV4(List<Config> configs) {
@@ -72,7 +84,7 @@ public class PipelineConfigUpgrader implements StageUpgrader {
       configs.remove(index);
       Utils.checkNotNull(sourceName, "Source stage name cannot be null");
       configs.add(new Config("executionMode", (sourceName.contains("ClusterHdfsDSource")) ? ExecutionMode.CLUSTER_BATCH
-        : ExecutionMode.CLUSTER_STREAMING));
+        : ExecutionMode.CLUSTER_YARN_STREAMING));
     }
   }
 
@@ -82,6 +94,10 @@ public class PipelineConfigUpgrader implements StageUpgrader {
     configs.add(new Config("notifyOnStates",
       ImmutableList.of(PipelineState.RUN_ERROR, PipelineState.STOPPED, PipelineState.FINISHED)));
     configs.add(new Config("emailIDs", Collections.EMPTY_LIST));
+  }
+
+  private void upgradeV4ToV5(List<Config> configs) {
+    configs.add(new Config("statsAggregatorStage", null));
   }
 
 }

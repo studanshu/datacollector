@@ -19,8 +19,14 @@
  */
 package com.streamsets.pipeline.stage.destination.solr;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.streamsets.pipeline.api.*;
+import com.streamsets.pipeline.api.Field;
+import com.streamsets.pipeline.api.OnRecordError;
+import com.streamsets.pipeline.api.Record;
+import com.streamsets.pipeline.api.Stage;
+import com.streamsets.pipeline.api.StageException;
+import com.streamsets.pipeline.api.Target;
 import com.streamsets.pipeline.sdk.RecordCreator;
 import com.streamsets.pipeline.sdk.TargetRunner;
 import com.streamsets.pipeline.stage.processor.scripting.ProcessingMode;
@@ -34,6 +40,8 @@ import org.apache.solr.common.SolrDocumentList;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.net.URL;
@@ -42,6 +50,8 @@ import java.util.List;
 import java.util.UUID;
 
 public class TestSolrTarget  extends SolrJettyTestBase {
+
+  private static final Logger LOG = LoggerFactory.getLogger(TestSolrTarget.class);
 
   @BeforeClass
   public static void beforeTest() throws Exception {
@@ -57,7 +67,7 @@ public class TestSolrTarget  extends SolrJettyTestBase {
   public void testValidations() throws Exception {
     String solrURI = jetty.getBaseUrl().toString() + "/" + "collection1";
 
-    Target target = new SolrTarget(InstanceTypeOptions.SINGLE_NODE, null, null, ProcessingMode.BATCH, null);
+    Target target = new SolrTarget(InstanceTypeOptions.SINGLE_NODE, null, null, ProcessingMode.BATCH, null, null);
 
     TargetRunner runner = new TargetRunner.Builder(SolrDTarget.class, target).build();
     List<Stage.ConfigIssue> issues = runner.runValidateConfigs();
@@ -65,7 +75,7 @@ public class TestSolrTarget  extends SolrJettyTestBase {
     Assert.assertTrue(issues.get(0).toString().contains(Errors.SOLR_00.name()));
     Assert.assertTrue(issues.get(1).toString().contains(Errors.SOLR_02.name()));
 
-    target = new SolrTarget(InstanceTypeOptions.SOLR_CLOUD, null, null, ProcessingMode.BATCH, null);
+    target = new SolrTarget(InstanceTypeOptions.SOLR_CLOUD, null, null, ProcessingMode.BATCH, null, null);
     runner = new TargetRunner.Builder(SolrDTarget.class, target).build();
     issues = runner.runValidateConfigs();
     Assert.assertEquals(2, issues.size());
@@ -74,7 +84,7 @@ public class TestSolrTarget  extends SolrJettyTestBase {
 
 
     //Valid Solr URI
-    target = new SolrTarget(InstanceTypeOptions.SINGLE_NODE, solrURI, null, ProcessingMode.BATCH, null);
+    target = new SolrTarget(InstanceTypeOptions.SINGLE_NODE, solrURI, null, ProcessingMode.BATCH, null, null);
     runner = new TargetRunner.Builder(SolrDTarget.class, target).build();
     issues = runner.runValidateConfigs();
     Assert.assertEquals(1, issues.size());
@@ -83,7 +93,8 @@ public class TestSolrTarget  extends SolrJettyTestBase {
 
     List<SolrFieldMappingConfig> fieldNamesMap = new ArrayList<>();
     fieldNamesMap.add(new SolrFieldMappingConfig("/field", "solrFieldMapping"));
-    target = new SolrTarget(InstanceTypeOptions.SINGLE_NODE, "invalidSolrURI", null, ProcessingMode.BATCH, fieldNamesMap);
+    target = new SolrTarget(InstanceTypeOptions.SINGLE_NODE, "invalidSolrURI", null, ProcessingMode.BATCH,
+        fieldNamesMap, null);
     runner = new TargetRunner.Builder(SolrDTarget.class, target).build();
     issues = runner.runValidateConfigs();
     Assert.assertEquals(1, issues.size());
@@ -97,7 +108,8 @@ public class TestSolrTarget  extends SolrJettyTestBase {
     fieldNamesMap.add(new SolrFieldMappingConfig("/a", "name"));
     fieldNamesMap.add(new SolrFieldMappingConfig("/b", "sku"));
     fieldNamesMap.add(new SolrFieldMappingConfig("/c", "manu"));
-    return new SolrTarget(InstanceTypeOptions.SINGLE_NODE, solrURI, null, ProcessingMode.BATCH, fieldNamesMap);
+    fieldNamesMap.add(new SolrFieldMappingConfig("/titleMultiValued", "title"));
+    return new SolrTarget(InstanceTypeOptions.SINGLE_NODE, solrURI, null, ProcessingMode.BATCH, fieldNamesMap, null);
   }
 
 
@@ -117,12 +129,20 @@ public class TestSolrTarget  extends SolrJettyTestBase {
       List<Record> records = new ArrayList<>();
 
       Record record1 = RecordCreator.create();
-      record1.set(Field.create(ImmutableMap.of("a", Field.create("Hello"),
-        "b", Field.create("i"), "c", Field.create("t"))));
+      record1.set(Field.create(ImmutableMap.of(
+          "a", Field.create("Hello"),
+          "b", Field.create("i"),
+          "c", Field.create("t"),
+          "titleMultiValued", Field.create(ImmutableList.of(Field.create("title1"), Field.create("title2")))
+      )));
 
       Record record2 = RecordCreator.create();
-      record2.set(Field.create(ImmutableMap.of("a", Field.create("Bye"),
-        "b", Field.create("i"), "c", Field.create("t"))));
+      record2.set(Field.create(ImmutableMap.of(
+          "a", Field.create("Bye"),
+          "b", Field.create("i"),
+          "c", Field.create("t"),
+          "titleMultiValued", Field.create(ImmutableList.of(Field.create("title1"), Field.create("title2")))
+      )));
 
       records.add(record1);
       records.add(record2);
@@ -152,8 +172,15 @@ public class TestSolrTarget  extends SolrJettyTestBase {
       Assert.assertNotNull(fieldCVal);
       Assert.assertEquals("t", fieldCVal);
 
+
+      List<String> titleCVal = (List<String>) solrDocument.get("title");
+      Assert.assertNotNull(titleCVal);
+      Assert.assertEquals(2, titleCVal.size());
+      Assert.assertEquals("title1", titleCVal.get(0));
+      Assert.assertEquals("title2", titleCVal.get(1));
+
     } catch (Exception e) {
-      e.printStackTrace();
+      LOG.error("Exception while writing records", e);
       throw e;
     }
     finally {
@@ -231,7 +258,7 @@ public class TestSolrTarget  extends SolrJettyTestBase {
       records.add(record2);
 
       runner.runWrite(records);
-      Assert.assertEquals(1, runner.getErrorRecords().size());
+      Assert.assertEquals(2, runner.getErrorRecords().size());
       Assert.assertEquals("Hello", runner.getErrorRecords().get(0).get("/nota").getValueAsString());
       Assert.assertTrue(runner.getErrors().isEmpty());
 
@@ -253,7 +280,8 @@ public class TestSolrTarget  extends SolrJettyTestBase {
     String solrURI = jetty.getBaseUrl().toString() + "/" + "collection1";
     List<SolrFieldMappingConfig> fieldNamesMap = new ArrayList<>();
     fieldNamesMap.add(new SolrFieldMappingConfig("/a", "name"));
-    Target target = new SolrTarget(InstanceTypeOptions.SINGLE_NODE, solrURI, null, ProcessingMode.BATCH, fieldNamesMap);
+    Target target = new SolrTarget(InstanceTypeOptions.SINGLE_NODE, solrURI, null, ProcessingMode.BATCH, fieldNamesMap
+        , null);
 
     TargetRunner runner = new TargetRunner.Builder(SolrDTarget.class, target).setOnRecordError(OnRecordError.TO_ERROR)
       .build();

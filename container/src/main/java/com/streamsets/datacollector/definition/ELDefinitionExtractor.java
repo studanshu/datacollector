@@ -25,11 +25,14 @@ import com.streamsets.datacollector.el.ElFunctionArgumentDefinition;
 import com.streamsets.datacollector.el.ElFunctionDefinition;
 import com.streamsets.datacollector.el.JvmEL;
 import com.streamsets.datacollector.el.RuntimeEL;
+import com.streamsets.datacollector.el.VaultEL;
 import com.streamsets.pipeline.api.ElConstant;
 import com.streamsets.pipeline.api.ElFunction;
 import com.streamsets.pipeline.api.ElParam;
 import com.streamsets.pipeline.api.impl.ErrorMessage;
 import com.streamsets.pipeline.api.impl.Utils;
+import com.streamsets.pipeline.lib.el.Base64EL;
+import com.streamsets.pipeline.lib.el.MathEL;
 import com.streamsets.pipeline.lib.el.StringEL;
 
 import java.lang.annotation.Annotation;
@@ -44,9 +47,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
-public abstract class
-    ELDefinitionExtractor {
-  public static final Class[] DEFAULT_EL_DEFS = {RuntimeEL.class, StringEL.class, JvmEL.class};
+public abstract class ELDefinitionExtractor {
+  static final Class[] DEFAULT_EL_DEFS = {
+      Base64EL.class, JvmEL.class, MathEL.class, RuntimeEL.class, StringEL.class, VaultEL.class
+  };
 
   private static final ELDefinitionExtractor EXTRACTOR = new ELDefinitionExtractor() {};
 
@@ -132,7 +136,7 @@ public abstract class
             Class<?>[] pTypes = method.getParameterTypes();
             for (int i = 0; i < pTypes.length; i++) {
               if (getParamAnnotation(pAnnotations[i]) == null) {
-                errors.add(new ErrorMessage(DefinitionError.DEF_052, contextMsg, klass.getSimpleName(), fName, i));
+                errors.add(new ErrorMessage(DefinitionError.DEF_055, contextMsg, klass.getSimpleName(), fName, i));
               }
             }
           }

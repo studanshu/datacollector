@@ -41,7 +41,6 @@ import com.streamsets.pipeline.api.ExecutionMode;
 import com.streamsets.pipeline.api.Stage;
 import com.streamsets.pipeline.api.el.ELEvalException;
 import com.streamsets.pipeline.api.impl.Utils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +58,7 @@ import java.util.Properties;
 
 public abstract class PipelineBeanCreator {
   private static final Logger LOG = LoggerFactory.getLogger(PipelineBeanCreator.class);
+  public static final String PIPELINE_LIB_DEFINITION = "Pipeline";
 
   private static final PipelineBeanCreator CREATOR = new PipelineBeanCreator() {
   };
@@ -71,7 +71,7 @@ public abstract class PipelineBeanCreator {
 
   static private StageDefinition getPipelineDefinition() {
     StageLibraryDefinition libraryDef = new StageLibraryDefinition(Thread.currentThread().getContextClassLoader(),
-                                                                   "system", "System", new Properties(), null, null,
+                                                                   PIPELINE_LIB_DEFINITION, PIPELINE_LIB_DEFINITION, new Properties(), null, null,
                                                                    null);
     return StageDefinitionExtractor.get().extract(libraryDef, PipelineConfigBean.class, "Pipeline Config Definitions");
   }
@@ -87,6 +87,7 @@ public abstract class PipelineBeanCreator {
     int priorErrors = errors.size();
     PipelineConfigBean pipelineConfigBean = create(pipelineConf, errors);
     StageBean errorStageBean = null;
+    StageBean statsStageBean = null;
     List<StageBean> stages = new ArrayList<>();
     if (pipelineConfigBean != null && pipelineConfigBean.constants != null) {
       for (StageConfiguration stageConf : pipelineConf.getStages()) {
@@ -96,6 +97,20 @@ public abstract class PipelineBeanCreator {
           stages.add(stageBean);
         }
       }
+
+      StageConfiguration statsStageConf = pipelineConf.getStatsAggregatorStage();
+      if (statsStageConf != null) {
+        statsStageBean = createStageBean(
+            forExecution,
+            library,
+            statsStageConf,
+            false,
+            pipelineConfigBean.constants,
+            errors
+        );
+        // It is not mandatory to have a stats aggregating target configured
+      }
+
       StageConfiguration errorStageConf = pipelineConf.getErrorStage();
       if (errorStageConf != null) {
         errorStageBean = createStageBean(forExecution, library, errorStageConf, true, pipelineConfigBean.constants,
@@ -105,7 +120,8 @@ public abstract class PipelineBeanCreator {
                                                      CreationError.CREATION_009));
       }
     }
-    return (errors.size() == priorErrors) ? new PipelineBean(pipelineConfigBean, stages, errorStageBean) : null;
+    return (errors.size() == priorErrors) ?
+        new PipelineBean(pipelineConfigBean, stages, errorStageBean, statsStageBean) : null;
   }
 
   public ExecutionMode getExecutionMode(PipelineConfiguration pipelineConf, List<Issue> errors) {
@@ -126,6 +142,22 @@ public abstract class PipelineBeanCreator {
       errors.add(IssueCreator.getPipeline().create("", "executionMode", CreationError.CREATION_071));
     }
     return mode;
+  }
+
+  public String getMesosDispatcherURL(PipelineConfiguration pipelineConf) {
+    String value = null;
+    if (pipelineConf.getConfiguration("mesosDispatcherURL") != null) {
+      value = pipelineConf.getConfiguration("mesosDispatcherURL").getValue().toString();
+    }
+    return value;
+  }
+
+  public String getHdfsS3ConfDirectory(PipelineConfiguration pipelineConf) {
+    String value = null;
+    if (pipelineConf.getConfiguration("hdfsS3ConfDir") != null) {
+      value = pipelineConf.getConfiguration("hdfsS3ConfDir").getValue().toString();
+    }
+    return value;
   }
 
   StageBean createStageBean(boolean forExecution, StageLibraryTask library, StageConfiguration stageConf,
@@ -248,7 +280,7 @@ public abstract class PipelineBeanCreator {
       if (field.getAnnotation(ConfigDef.class) != null) {
         ConfigDefinition configDef = configDefMap.get(configName);
         if (configDef == null) {
-          errors.add(issueCreator.create(configDef.getGroup(), configName, CreationError.CREATION_002, configName));
+          errors.add(issueCreator.create(configName, CreationError.CREATION_002, configName));
         } else {
           Object value = valueMap.get(configName);
           if (value == null) {
@@ -347,7 +379,11 @@ public abstract class PipelineBeanCreator {
     IssueCreator issueCreator = IssueCreator.getStage(stageName);
     if (value instanceof String) {
       String strValue = value.toString();
-      if (strValue.isEmpty() || strValue.length() > 1) {
+      if (!strValue.isEmpty() && strValue.startsWith("\\u") && strValue.length() > 5 &&
+          strValue.substring(2).matches("^[0-9a-fA-F]+$")) {
+        // To support non printable unicode control characters
+        value = (char) Integer.parseInt(strValue.substring(2), 16 );
+      } else if (strValue.isEmpty() || strValue.length() > 1) {
         errors.add(issueCreator.create(groupName, configName, CreationError.CREATION_012, value, strValue));
         value = null;
       } else {

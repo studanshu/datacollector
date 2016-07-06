@@ -23,18 +23,22 @@ package com.streamsets.datacollector.execution.metrics;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streamsets.datacollector.callback.CallbackInfo;
+import com.streamsets.datacollector.config.PipelineConfiguration;
 import com.streamsets.datacollector.execution.EventListenerManager;
 import com.streamsets.datacollector.execution.PipelineState;
 import com.streamsets.datacollector.execution.PipelineStateStore;
 import com.streamsets.datacollector.execution.runner.cluster.SlaveCallbackManager;
 import com.streamsets.datacollector.execution.runner.common.ThreadHealthReporter;
 import com.streamsets.datacollector.json.ObjectMapperFactory;
+import com.streamsets.datacollector.main.RuntimeInfo;
 import com.streamsets.datacollector.restapi.bean.CounterJson;
 import com.streamsets.datacollector.restapi.bean.MeterJson;
 import com.streamsets.datacollector.restapi.bean.MetricRegistryJson;
 import com.streamsets.datacollector.store.PipelineStoreException;
+import com.streamsets.datacollector.util.AggregatorUtil;
 import com.streamsets.datacollector.util.Configuration;
 import com.streamsets.pipeline.api.ExecutionMode;
+import com.streamsets.pipeline.api.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +51,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -56,7 +61,7 @@ public class MetricsEventRunnable implements Runnable {
   public static final int REFRESH_INTERVAL_PROPERTY_DEFAULT = 2000;
 
   public static final String RUNNABLE_NAME = "MetricsEventRunnable";
-  private final static Logger LOG = LoggerFactory.getLogger(MetricsEventRunnable.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MetricsEventRunnable.class);
   private final ConcurrentMap<String, MetricRegistryJson> slaveMetrics;
   private ThreadHealthReporter threadHealthReporter;
   private final EventListenerManager eventListenerManager;
@@ -66,12 +71,23 @@ public class MetricsEventRunnable implements Runnable {
   private final String name;
   private final String rev;
   private final int scheduledDelay;
+  private final Configuration configuration;
+  private final RuntimeInfo runtimeInfo;
+  private BlockingQueue<Record> statsQueue;
+  private PipelineConfiguration pipelineConfiguration;
 
   @Inject
-  public MetricsEventRunnable(@Named("name") String name, @Named("rev") String rev, Configuration configuration,
-                              PipelineStateStore pipelineStateStore, ThreadHealthReporter threadHealthReporter,
-                              EventListenerManager eventListenerManager, MetricRegistry metricRegistry,
-                              SlaveCallbackManager slaveCallbackManager) {
+  public MetricsEventRunnable(
+      @Named("name") String name,
+      @Named("rev") String rev,
+      Configuration configuration,
+      PipelineStateStore pipelineStateStore,
+      ThreadHealthReporter threadHealthReporter,
+      EventListenerManager eventListenerManager,
+      MetricRegistry metricRegistry,
+      SlaveCallbackManager slaveCallbackManager,
+      RuntimeInfo runtimeInfo
+  ) {
     slaveMetrics = new ConcurrentHashMap<>();
     this.threadHealthReporter = threadHealthReporter;
     this.eventListenerManager = eventListenerManager;
@@ -81,10 +97,20 @@ public class MetricsEventRunnable implements Runnable {
     this.name = name;
     this.rev = rev;
     this.scheduledDelay = configuration.get(REFRESH_INTERVAL_PROPERTY, REFRESH_INTERVAL_PROPERTY_DEFAULT);
+    this.configuration = configuration;
+    this.runtimeInfo = runtimeInfo;
   }
 
   public void setThreadHealthReporter(ThreadHealthReporter threadHealthReporter) {
     this.threadHealthReporter = threadHealthReporter;
+  }
+
+  public void setStatsQueue(BlockingQueue<Record> statsQueue) {
+    this.statsQueue = statsQueue;
+  }
+
+  public void setPipelineConfiguration(PipelineConfiguration pipelineConfiguration) {
+    this.pipelineConfiguration = pipelineConfiguration;
   }
 
   @Override
@@ -97,18 +123,36 @@ public class MetricsEventRunnable implements Runnable {
       if(threadHealthReporter != null) {
         threadHealthReporter.reportHealth(RUNNABLE_NAME, scheduledDelay, System.currentTimeMillis());
       }
+      ObjectMapper objectMapper = ObjectMapperFactory.get();
       PipelineState state = pipelineStateStore.getState(name, rev);
-      if (eventListenerManager.hasMetricEventListeners(name) && state.getStatus().isActive()) {
-        ObjectMapper objectMapper = ObjectMapperFactory.get();
+      if (hasMetricEventListeners(state) || isStatAggregationEnabled()) {
+        // compute aggregated metrics in case of cluster mode pipeline
+        // get individual pipeline metrics if non cluster mode pipeline
         String metricsJSONStr;
         if (state.getExecutionMode() == ExecutionMode.CLUSTER_BATCH
-          || state.getExecutionMode() == ExecutionMode.CLUSTER_STREAMING) {
+          || state.getExecutionMode() == ExecutionMode.CLUSTER_YARN_STREAMING
+          || state.getExecutionMode() == ExecutionMode.CLUSTER_MESOS_STREAMING) {
           MetricRegistryJson metricRegistryJson = getAggregatedMetrics();
           metricsJSONStr = objectMapper.writer().writeValueAsString(metricRegistryJson);
         } else {
           metricsJSONStr = objectMapper.writer().writeValueAsString(metricRegistry);
         }
-        eventListenerManager.broadcastMetrics(name, metricsJSONStr);
+        if (hasMetricEventListeners(state)) {
+          eventListenerManager.broadcastMetrics(name, metricsJSONStr);
+        }
+        if (isStatAggregationEnabled()) {
+          AggregatorUtil.enqueStatsRecord(
+            AggregatorUtil.createMetricJsonRecord(
+                runtimeInfo.getId(),
+                runtimeInfo.getMasterSDCId(),
+                pipelineConfiguration.getMetadata(),
+                false, // isAggregated - no its not aggregated
+                metricsJSONStr
+            ),
+            statsQueue,
+            configuration
+          );
+        }
       }
     } catch (IOException ex) {
       LOG.warn("Error while serializing metrics, {}", ex.toString(), ex);
@@ -131,8 +175,8 @@ public class MetricsEventRunnable implements Runnable {
       }
     }
 
-    for(String slaveSdcToken: slaveMetrics.keySet()) {
-      MetricRegistryJson metrics = slaveMetrics.get(slaveSdcToken);
+    for(Map.Entry<String, MetricRegistryJson> entry: slaveMetrics.entrySet()) {
+      MetricRegistryJson metrics = entry.getValue();
 
       Map<String, CounterJson> slaveCounters = metrics.getCounters();
       Map<String, MeterJson> slaveMeters = metrics.getMeters();
@@ -143,15 +187,15 @@ public class MetricsEventRunnable implements Runnable {
         aggregatedCounters = new HashMap<>();
         aggregatedMeters = new HashMap<>();
 
-        for(String meterName: slaveCounters.keySet()) {
-          CounterJson slaveCounter = slaveCounters.get(meterName);
+        for(Map.Entry<String, CounterJson> counterJsonEntry: slaveCounters.entrySet()) {
+          CounterJson slaveCounter = counterJsonEntry.getValue();
           CounterJson aggregatedCounter = new CounterJson();
           aggregatedCounter.setCount(slaveCounter.getCount());
-          aggregatedCounters.put(meterName, aggregatedCounter);
+          aggregatedCounters.put(counterJsonEntry.getKey(), aggregatedCounter);
         }
 
-        for(String meterName: slaveMeters.keySet()) {
-          MeterJson slaveMeter = slaveMeters.get(meterName);
+        for(Map.Entry<String, MeterJson> meterJsonEntry: slaveMeters.entrySet()) {
+          MeterJson slaveMeter = meterJsonEntry.getValue();
           MeterJson aggregatedMeter = new MeterJson();
           aggregatedMeter.setCount( slaveMeter.getCount());
           aggregatedMeter.setM1_rate(slaveMeter.getM1_rate());
@@ -163,23 +207,23 @@ public class MetricsEventRunnable implements Runnable {
           aggregatedMeter.setH12_rate(slaveMeter.getH12_rate());
           aggregatedMeter.setH24_rate(slaveMeter.getH24_rate());
           aggregatedMeter.setMean_rate(slaveMeter.getMean_rate());
-          aggregatedMeters.put(meterName, aggregatedMeter);
+          aggregatedMeters.put(meterJsonEntry.getKey(), aggregatedMeter);
         }
 
       } else {
         //Otherwise add to the aggregated Metrics
-        for(String meterName: aggregatedCounters.keySet()) {
-          CounterJson aggregatedCounter = aggregatedCounters.get(meterName);
-          CounterJson slaveCounter = slaveCounters.get(meterName);
+        for(Map.Entry<String, CounterJson> counterJsonEntry : aggregatedCounters.entrySet()) {
+          CounterJson aggregatedCounter = counterJsonEntry.getValue();
+          CounterJson slaveCounter = slaveCounters.get(counterJsonEntry.getKey());
 
           if(aggregatedCounter != null && slaveCounter != null) {
             aggregatedCounter.setCount(aggregatedCounter.getCount() + slaveCounter.getCount());
           }
         }
 
-        for(String meterName: aggregatedMeters.keySet()) {
-          MeterJson aggregatedMeter = aggregatedMeters.get(meterName);
-          MeterJson slaveMeter = slaveMeters.get(meterName);
+        for(Map.Entry<String, MeterJson> meterJsonEntry : aggregatedMeters.entrySet()) {
+          MeterJson aggregatedMeter = meterJsonEntry.getValue();
+          MeterJson slaveMeter = slaveMeters.get(meterJsonEntry.getKey());
 
           if(aggregatedMeter != null && slaveMeter != null) {
             aggregatedMeter.setCount(aggregatedMeter.getCount() + slaveMeter.getCount());
@@ -215,4 +259,11 @@ public class MetricsEventRunnable implements Runnable {
     this.slaveMetrics.clear();
   }
 
+  private boolean isStatAggregationEnabled() {
+    return null != statsQueue;
+  }
+
+  private boolean hasMetricEventListeners(PipelineState state) {
+    return eventListenerManager.hasMetricEventListeners(name) && state.getStatus().isActive();
+  }
 }

@@ -24,71 +24,11 @@
                 conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/1stStep-ReqField-ErrorHandling">
                 <cmd/>
             </step>
-            
-            <step>
-                <cmd>On the <wintitle>Elasticsearch</wintitle> tab, configure the following
-                    properties:</cmd>
-                <info>
-                    <table frame="all" rowsep="1" colsep="1" id="table_ht4_x5v_4r">
-                        <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
-                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
-                            <thead>
-                                <row>
-                                    <entry>Elasticsearch Property</entry>
-                                    <entry>Description</entry>
-                                </row>
-                            </thead>
-                            <tbody>
-                                <row>
-                                    <entry>Cluster Name</entry>
-                                    <entry>Elasticsearch cluster name.</entry>
-                                </row>
-                                <row>
-                                    <entry>Cluster URIs</entry>
-                                    <entry>URI of one or more nodes in the cluster. <p>To ensure a
-                                            connection, enter additional URIs.</p></entry>
-                                </row>
-                                <row>
-                                    <entry>Additional Configuration</entry>
-                                    <entry>Additional Elasticsearch properties that you want to use.
-                                        Enter the exact property name and value expected by
-                                            Elasticsearch.<p>By default, the client.transport.sniff
-                                            property is set to True. This allows the <ph
-                                                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                            /> to write to nodes in the cluster that are not listed
-                                            in the stage.</p></entry>
-                                </row>
-                                <row>
-                                    <entry>Index</entry>
-                                    <entry>Index information for the generated documents. You can
-                                        use a constant or a field that includes the index
-                                        information. </entry>
-                                </row>
-                                <row>
-                                    <entry>Mapping</entry>
-                                    <entry>Mapping information for the generated documents. You can
-                                        use a constant or a field that includes the mapping
-                                        information. </entry>
-                                </row>
-                                <row>
-                                    <entry>Document ID</entry>
-                                    <entry>ID for the record. Use to specify the ID for the
-                                        generated documents. When you do not specify an ID,
-                                        Elasticsearch creates an ID for each document.<p>By default,
-                                            the destination allows Elasticsearch to create the
-                                            ID.</p></entry>
-                                </row>
-                                <row>
-                                    <entry>Data Charset</entry>
-                                    <entry>
-                                        <p>Character encoding of the data to be processed. </p>
-                                    </entry>
-                                </row>
-                            </tbody>
-                        </tgroup>
-                    </table>
-                </info>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/ELASTICprops-Step">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/ElasticSHIELD-step">
+                <cmd/>
             </step>
         </steps>
     </taskbody>

@@ -22,6 +22,7 @@ package com.streamsets.datacollector.execution.store;
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableList;
 import com.streamsets.datacollector.config.PipelineConfiguration;
+import com.streamsets.datacollector.event.handler.remote.RemoteDataCollector;
 import com.streamsets.datacollector.execution.PipelineState;
 import com.streamsets.datacollector.execution.PipelineStateStore;
 import com.streamsets.datacollector.execution.PipelineStatus;
@@ -29,11 +30,14 @@ import com.streamsets.datacollector.execution.store.CachePipelineStateStore;
 import com.streamsets.datacollector.execution.store.FilePipelineStateStore;
 import com.streamsets.datacollector.main.RuntimeInfo;
 import com.streamsets.datacollector.main.RuntimeModule;
+import com.streamsets.datacollector.main.SlaveRuntimeInfo;
 import com.streamsets.datacollector.runner.MockStages;
+import com.streamsets.datacollector.stagelibrary.StageLibraryTask;
 import com.streamsets.datacollector.store.PipelineStoreException;
 import com.streamsets.datacollector.store.PipelineStoreTask;
 import com.streamsets.datacollector.store.impl.FilePipelineStoreTask;
 import com.streamsets.datacollector.util.Configuration;
+import com.streamsets.datacollector.util.LockCache;
 import com.streamsets.datacollector.util.LockCacheModule;
 import com.streamsets.datacollector.util.TestUtil;
 import com.streamsets.pipeline.api.ExecutionMode;
@@ -76,8 +80,8 @@ public class TestPipelineStateStore {
     static boolean INVALIDATE_CACHE = false;
 
     @Override
-    public PipelineState edited(String user, String name, String rev, ExecutionMode executionMode) throws PipelineStoreException {
-      PipelineState state = super.edited(user, name, rev, executionMode);
+    public PipelineState edited(String user, String name, String rev, ExecutionMode executionMode, boolean isRemote) throws PipelineStoreException {
+      PipelineState state = super.edited(user, name, rev, executionMode, isRemote);
       if (INVALIDATE_CACHE) {
         // invalidate cache
         super.destroy();
@@ -101,8 +105,8 @@ public class TestPipelineStateStore {
   static class TestPipelineStateStoreModule {
 
     @Provides @Singleton
-    public RuntimeInfo provideRuntimeInfo() {
-      return new RuntimeInfo(RuntimeModule.SDC_PROPERTY_PREFIX, new MetricRegistry(),
+    public SlaveRuntimeInfo provideRuntimeInfo() {
+      return new SlaveRuntimeInfo(RuntimeModule.SDC_PROPERTY_PREFIX, new MetricRegistry(),
         ImmutableList.of(getClass().getClassLoader()));
     }
 
@@ -112,13 +116,19 @@ public class TestPipelineStateStore {
     }
 
     @Provides @Singleton
-    public PipelineStateStore providePipelineStateStore(RuntimeInfo runtimeInfo, Configuration configuration) {
+    public PipelineStateStore providePipelineStateStore(SlaveRuntimeInfo runtimeInfo, Configuration configuration) {
       return new MockFilePipelineStateStore(new FilePipelineStateStore(runtimeInfo, configuration));
     }
 
-    @Provides @Singleton
-    public PipelineStoreTask providePipelineStore(FilePipelineStoreTask pipelineStoreTask) {
-      return pipelineStoreTask;
+    @Provides
+    @Singleton
+    public PipelineStoreTask providePipelineStore(
+        SlaveRuntimeInfo slaveRuntimeInfo,
+        StageLibraryTask stageLibraryTask,
+        PipelineStateStore pipelineStateStore,
+        LockCache<String> lockCache
+    ) {
+      return new FilePipelineStoreTask(slaveRuntimeInfo, stageLibraryTask, pipelineStateStore, lockCache);
     }
   }
 
@@ -156,7 +166,7 @@ public class TestPipelineStateStore {
 
   @Test
   public void testCreatePipeline() throws Exception {
-    pipelineStoreTask.create("user2", "name1", "description");
+    pipelineStoreTask.create("user2", "name1", "description", false);
     PipelineState pipelineState = pipelineStateStore.getState("name1", "0");
 
     assertEquals("user2", pipelineState.getUser());
@@ -238,6 +248,26 @@ public class TestPipelineStateStore {
     assertEquals(ExecutionMode.STANDALONE, pipelineState.getExecutionMode());
   }
 
+  @Test
+  public void testStateRemoteAttribute() throws Exception {
+    pipelineStateStore.edited("user2", "stateRemoteAttribute", "0", ExecutionMode.STANDALONE, true);
+    PipelineState pipelineState = pipelineStateStore.getState("stateRemoteAttribute", "0");
+    assertEquals(true, pipelineState.getAttributes().get(RemoteDataCollector.IS_REMOTE_PIPELINE));
+    pipelineStateStore.saveState("user2", "stateRemoteAttribute", "0", PipelineStatus.STOPPED, "Pipeline starting", null, ExecutionMode.STANDALONE, null, 0, 0);
+    pipelineStateStore.edited("user2", "stateRemoteAttribute", "0", ExecutionMode.CLUSTER_BATCH, false);
+    pipelineState = pipelineStateStore.getState("stateRemoteAttribute", "0");
+    assertEquals(true, pipelineState.getAttributes().get(RemoteDataCollector.IS_REMOTE_PIPELINE));
+    assertEquals(ExecutionMode.CLUSTER_BATCH, pipelineState.getExecutionMode());
+
+    pipelineStateStore.edited("user2", "stateRemoteAttribute1", "0", ExecutionMode.STANDALONE, false);
+    pipelineState = pipelineStateStore.getState("stateRemoteAttribute1", "0");
+    assertEquals(false, pipelineState.getAttributes().get(RemoteDataCollector.IS_REMOTE_PIPELINE));
+    pipelineStateStore.saveState("user1", "stateRemoteAttribute2", "0", PipelineStatus.EDITED, "Pipeline edited", null, ExecutionMode.STANDALONE, null, 0, 0);
+    pipelineState = pipelineStateStore.getState("stateRemoteAttribute2", "0");
+    assertEquals(false, pipelineStoreTask.isRemotePipeline("stateRemoteAttribute2", "0"));
+
+  }
+
   public void stateSave() throws Exception {
     pipelineStateStore.saveState("user1", "aaa", "0", PipelineStatus.EDITED, "Pipeline edited", null, ExecutionMode.STANDALONE, null, 0, 0);
     PipelineState pipelineState = pipelineStateStore.getState("aaa", "0");
@@ -262,7 +292,7 @@ public class TestPipelineStateStore {
 
   public void stateEdit() throws Exception {
     pipelineStateStore.saveState("user1", "aaa", "0", PipelineStatus.STOPPED, "Pipeline stopped", null, ExecutionMode.STANDALONE, null, 0, 0);
-    pipelineStateStore.edited("user2", "aaa", "0", ExecutionMode.STANDALONE);
+    pipelineStateStore.edited("user2", "aaa", "0", ExecutionMode.STANDALONE, false);
     PipelineState pipelineState = pipelineStateStore.getState("aaa", "0");
     assertEquals("user2", pipelineState.getUser());
     assertEquals("aaa", pipelineState.getName());
@@ -271,7 +301,7 @@ public class TestPipelineStateStore {
 
     pipelineStateStore.saveState("user1", "aaa", "0", PipelineStatus.RUNNING, "Pipeline running", null, ExecutionMode.STANDALONE, null, 0, 0);
     try {
-      pipelineStateStore.edited("user2", "aaa", "0", ExecutionMode.STANDALONE);
+      pipelineStateStore.edited("user2", "aaa", "0", ExecutionMode.STANDALONE, false);
       fail("Expected exception but didn't get any");
     } catch (IllegalStateException ex) {
       // expected

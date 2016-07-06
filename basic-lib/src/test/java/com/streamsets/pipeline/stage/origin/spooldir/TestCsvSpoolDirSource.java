@@ -31,6 +31,7 @@ import com.streamsets.pipeline.config.OnParseError;
 import com.streamsets.pipeline.config.PostProcessingOptions;
 import com.streamsets.pipeline.sdk.SourceRunner;
 import com.streamsets.pipeline.sdk.StageRunner;
+import com.streamsets.pipeline.stage.common.HeaderAttributeConstants;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -41,6 +42,8 @@ import java.util.List;
 import java.util.UUID;
 
 public class TestCsvSpoolDirSource {
+
+  private String spoolDir;
 
   private String createTestDir() {
     File f = new File("target", UUID.randomUUID().toString());
@@ -70,13 +73,44 @@ public class TestCsvSpoolDirSource {
     return f;
   }
 
-  private SpoolDirSource createSource(CsvMode mode, CsvHeader header, char delimiter, char escape, char quote,
-      int maxLen, CsvRecordType csvRecordType) {
-    return new SpoolDirSource(DataFormat.DELIMITED, "UTF-8", false, 100, createTestDir(), 10, 1, "file-[0-9].log", 10,
-                              null, Compression.NONE, "*",  null, PostProcessingOptions.ARCHIVE, createTestDir(), 10,
-                              mode, header, maxLen,
-                              delimiter, escape, quote, null, 0, 10, null, 0, null, 0, false, null, null, null, null,
-                              null, false, null, OnParseError.ERROR, -1, null, csvRecordType);
+  private SpoolDirSource createSource(
+      CsvMode mode,
+      CsvHeader header,
+      char delimiter,
+      char escape,
+      char quote,
+      int maxLen,
+      CsvRecordType csvRecordType) {
+
+    SpoolDirConfigBean conf = new SpoolDirConfigBean();
+    conf.dataFormat = DataFormat.DELIMITED;
+    conf.dataFormatConfig.charset = "UTF-8";
+    conf.dataFormatConfig.removeCtrlChars = false;
+    conf.overrunLimit = 100;
+    conf.spoolDir = createTestDir();
+    conf.batchSize = 10;
+    conf.poolingTimeoutSecs = 1;
+    conf.filePattern = "file-[0-9].log";
+    conf.maxSpoolFiles = 10;
+    conf.initialFileToProcess = null;
+    conf.dataFormatConfig.compression = Compression.NONE;
+    conf.dataFormatConfig.filePatternInArchive = "*";
+    conf.errorArchiveDir = null;
+    conf.postProcessing = PostProcessingOptions.ARCHIVE;
+    conf.archiveDir = createTestDir();
+    conf.retentionTimeMins = 10;
+    conf.dataFormatConfig.csvFileFormat = mode;
+    conf.dataFormatConfig.csvHeader = header;
+    conf.dataFormatConfig.csvMaxObjectLen = maxLen;
+    conf.dataFormatConfig.csvCustomDelimiter = delimiter;
+    conf.dataFormatConfig.csvCustomEscape = escape;
+    conf.dataFormatConfig.csvCustomQuote = quote;
+    conf.dataFormatConfig.csvRecordType = csvRecordType;
+    conf.dataFormatConfig.onParseError = OnParseError.ERROR;
+    conf.dataFormatConfig.maxStackTraceLines = 0;
+
+    this.spoolDir = conf.spoolDir;
+    return new SpoolDirSource(conf);
   }
 
   @Test
@@ -86,13 +120,17 @@ public class TestCsvSpoolDirSource {
     runner.runInit();
     try {
       BatchMaker batchMaker = SourceRunner.createTestBatchMaker("lane");
-      Assert.assertEquals("-1", source.produce(createDelimitedFile(), "0", 10, batchMaker));
+      File testFile = createDelimitedFile();
+      Assert.assertEquals("-1", source.produce(testFile, "0", 10, batchMaker));
       StageRunner.Output output = SourceRunner.getOutput(batchMaker);
       List<Record> records = output.getRecords().get("lane");
       Assert.assertNotNull(records);
       Assert.assertEquals(3, records.size());
       Assert.assertEquals("A", records.get(0).get("[0]/value").getValueAsString());
       Assert.assertEquals("B", records.get(0).get("[1]/value").getValueAsString());
+      Assert.assertEquals(testFile.getPath(), records.get(0).getHeader().getAttribute(HeaderAttributeConstants.FILE));
+      Assert.assertEquals("test.log", records.get(0).getHeader().getAttribute(HeaderAttributeConstants.FILE_NAME));
+      Assert.assertEquals("0", records.get(0).getHeader().getAttribute(HeaderAttributeConstants.OFFSET));
       Assert.assertFalse(records.get(0).has("[0]/header"));
       Assert.assertFalse(records.get(0).has("[1]/header"));
       Assert.assertFalse(records.get(0).has("[2]"));
@@ -300,7 +338,7 @@ public class TestCsvSpoolDirSource {
     SpoolDirSource source = createSource(CsvMode.EXCEL, CsvHeader.NO_HEADER, '^', '$', '!', 20, CsvRecordType.LIST);
     SourceRunner runner = new SourceRunner.Builder(SpoolDirDSource.class, source).addOutputLane("lane").
         setOnRecordError(OnRecordError.TO_ERROR).build();
-    createInvalidDataFile(source.spoolDir + "/file-0.log");
+    createInvalidDataFile(spoolDir + "/file-0.log");
     runner.runInit();
     try {
       StageRunner.Output output = runner.runProduce(null, 10);

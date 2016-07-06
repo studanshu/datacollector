@@ -20,6 +20,7 @@
 package com.streamsets.datacollector.cluster;
 
 
+import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 import com.streamsets.pipeline.api.impl.Utils;
 
@@ -28,8 +29,9 @@ import java.util.Map;
 
 public class ApplicationState {
   private static final String ID = "id";
+  private static final String dirID = "dirId";
   private static final String SDC_TOKEN = "sdcToken";
-  private Map<String, Object> backingMap;
+  private final Map<String, Object> backingMap;
 
   public ApplicationState() {
     this.backingMap = new HashMap<>();
@@ -55,8 +57,18 @@ public class ApplicationState {
     }
   }
 
+  public void setDirId(String dirId) {
+    if (dirId != null) {
+      this.backingMap.put(dirID, dirId);
+    }
+  }
+
+  public Optional<String> getDirId() {
+    return Optional.fromNullable((String)backingMap.get(dirID));
+  }
+
   public String getId() {
-    return (String)backingMap.get(ID);
+    return (String) backingMap.get(ID);
   }
 
   public void setId(String id) {

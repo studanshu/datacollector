@@ -2,7 +2,7 @@
 <!DOCTYPE html
   SYSTEM "about:legacy-compat">
 <html xml:lang="en-us" lang="en-us">
-<head><meta name="description" content="A cluster pipeline is a pipeline that runs in cluster execution mode. You can run a pipeline in standalone execution mode or cluster execution mode. In standalone mode, a single Data Collector process ..."></meta><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><meta name="copyright" content="(C) Copyright 2005"></meta><meta name="DC.rights.owner" content="(C) Copyright 2005"></meta><meta name="DC.Type" content="concept"></meta><meta name="DC.Title" content="Cluster Pipelines"></meta><meta name="abstract" content="A cluster pipeline is a pipeline that runs in cluster execution mode. You can run a pipeline in standalone execution mode or cluster execution mode."></meta><meta name="description" content="A cluster pipeline is a pipeline that runs in cluster execution mode. You can run a pipeline in standalone execution mode or cluster execution mode."></meta><meta name="DC.Relation" scheme="URI" content="../Cluster_Mode/ClusterPipelines_title.html"></meta><meta name="DC.Format" content="XHTML"></meta><meta name="DC.Identifier" content="concept_hmh_kfn_1s"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/commonltr.css"><!----></link><title>Cluster Pipelines</title><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/webhelp_topic.css"><!----></link><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/skins/skin.css"><!----></link><link rel="stylesheet" type="text/css" href="../skin.css"></link><script type="text/javascript"><!--
+<head><meta name="description" content="A cluster pipeline is a pipeline that runs in cluster execution mode. You can run a pipeline in standalone execution mode or cluster execution mode. In standalone mode, a single Data Collector process ..."></meta><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><meta name="copyright" content="(C) Copyright 2005"></meta><meta name="DC.rights.owner" content="(C) Copyright 2005"></meta><meta name="DC.Type" content="concept"></meta><meta name="DC.Title" content="Cluster Pipelines"></meta><meta name="abstract" content="A cluster pipeline is a pipeline that runs in cluster execution mode. You can run a pipeline in standalone execution mode or cluster execution mode."></meta><meta name="description" content="A cluster pipeline is a pipeline that runs in cluster execution mode. You can run a pipeline in standalone execution mode or cluster execution mode."></meta><meta name="DC.Relation" scheme="URI" content="../Cluster_Mode/ClusterPipelines_title.html"></meta><meta name="DC.Format" content="XHTML"></meta><meta name="DC.Identifier" content="concept_hmh_kfn_1s"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/commonltr.css"><!----></link><title>Cluster Pipelines</title><!--  Generated with Oxygen version 17.1, build number 2016020417.  --><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/webhelp_topic.css"><!----></link><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/skins/skin.css"><!----></link><link rel="stylesheet" type="text/css" href="../skin.css"></link><script type="text/javascript"><!--
           
           var prefix = "../index.html";
           
@@ -43,9 +43,9 @@
    the pipeline. A pipeline runs in standalone mode by default. </p>
 
   <p class="p">In cluster mode, the <span class="ph">Data
-                  Collector</span> utilizes YARN
-   and a cluster application to spawn additional workers as needed. Use cluster mode to process data
-   from a Kafka cluster or HDFS.</p>
+                  Collector</span> uses a cluster
+   manager and a cluster application to spawn additional workers as needed. Use cluster mode to read
+   data from a Kafka cluster or HDFS.</p>
 
   <p class="p">When would you choose standalone or cluster mode? Say you want to ingest logs from applications
    servers and perform a computationally expensive transformation. To do this, you might use a set
@@ -64,12 +64,15 @@
 
      <dd class="dd">When processing data from a Kafka cluster, the <span class="ph">Data
                   Collector</span> processes
-      data continuously until you stop the pipeline. </dd>
+      data continuously until you stop the pipeline. This is known as cluster streaming mode. </dd>
 
      <dd class="dd">The <span class="ph">Data
                   Collector</span>
       runs as an application within Spark Streaming, an open source cluster-computing application.
-      YARN and Spark Streaming spawn a <span class="ph">Data
+      Spark Streaming runs on either the Mesos or YARN cluster manager to process data from a Kafka
+      cluster.</dd>
+
+     <dd class="dd">The cluster manager and Spark Streaming spawn a <span class="ph">Data
                   Collector</span> worker for
       each partition in the Kafka cluster. So each partition has a <span class="ph">Data
                   Collector</span> worker to
@@ -85,13 +88,15 @@
 
      <dd class="dd">When processing data from HDFS, the <span class="ph">Data
                   Collector</span> processes
-      all available data and then stops the pipeline. </dd>
+      all available data and then stops the pipeline. This is known as cluster batch mode.</dd>
 
      <dd class="dd">The <span class="ph">Data
                   Collector</span>
-      runs as an application on top of MapReduce, an open-source cluster-computing framework. YARN
-      and MapReduce generate additional worker nodes as needed. MapReduce creates one map task for
-      each HDFS block. </dd>
+      runs as an application on top of MapReduce, an open-source cluster-computing framework.
+      MapReduce runs on the YARN cluster manager. </dd>
+
+     <dd class="dd">YARN and MapReduce generate additional worker nodes as needed. MapReduce creates one map
+      task for each HDFS block. </dd>
 
      <dd class="dd">Use the Hadoop FS origin to process data from HDFS in cluster mode.</dd>
 
@@ -104,28 +109,108 @@
  </div>
 
 <div class="related-links"></div>
-<div class="topic concept nested1" id="concept_swq_1bg_xs">
- <h2 class="title topictitle2">Kerberos Authentication for the Cluster</h2>
+<div class="topic concept nested1" id="concept_rmd_hgp_cw">
+ <h2 class="title topictitle2">HTTP Protocols</h2>
 
  
- <div class="body conbody"><p class="shortdesc">If the YARN cluster uses Kerberos authentication, make sure to configure the <span class="ph">Data
-                  Collector</span> to use Kerberos
-  authentication.</p>
+ <div class="body conbody"><p class="shortdesc">You can configure Data Collector to use HTTP or HTTPS when you run cluster pipelines. By
+        default Data Collector uses HTTP.</p>
 
-  <p class="p">When you configure Kerberos authentication for the <span class="ph">Data
-                  Collector</span>, you enable
-   the <span class="ph">Data
-                  Collector</span> to use
-   Kerberos and define the principal and keytab. When Kerberos is enabled for the <span class="ph">Data
-                  Collector</span>, the <span class="ph">Data
-                  Collector</span> automatically
-   uses Kerberos principal and keytab to connect to any YARN cluster that uses Kerberos.</p>
+  <p class="p">To configure HTTPS when you run cluster pipelines, you must generate an SSL certificate for the
+            gateway node and the worker nodes. You then specify the generated keystore file and
+            keystore password file for the gateway and worker nodes in the <span class="ph">Data
+                  Collector</span>
+            configuration file, <samp class="ph codeph">sdc.properties</samp>. You can optionally generate a
+            truststore file for the gateway and worker nodes.</p>
 
  </div>
 
-  <div class="related-links"><div class="relinfo relconcepts"><strong>Related concepts</strong><br></br>
-<div class="related_link"><a class="navheader_parent_path" href="../Install_Config/DCConfig.html#concept_hnm_n4l_xs" title="You can use Kerberos authentication to connect to origin and destination systems, as well as YARN clusters.">Enabling Kerberos Authentication</a></div>
+    <div class="related-links"><div class="relinfo relconcepts"><strong>Related concepts</strong><br xmlns="http://www.w3.org/1999/xhtml" />
+<div class="related_link"><a class="navheader_parent_path" href="../Install_Config/DCConfig.html#concept_rdt_h54_cw" title="To configure HTTPS when you run cluster pipelines, you can use a self-signed certificate. Or, you can generate an SSL certificate for the gateway node and the worker nodes. You specify the generated keystore file and keystore password file for the gateway and worker nodes in the Data Collector configuration file, sdc.properties. You can optionally generate a truststore file for the gateway and worker nodes.">Configuring HTTPS for Cluster Pipelines</a></div>
 </div>
+</div>
+</div>
+<div class="topic concept nested1" id="concept_swq_1bg_xs">
+ <h2 class="title topictitle2">Kerberos Authentication for Yarn</h2>
+
+ 
+ <div class="body conbody"><p class="shortdesc">If a cluster on YARN uses Kerberos authentication, make sure to configure the <span class="ph">Data
+                  Collector</span> to use
+    Kerberos authentication.</p>
+
+  <p class="p">When you configure Kerberos authentication for the <span class="ph">Data
+                  Collector</span>, you
+      enable the <span class="ph">Data
+                  Collector</span> to use Kerberos and define the principal and keytab. When Kerberos is enabled for the <span class="ph">Data
+                  Collector</span>, the <span class="ph">Data
+                  Collector</span>
+      automatically uses Kerberos principal and keytab to connect to any YARN cluster that uses
+      Kerberos.</p>
+
+ </div>
+
+  <div class="related-links"><div class="relinfo relconcepts"><strong>Related concepts</strong><br xmlns="http://www.w3.org/1999/xhtml" />
+<div class="related_link"><a class="navheader_parent_path" href="../Install_Config/DCConfig.html#concept_hnm_n4l_xs" title="You can use Kerberos authentication to connect to external systems as well as YARN clusters.">Enabling Kerberos Authentication</a></div>
+</div>
+</div>
+</div>
+<div class="topic concept nested1" id="concept_cs4_lcg_j5">
+    <h2 class="title topictitle2">Checkpoint Storage for Streaming Pipelines</h2>
+
+    
+    <div class="body conbody"><p class="shortdesc">When the <span class="ph">Data
+                  Collector</span> runs a
+        cluster streaming pipeline, on either Mesos or YARN, the <span class="ph">Data
+                  Collector</span>
+        generates and stores checkpoint metadata. The checkpoint metadata provides the offset for
+        the origin.</p>
+
+        <div class="p">The <span class="ph">Data
+                  Collector</span>
+            stores the checkpoint metadata in the following path on HDFS or Amazon
+            S3:<pre class="pre codeblock">/user/$USER/.streamsets-spark-streaming/&lt;DataCollector WorkerID&gt;/${Kafka topic}</pre>
+</div>
+
+        <p class="p">When you run a cluster streaming pipeline on YARN, the <span class="ph">Data
+                  Collector</span>
+            stores the metadata on HDFS. </p>
+
+        <p class="p">When you run a cluster pipeline on Mesos, the <span class="ph">Data
+                  Collector</span>
+            can store the metadata on HDFS or Amazon S3.</p>
+
+    </div>
+
+<div class="topic task nested2" id="task_gxz_h1q_k5">
+    <h3 class="title topictitle3">Configuring the Location for Mesos</h3>
+
+    
+    <div class="body taskbody"><p class="shortdesc">When you run a cluster pipeline on Mesos, the <span class="ph">Data
+                  Collector</span> can
+        write checkpoint information to either HDFS or Amazon S3. </p>
+
+        <div class="section context">
+            <p class="p">To define the location for checkpoint
+                storage:</p>
+
+        </div>
+
+        <ol class="ol steps" id="task_gxz_h1q_k5__steps_mt1_l1q_k5"><li class="li step stepexpand">
+                <span class="ph cmd">Configure the core-site.xml and hdfs-site.xml files to define where to write
+                    the checkpoint information. </span>
+                <div class="itemgroup info">For more information about configuring the files, see <a class="xref" href="https://wiki.apache.org/hadoop/AmazonS3" target="_blank">https://wiki.apache.org/hadoop/AmazonS3</a>.</div>
+            </li>
+<li class="li step stepexpand">
+                <span class="ph cmd">Store the files within the <span class="ph">Data
+                  Collector</span> resources directory.</span>
+            </li>
+<li class="li step stepexpand">
+                <span class="ph cmd">Enter the location of the files in the <span class="ph menucascade"><span class="ph uicontrol">Cluster</span> &gt; <span class="ph uicontrol">Hadoop/S3 Configuration Directory</span></span> pipeline property.</span>
+            </li>
+</ol>
+
+    </div>
+
 </div>
 </div>
 <div class="topic concept nested1" id="concept_xxz_nft_ls">
@@ -148,24 +233,31 @@
 
 </div>
 <div class="topic concept nested1" id="concept_fk4_gd4_1s">
- <h2 class="title topictitle2">Monitoring a Cluster</h2>
+ <h2 class="title topictitle2">Cluster Monitoring</h2>
 
  <div class="body conbody">
-  <p class="p">After you start a pipeline,
-      the <span class="ph">Data
-                  Collector</span>
-      console displays basic monitoring information for the pipeline and links to each <span class="ph">Data
+    <p class="p">The <span class="ph">Data
+                  Collector</span> console
+      allows you to monitor each <span class="ph">Data
                   Collector</span> worker. </p>
 
-  <p class="p">For monitoring details for a <span class="ph">Data
+    <div class="p">After you start a pipeline, the <span class="ph">Data
+                  Collector</span> console
+      displays basic monitoring information for the pipeline and links to each <span class="ph">Data
+                  Collector</span> worker.
+      For monitoring details for a <span class="ph">Data
                   Collector</span> worker,
-      click the worker link.</p>
+      click the worker link. You can then view metrics and alerts for the worker. <div class="note note"><span class="notetitle">Note:</span> Metric and
+        data alerts are defined for the pipeline, but triggered by individual workers.  When you
+        define a metric or data alert, each worker inherits the alert and triggers the alert based
+        on the statistics for the worker.</div>
+</div>
 
- </div>
+  </div>
 
 </div>
 </div>
 <div class="navfooter"><!---->
-<span class="navparent"><a class="link" href="../Cluster_Mode/ClusterPipelines_title.html" title="Cluster Pipelines"><span class="navheader_label">Parent topic</span><span class="navheader_separator">: </span><span class="navheader_linktext">Cluster Pipelines</span></a></span>  </div><div class="footer"></div>
+<span class="navparent"><a class="link" href="../Cluster_Mode/ClusterPipelines_title.html" title="Cluster Pipelines"><span class="navheader_label">Parent topic</span><span class="navheader_separator">: </span><span class="navheader_linktext">Cluster Pipelines</span></a></span>  </div>
 </body>
 </html>

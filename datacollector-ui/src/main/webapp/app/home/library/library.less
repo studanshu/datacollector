@@ -1,4 +1,6 @@
 /**
+ * Copyright 2015 StreamSets Inc.
+ *
  * Licensed under the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -51,6 +53,15 @@
       height: 100%;
       overflow: auto;
       box-sizing: border-box;
+
+      .border-list-group-item {
+        border-top: 1px solid #ddd;
+        margin: 5px 12px 0px 12px;
+        padding: 10px 0px 0px 2px;
+        color: @streamsets-color;
+        text-transform: uppercase;
+        list-style: none;
+      }
 
       .list-group-item {
         border-top: 0;
@@ -125,6 +136,10 @@
 
       }
 
+      .label-border {
+        border-bottom: 1px solid #ddd;
+      }
+
 
     }
   }
@@ -134,6 +149,34 @@
   .source-dropdown {
     .btn {
       text-align: left;
+    }
+  }
+}
+
+.multiple-pipelines-modal-body {
+  max-height: 400px;
+  overflow: scroll;
+}
+
+.download-modal-form,
+.publish-modal-form {
+  .properties {
+    list-style: none;
+    font-size: 0.9em;
+    padding: 0;
+    margin: 0;
+
+    li {
+      display: inline-block;
+      padding-left: @defaultPadding;
+    }
+
+    .properties-label {
+      opacity: 0.6;
+    }
+
+    .properties-value {
+
     }
   }
 }

@@ -29,7 +29,6 @@ import com.streamsets.pipeline.api.ConfigDef;
 import com.streamsets.pipeline.api.el.ELEvalException;
 import com.streamsets.pipeline.lib.el.StringEL;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.List;
@@ -39,6 +38,8 @@ public class ElUtil {
 
   private static final String EL_PREFIX = "${";
   private static final String CONSTANTS = "constants";
+
+  private ElUtil() {}
 
   public static Object evaluate(Object value, StageDefinition stageDefinition,
       ConfigDefinition configDefinition,
@@ -76,7 +77,6 @@ public class ElUtil {
   }
 
   public static Class<?>[] getElDefs(StageDefinition stageDef, ConfigDefinition configDefinition) {
-    ClassLoader cl = stageDef.getStageClassLoader();
     List<Class> elDefs = configDefinition.getElDefs();
     if(elDefs != null && elDefs.size() > 0) {
       return elDefs.toArray(new Class[elDefs.size()]);

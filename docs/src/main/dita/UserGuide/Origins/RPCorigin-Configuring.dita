@@ -55,20 +55,22 @@
                                     <entry/>
                                 </row>
                                 <row>
-                                    <entry>SSL Enabled  <xref href="../RPC_Pipelines/EnableSSL.dita">
+                                    <entry>TLS Enabled <xref
+                                            href="../RPC_Pipelines/EnablingEncryption.dita">
                                             <image href="../Graphics/icon_moreInfo.png" scale="10"
                                                 placement="inline" id="image_a5x_jzn_vs"
                                         /></xref></entry>
-                                    <entry>Enables the secure transfer of data using SSL. <p>To use
-                                            SSL, both the origin and destination must be enabled for
-                                            SSL.</p></entry>
+                                    <entry>Enables the secure transfer of data using TLS. <p>To use
+                                            encryption, both the origin and destination must be
+                                            enabled for TLS.</p></entry>
                                 </row>
                                 <row>
                                     <entry>Keystore File</entry>
                                     <entry>Keystore file for SSL. <p>Must be stored in the <ph
                                                 conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                            /> resources directory:
-                                                <filepath>&lt;SDCinstalldir>/resources</filepath>.</p></entry>
+                                            /> resources directory,
+                                        <filepath>$SDC_RESOURCES</filepath>. For more information about environment variables, see <xref
+                                            href="../Install_Config/DCEnvironmentConfig.dita#concept_rng_qym_qr"/>.</p></entry>
                                 </row>
                                 <row>
                                     <entry>Keystore Password</entry>

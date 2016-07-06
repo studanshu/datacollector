@@ -26,8 +26,10 @@ import com.streamsets.pipeline.api.Record;
 import com.streamsets.pipeline.api.Stage;
 import com.streamsets.pipeline.api.StageException;
 import com.streamsets.pipeline.api.Target;
+import com.streamsets.pipeline.api.base.OnRecordErrorException;
 import com.streamsets.pipeline.lib.jdbc.ChangeLogFormat;
 import com.streamsets.pipeline.lib.jdbc.HikariPoolConfigBean;
+import com.streamsets.pipeline.lib.jdbc.JdbcMultiRowRecordWriter;
 import com.streamsets.pipeline.sdk.RecordCreator;
 import com.streamsets.pipeline.sdk.TargetRunner;
 import org.joda.time.Instant;
@@ -42,10 +44,15 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Time;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("Duplicates")
 public class TestJdbcTarget {
@@ -91,6 +98,9 @@ public class TestJdbcTarget {
               "(P_ID INT NOT NULL, FIRST_NAME VARCHAR(255), LAST_NAME VARCHAR(255), TS TIMESTAMP, UNIQUE(P_ID), " +
               "PRIMARY KEY(P_ID));"
       );
+      statement.addBatch(
+        "CREATE TABLE IF NOT EXISTS TEST.DATETIMES (P_ID INT NOT NULL, T TIME, D DATE, DT DATETIME, PRIMARY KEY(P_ID)) "
+      );
       statement.addBatch("CREATE USER IF NOT EXISTS " + unprivUser + " PASSWORD '" + unprivPassword + "';");
       statement.addBatch("GRANT SELECT ON TEST.TEST_TABLE TO " + unprivUser + ";");
 
@@ -132,6 +142,7 @@ public class TestJdbcTarget {
         fieldMappings,
         false,
         false,
+        JdbcMultiRowRecordWriter.UNLIMITED_PARAMETERS,
         ChangeLogFormat.NONE,
         createConfigBean(h2ConnectionString, username, password)
     );
@@ -157,6 +168,7 @@ public class TestJdbcTarget {
         fieldMappings,
         false,
         false,
+        JdbcMultiRowRecordWriter.UNLIMITED_PARAMETERS,
         ChangeLogFormat.NONE,
         createConfigBean(h2ConnectionString, username, password)
     );
@@ -196,6 +208,7 @@ public class TestJdbcTarget {
         fieldMappings,
         false,
         false,
+        JdbcMultiRowRecordWriter.UNLIMITED_PARAMETERS,
         ChangeLogFormat.NONE,
         createConfigBean(h2ConnectionString, username, password)
     );
@@ -236,6 +249,7 @@ public class TestJdbcTarget {
         fieldMappings,
         false,
         false,
+        JdbcMultiRowRecordWriter.UNLIMITED_PARAMETERS,
         ChangeLogFormat.NONE,
         createConfigBean(h2ConnectionString, username, password)
     );
@@ -296,6 +310,7 @@ public class TestJdbcTarget {
         fieldMappings,
         true,
         false,
+        JdbcMultiRowRecordWriter.UNLIMITED_PARAMETERS,
         ChangeLogFormat.NONE,
         createConfigBean(h2ConnectionString, username, password)
     );
@@ -356,6 +371,7 @@ public class TestJdbcTarget {
         fieldMappings,
         false,
         false,
+        -1,
         ChangeLogFormat.NONE,
         createConfigBean(h2ConnectionString, username, password)
     );
@@ -375,7 +391,8 @@ public class TestJdbcTarget {
     List<Field> fields2 = new ArrayList<>();
     fields2.add(Field.create(2));
     fields2.add(Field.create("Jon"));
-    fields2.add(Field.create("Natkins"));
+    // Nulls will be interpreted as the a null of the target schema type regardless of Field.Type.
+    fields2.add(Field.create(Field.Type.INTEGER, null));
     fields2.add(Field.createDatetime(new Instant().toDate()));
     record2.set(Field.create(fields2));
 
@@ -402,6 +419,63 @@ public class TestJdbcTarget {
   }
 
   @Test
+  public void testMultiRowRecordWriterWithDataTypeException() throws Exception {
+    thrown.expect(OnRecordErrorException.class);
+
+    List<JdbcFieldMappingConfig> fieldMappings = ImmutableList.of(
+        new JdbcFieldMappingConfig("[0]", "P_ID"),
+        new JdbcFieldMappingConfig("[1]", "FIRST_NAME"),
+        new JdbcFieldMappingConfig("[2]", "LAST_NAME"),
+        new JdbcFieldMappingConfig("[3]", "TS")
+    );
+
+    Target target = new JdbcTarget(
+        tableName,
+        fieldMappings,
+        false,
+        true,
+        -1,
+        ChangeLogFormat.NONE,
+        createConfigBean(h2ConnectionString, username, password)
+    );
+    TargetRunner targetRunner = new TargetRunner.Builder(JdbcDTarget.class, target)
+        .setOnRecordError(OnRecordError.TO_ERROR)
+        .build();
+
+    Record record1 = RecordCreator.create();
+    List<Field> fields1 = new ArrayList<>();
+    fields1.add(Field.create(1));
+    fields1.add(Field.create("Adam"));
+    fields1.add(Field.create("Kunicki"));
+    fields1.add(Field.createDatetime(new Instant().toDate()));
+    record1.set(Field.create(fields1));
+
+    Record record2 = RecordCreator.create();
+    List<Field> fields2 = new ArrayList<>();
+    fields2.add(Field.create(2));
+    fields2.add(Field.create("Jon"));
+    // Nulls will be interpreted as the a null of the target schema type regardless of Field.Type.
+    fields2.add(Field.create(Field.Type.INTEGER, null));
+    fields2.add(Field.createDatetime(new Instant().toDate()));
+    record2.set(Field.create(fields2));
+
+    Record record3 = RecordCreator.create();
+    List<Field> fields3 = new ArrayList<>();
+    fields3.add(Field.create(3));
+    fields3.add(Field.create("Jon"));
+    fields3.add(Field.create("Daulton"));
+    fields3.add(Field.create("2015011705:30:00"));
+    record3.set(Field.create(fields3));
+
+    List<Record> records = ImmutableList.of(record1, record2, record3);
+    targetRunner.runInit();
+    targetRunner.runWrite(records);
+
+    // Currently for MultiInsert we will have to hard stop until
+    // the MultiRowRecordWriter can be refactored to regenerate the insert statement.
+  }
+
+  @Test
   public void testRecordWithBadPermissions() throws Exception {
     thrown.expect(StageException.class);
 
@@ -417,6 +491,7 @@ public class TestJdbcTarget {
         fieldMappings,
         false,
         false,
+        JdbcMultiRowRecordWriter.UNLIMITED_PARAMETERS,
         ChangeLogFormat.NONE,
         createConfigBean(h2ConnectionString, unprivUser, unprivPassword)
     );
@@ -472,6 +547,7 @@ public class TestJdbcTarget {
         fieldMappings,
         false,
         false,
+        JdbcMultiRowRecordWriter.UNLIMITED_PARAMETERS,
         ChangeLogFormat.NONE,
         createConfigBean("bad connection string", username, password)
     );
@@ -495,6 +571,7 @@ public class TestJdbcTarget {
         fieldMappings,
         false,
         false,
+        JdbcMultiRowRecordWriter.UNLIMITED_PARAMETERS,
         ChangeLogFormat.NONE,
         createConfigBean(h2ConnectionString, "foo", "bar")
     );
@@ -518,6 +595,7 @@ public class TestJdbcTarget {
         fieldMappings,
         false,
         false,
+        JdbcMultiRowRecordWriter.UNLIMITED_PARAMETERS,
         ChangeLogFormat.NONE,
         createConfigBean(h2ConnectionString, username, password)
     );
@@ -541,6 +619,7 @@ public class TestJdbcTarget {
         fieldMappings,
         false,
         false,
+        JdbcMultiRowRecordWriter.UNLIMITED_PARAMETERS,
         ChangeLogFormat.NONE,
         createConfigBean(h2ConnectionString, username, password)
     );
@@ -587,4 +666,50 @@ public class TestJdbcTarget {
 
     return record;
   }
+
+  @Test
+  public void testDateTimeTypes() throws Exception {
+    Date d = new Date();
+
+    List<JdbcFieldMappingConfig> fieldMappings = ImmutableList.of(
+        new JdbcFieldMappingConfig("[0]", "P_ID"),
+        new JdbcFieldMappingConfig("[1]", "T"),
+        new JdbcFieldMappingConfig("[2]", "D"),
+        new JdbcFieldMappingConfig("[3]", "DT")
+    );
+
+    Target target = new JdbcTarget(
+        "TEST.DATETIMES",
+        fieldMappings,
+        false,
+        false,
+        JdbcMultiRowRecordWriter.UNLIMITED_PARAMETERS,
+        ChangeLogFormat.NONE,
+        createConfigBean(h2ConnectionString, username, password)
+    );
+    TargetRunner targetRunner = new TargetRunner.Builder(JdbcDTarget.class, target).build();
+
+    Record record1 = RecordCreator.create();
+    List<Field> fields1 = new ArrayList<>();
+    fields1.add(Field.create(1));
+    fields1.add(Field.createTime(d));
+    fields1.add(Field.createDate(d));
+    fields1.add(Field.createDatetime(d));
+    record1.set(Field.create(fields1));
+
+    List<Record> records = ImmutableList.of(record1);
+    targetRunner.runInit();
+    targetRunner.runWrite(records);
+
+    connection = DriverManager.getConnection(h2ConnectionString, username, password);
+    try (Statement statement = connection.createStatement()) {
+      ResultSet rs = statement.executeQuery("SELECT * FROM TEST.DATETIMES");
+      assertTrue(rs.next());
+      assertEquals(new SimpleDateFormat("HH:mm:ss").format(d), rs.getTime(2).toString());
+      assertEquals(new SimpleDateFormat("YYY-MM-dd").format(d), rs.getDate(3).toString());
+      assertEquals(d, rs.getTimestamp(4));
+      assertFalse(rs.next());
+    }
+  }
+
 }

@@ -54,18 +54,21 @@
                                 </row>
                                 <row>
                                     <entry>Help</entry>
-                                    <entry>Defines the help project that the <ph
+                                    <entry>Defines the help project that <ph
                                             conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
                                         /> uses:<ul id="ul_pzd_kqx_pr">
                                             <li>Local help - Uses the help project installed with
-                                                the <ph
+                                                  <ph
                                                   conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
                                                 />.</li>
                                             <li>Hosted help - Uses a help project hosted on the
                                                 StreamSets website. Hosted help contains the latest
                                                 available documentation. Requires an internet
                                                 connection.</li>
-                                        </ul><p>Default is local help. Both help projects provide
+                                        </ul><p>Default is hosted help. When internet access is not
+                                            available, <ph
+                                                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                            /> uses local help. </p><p>Both help projects provide
                                             context-sensitive help.</p></entry>
                                 </row>
                                 <row>

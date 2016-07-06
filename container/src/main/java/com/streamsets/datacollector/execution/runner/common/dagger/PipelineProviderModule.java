@@ -62,10 +62,12 @@ public class PipelineProviderModule {
 
   private final String name;
   private final String rev;
+  private final boolean statsAggregationEnabled;
 
-  public PipelineProviderModule(String name, String rev) {
+  public PipelineProviderModule(String name, String rev, boolean statsAggregationEnabled) {
     this.name = name;
     this.rev = rev;
+    this.statsAggregationEnabled = statsAggregationEnabled;
   }
 
   @Provides @Named("name")
@@ -92,7 +94,7 @@ public class PipelineProviderModule {
 
   @Provides @Singleton
   public MetricsObserverRunner provideMetricsObserverRunner(MetricRegistry metricRegistry, AlertManager alertManager) {
-    return new MetricsObserverRunner(name, rev, metricRegistry, alertManager);
+    return new MetricsObserverRunner(name, rev, statsAggregationEnabled, metricRegistry, alertManager);
   }
 
   @Provides @Singleton
@@ -106,9 +108,13 @@ public class PipelineProviderModule {
   }
 
   @Provides @Singleton
-  public RulesConfigLoader provideRulesConfigLoader(@Named("name") String name, @Named("rev") String rev,
-                                                    PipelineStoreTask pipelineStoreTask) {
-    return new RulesConfigLoader(name, rev, pipelineStoreTask);
+  public RulesConfigLoader provideRulesConfigLoader(
+      @Named("name") String name,
+      @Named("rev") String rev,
+      PipelineStoreTask pipelineStoreTask,
+      Configuration configuration
+  ) {
+    return new RulesConfigLoader(name, rev, pipelineStoreTask, configuration);
   }
 
   @Provides @Singleton
@@ -164,14 +170,27 @@ public class PipelineProviderModule {
   }
 
   @Provides @Singleton
-  public MetricsEventRunnable provideMetricsEventRunnable(@Named("name") String name, @Named("rev") String rev,
-                                                          Configuration configuration,
-                                                          PipelineStateStore pipelineStateStore,
-                                                          MetricRegistry metricRegistry,
-                                                          ThreadHealthReporter threadHealthReporter,
-                                                          EventListenerManager eventListenerManager) {
-    return new MetricsEventRunnable(name, rev, configuration, pipelineStateStore, threadHealthReporter,
-      eventListenerManager, metricRegistry, null);
+  public MetricsEventRunnable provideMetricsEventRunnable(
+      @Named("name") String name,
+      @Named("rev") String rev,
+      Configuration configuration,
+      PipelineStateStore pipelineStateStore,
+      MetricRegistry metricRegistry,
+      ThreadHealthReporter threadHealthReporter,
+      EventListenerManager eventListenerManager,
+      RuntimeInfo runtimeInfo
+  ) {
+    return new MetricsEventRunnable(
+        name,
+        rev,
+        configuration,
+        pipelineStateStore,
+        threadHealthReporter,
+        eventListenerManager,
+        metricRegistry,
+        null,
+        runtimeInfo
+    );
   }
 
 }

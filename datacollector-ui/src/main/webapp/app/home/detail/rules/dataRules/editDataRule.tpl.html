@@ -48,7 +48,7 @@
            ui-codemirror
              ng-model="dataRuleDefn.condition"
              ui-refresh="refreshCodemirror"
-             ui-codemirror-opts="getCodeMirrorOptions()"
+             ui-codemirror-opts="getCodeMirrorOptions('condition')"
              codemirror-el
              field-paths="fieldPaths">
       </div>
@@ -99,14 +99,13 @@
 
     <div class="form-group" ng-if="dataRuleDefn.alertEnabled" show-errors>
       <label class="col-lg-3 col-md-4 control-label" translate="home.detailPane.rulesTab.alertText">Alert Text</label>
-      <div class="controls col-lg-9 col-md-8">
-        <input type="text"
-               name="alertText"
-               class="form-control"
-               required="true"
-               title="{{'home.detailPane.rulesTab.alertTextPlaceholder' | translate}}"
-               placeholder="{{'home.detailPane.rulesTab.alertTextPlaceholder' | translate}}"
-               ng-model="dataRuleDefn.alertText">
+      <div class="controls col-lg-9 col-md-8 expression-language"
+           ui-codemirror
+           ng-model="dataRuleDefn.alertText"
+           ui-refresh="refreshCodemirror"
+           ui-codemirror-opts="getCodeMirrorOptions('alertText')"
+           codemirror-el
+           field-paths="fieldPaths">
       </div>
     </div>
 

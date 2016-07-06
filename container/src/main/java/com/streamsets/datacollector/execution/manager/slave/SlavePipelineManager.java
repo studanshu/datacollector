@@ -19,6 +19,7 @@
  */
 package com.streamsets.datacollector.execution.manager.slave;
 
+import com.streamsets.datacollector.event.handler.remote.RemoteDataCollector;
 import com.streamsets.datacollector.execution.EventListenerManager;
 import com.streamsets.datacollector.execution.Manager;
 import com.streamsets.datacollector.execution.PipelineState;
@@ -28,6 +29,7 @@ import com.streamsets.datacollector.execution.Previewer;
 import com.streamsets.datacollector.execution.Runner;
 import com.streamsets.datacollector.execution.manager.RunnerProvider;
 import com.streamsets.datacollector.main.RuntimeInfo;
+import com.streamsets.datacollector.main.SlaveRuntimeInfo;
 import com.streamsets.datacollector.metrics.MetricsConfigurator;
 import com.streamsets.datacollector.store.PipelineStoreException;
 import com.streamsets.datacollector.task.AbstractTask;
@@ -35,14 +37,19 @@ import com.streamsets.datacollector.util.Configuration;
 import com.streamsets.pipeline.api.ExecutionMode;
 import com.streamsets.pipeline.api.impl.Utils;
 import com.streamsets.pipeline.lib.executor.SafeScheduledExecutorService;
+
 import dagger.ObjectGraph;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class SlavePipelineManager extends AbstractTask implements Manager {
   private static final Logger LOG = LoggerFactory.getLogger(SlavePipelineManager.class);
@@ -85,7 +92,9 @@ public class SlavePipelineManager extends AbstractTask implements Manager {
     }
     runner = runnerProvider.createRunner(user, name, rev, objectGraph, null);
     // Set the initial state
-    pipelineStateStore.saveState(user, name, rev, PipelineStatus.EDITED, null, null, ExecutionMode.SLAVE, null, 0, 0);
+    Map<String, Object> attributes = new HashMap<>();
+    attributes.put(RemoteDataCollector.IS_REMOTE_PIPELINE, ((SlaveRuntimeInfo) runtimeInfo).isRemotePipeline());
+    pipelineStateStore.saveState(user, name, rev, PipelineStatus.EDITED, null, attributes, ExecutionMode.SLAVE, null, 0, 0);
     return runner;
   }
 
@@ -114,6 +123,11 @@ public class SlavePipelineManager extends AbstractTask implements Manager {
           ex);
       }
     }
+  }
+
+  @Override
+  public boolean isRemotePipeline(String name, String rev) throws PipelineStoreException {
+    throw new UnsupportedOperationException();
   }
 
 }

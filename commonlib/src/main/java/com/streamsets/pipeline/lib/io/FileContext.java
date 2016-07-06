@@ -72,6 +72,10 @@ public class FileContext {
     return Utils.format("FileContext[path={} rollMode={}]", multiFileInfo.getFileFullPath(), rollMode);
   }
 
+  public long getPendingFiles() throws IOException{
+    return scanner.getPendingFiles(currentFile);
+  }
+
   public boolean hasReader() {
     Utils.checkState(open, "FileContext is closed");
     return reader != null;
@@ -170,6 +174,9 @@ public class FileContext {
             break;
           case ARCHIVE:
             Path fileArchive = Paths.get(archiveDir, file.getPath().toString());
+            if (fileArchive == null) {
+              throw new IOException("Could not find archive file");
+            }
             try {
               Files.createDirectories(fileArchive.getParent());
               Files.move(file.getPath(), fileArchive);

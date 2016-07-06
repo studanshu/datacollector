@@ -30,11 +30,11 @@ import com.streamsets.datacollector.task.TaskWrapper;
 import com.streamsets.datacollector.util.AuthzRole;
 import com.streamsets.datacollector.util.Configuration;
 import com.streamsets.pipeline.api.impl.Utils;
-
+import com.streamsets.testing.NetworkUtils;
 import dagger.ObjectGraph;
-
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.IOUtils;
+import org.glassfish.jersey.client.filter.CsrfProtectionFilter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -45,7 +45,6 @@ import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.io.Writer;
 import java.net.HttpURLConnection;
-import java.net.ServerSocket;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -57,17 +56,12 @@ import java.util.UUID;
 
 public class TestRestApiAuthorization {
 
+  private static final String CONVERSION_PATTERN = "%d{ISO8601} [user:%X{s-user}] [pipeline:%X{s-entity}] [thread:%t] %-5p %c{1} - %m%n";
+
   private String createTestDir() {
     File dir = new File("target", UUID.randomUUID().toString());
     Assert.assertTrue(dir.mkdirs());
     return dir.getAbsolutePath();
-  }
-
-  private int getRandomPort() throws Exception {
-    ServerSocket ss = new ServerSocket(0);
-    int port = ss.getLocalPort();
-    ss.close();
-    return port;
   }
 
   private String log4jConf;
@@ -81,7 +75,8 @@ public class TestRestApiAuthorization {
     log4jConf = new File(baseDir, "log4j.properties").getAbsolutePath();
     File logFile = new File(baseDir, "x.log");
     Writer writer = new FileWriter(log4jConf);
-    IOUtils.write(LogUtils.LOG4J_APPENDER_STREAMSETS_FILE_PROPERTY + "=" + logFile.getAbsolutePath(), writer);
+    writer.write(LogUtils.LOG4J_APPENDER_STREAMSETS_FILE_PROPERTY + "=" + logFile.getAbsolutePath() + "\n");
+    writer.write(LogUtils.LOG4J_APPENDER_STREAMSETS_LAYOUT_CONVERSION_PATTERN + "=" + CONVERSION_PATTERN);
     writer.close();
     Assert.assertTrue(new File(baseDir, "etc").mkdir());
     Assert.assertTrue(new File(baseDir, "data").mkdir());
@@ -102,7 +97,7 @@ public class TestRestApiAuthorization {
   }
 
   private String startServer(boolean authzEnabled) throws  Exception {
-    int port = getRandomPort();
+    int port = NetworkUtils.getRandomPort();
     Configuration conf = new Configuration();
     conf.set(WebServerTask.HTTP_PORT_KEY, port);
     conf.set(WebServerTask.AUTHENTICATION_KEY, (authzEnabled) ? "basic" : "none");
@@ -164,6 +159,7 @@ public class TestRestApiAuthorization {
           user = "guest";
           URL url = new URL(baseUrl + api.uriPath);
           HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+          conn.setRequestProperty(CsrfProtectionFilter.HEADER_NAME, "CSRF");
           if (authzEnabled) {
             conn.setRequestProperty("Authorization", "Basic " + Base64.encodeBase64URLSafeString((user + ":" + user).getBytes()));
           }
@@ -198,6 +194,7 @@ public class TestRestApiAuthorization {
 
     list.add(new RestApi("/rest/v1/system/shutdown", Method.POST, AuthzRole.ADMIN));
     list.add(new RestApi("/rest/v1/system/threads", Method.GET, AuthzRole.ADMIN));
+    list.add(new RestApi("/rest/v1/system/enableDPM", Method.POST, AuthzRole.ADMIN));
 
     list.add(new RestApi("/rest/v1/system/configuration/ui", Method.GET, AuthzRole.ALL_ROLES));
     list.add(new RestApi("/rest/v1/system/configuration", Method.GET, AuthzRole.ALL_ROLES));
@@ -230,6 +227,7 @@ public class TestRestApiAuthorization {
     list.add(new RestApi("/rest/v1/pipeline/foo/alerts", Method.DELETE, AuthzRole.MANAGER, AuthzRole.ADMIN));
 
     list.add(new RestApi("/rest/v1/pipelines", Method.GET, AuthzRole.ALL_ROLES));
+    list.add(new RestApi("/rest/v1/pipelines/delete", Method.POST, AuthzRole.CREATOR, AuthzRole.ADMIN));
     list.add(new RestApi("/rest/v1/pipeline/foo", Method.GET, AuthzRole.ALL_ROLES));
     list.add(new RestApi("/rest/v1/pipeline/foo", Method.PUT, AuthzRole.CREATOR, AuthzRole.ADMIN));
     list.add(new RestApi("/rest/v1/pipeline/foo", Method.DELETE, AuthzRole.CREATOR, AuthzRole.ADMIN));

@@ -34,6 +34,7 @@ import com.streamsets.datacollector.main.MainStandalonePipelineManagerModule;
 import com.streamsets.datacollector.main.PipelineTask;
 import com.streamsets.datacollector.main.RuntimeInfo;
 import com.streamsets.datacollector.main.RuntimeModule;
+import com.streamsets.datacollector.main.SlavePipelineTask;
 import com.streamsets.datacollector.store.PipelineStoreException;
 import com.streamsets.datacollector.store.PipelineStoreTask;
 import com.streamsets.datacollector.store.impl.SlavePipelineStoreTask;
@@ -87,7 +88,7 @@ public class TestPipelineManagerModule {
     Assert.assertTrue(pipelineManager instanceof StandaloneAndClusterPipelineManager);
 
     PipelineStoreTask pipelineStoreTask = pipelineTask.getPipelineStoreTask();
-    PipelineConfiguration pc = pipelineStoreTask.create("user", "p1", "description");
+    PipelineConfiguration pc = pipelineStoreTask.create("user", "p1", "description", false);
     //Create previewer
     Previewer previewer = pipelineManager.createPreviewer("user", "p1", "1");
     assertEquals(previewer, pipelineManager.getPreviewer(previewer.getId()));
@@ -113,7 +114,7 @@ public class TestPipelineManagerModule {
     ObjectGraph objectGraph = ObjectGraph.create(MainSlavePipelineManagerModule.class);
     TaskWrapper taskWrapper = objectGraph.get(TaskWrapper.class);
     taskWrapper.init();
-    Assert.assertTrue(taskWrapper.getTask() instanceof PipelineTask);
+    Assert.assertTrue(taskWrapper.getTask() instanceof SlavePipelineTask);
     PipelineTask pipelineTask = (PipelineTask) taskWrapper.getTask();
     Manager pipelineManager = pipelineTask.getManager();
     Assert.assertTrue(pipelineManager instanceof SlavePipelineManager);
@@ -129,7 +130,7 @@ public class TestPipelineManagerModule {
     Assert.assertTrue(pipelineStoreTask instanceof SlavePipelineStoreTask);
 
     try {
-      pipelineStoreTask.create("user", "p1", "description");
+      pipelineStoreTask.create("user", "p1", "description", false);
       Assert.fail("Expected UnsupportedOperationException");
     } catch (UnsupportedOperationException e) {
 

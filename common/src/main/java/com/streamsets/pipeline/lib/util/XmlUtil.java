@@ -34,6 +34,8 @@ import java.util.Map;
 
 public class XmlUtil {
 
+  private XmlUtil() {}
+
   public static Object fieldToObject(Record record, Field field) throws StageException {
     Object obj;
     if (field.getValue() == null) {
@@ -48,6 +50,8 @@ public class XmlUtil {
       obj = field.getValueAsChar();
     } else if(field.getType()== Field.Type.DATE) {
       obj = field.getValueAsDate();
+    } else if(field.getType()== Field.Type.TIME) {
+      obj = field.getValueAsTime();
     } else if(field.getType()== Field.Type.DATETIME) {
       obj = field.getValueAsDatetime();
     } else if(field.getType()== Field.Type.DECIMAL) {

@@ -25,6 +25,7 @@ import com.codahale.metrics.Timer;
 import com.google.common.collect.ImmutableSet;
 import com.streamsets.datacollector.alerts.AlertsUtil;
 import com.streamsets.datacollector.config.DataRuleDefinition;
+import com.streamsets.datacollector.config.DriftRuleDefinition;
 import com.streamsets.datacollector.config.MetricElement;
 import com.streamsets.datacollector.config.MetricType;
 import com.streamsets.datacollector.config.MetricsRuleDefinition;
@@ -32,9 +33,9 @@ import com.streamsets.datacollector.config.RuleDefinitions;
 import com.streamsets.datacollector.execution.EventListenerManager;
 import com.streamsets.datacollector.execution.alerts.AlertManager;
 import com.streamsets.datacollector.execution.alerts.TestDataRuleEvaluator;
-import com.streamsets.datacollector.execution.runner.common.MetricsObserverRunner;
 import com.streamsets.datacollector.main.RuntimeInfo;
 import com.streamsets.datacollector.main.RuntimeModule;
+import com.streamsets.datacollector.main.StandaloneRuntimeInfo;
 import com.streamsets.datacollector.metrics.MetricsConfigurator;
 import com.streamsets.datacollector.runner.production.RulesConfigurationChangeRequest;
 
@@ -50,7 +51,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-public class TestMetricObserverRunner {
+public class
+TestMetricObserverRunner {
 
   private static final String LANE = "lane";
   private static final String ID = "myId";
@@ -62,9 +64,9 @@ public class TestMetricObserverRunner {
 
   @Before
   public void setUp() {
-    runtimeInfo = new RuntimeInfo(RuntimeModule.SDC_PROPERTY_PREFIX, new MetricRegistry(),
+    runtimeInfo = new StandaloneRuntimeInfo(RuntimeModule.SDC_PROPERTY_PREFIX, new MetricRegistry(),
       Arrays.asList(TestDataRuleEvaluator.class.getClassLoader()));
-    metricObserverRunner = new MetricsObserverRunner(PIPELINE_NAME, REVISION, metrics,
+    metricObserverRunner = new MetricsObserverRunner(PIPELINE_NAME, REVISION, false, metrics,
       new AlertManager(PIPELINE_NAME, REVISION, null, metrics, runtimeInfo, new EventListenerManager()));
   }
 
@@ -75,16 +77,25 @@ public class TestMetricObserverRunner {
     t.update(2000, TimeUnit.MILLISECONDS);
     t.update(3000, TimeUnit.MILLISECONDS);
 
-    MetricsRuleDefinition metricsRuleDefinition = new MetricsRuleDefinition("testTimerMatch", "testTimerMatch",
-      "testTimerMatch", MetricType.TIMER,
-      MetricElement.TIMER_COUNT, "${value()>2}", false, true);
+    MetricsRuleDefinition metricsRuleDefinition = new MetricsRuleDefinition(
+        "testTimerMatch",
+        "testTimerMatch",
+        "testTimerMatch",
+        MetricType.TIMER,
+        MetricElement.TIMER_COUNT,
+        "${value()>2}",
+        false,
+        true,
+        System.currentTimeMillis()
+    );
 
     List<MetricsRuleDefinition> metricsRuleDefinitions = new ArrayList<>();
     metricsRuleDefinitions.add(metricsRuleDefinition);
     RuleDefinitions ruleDefinitions = new RuleDefinitions(metricsRuleDefinitions,
-      Collections.<DataRuleDefinition>emptyList(), Collections.<String>emptyList(), UUID.randomUUID());
+      Collections.<DataRuleDefinition>emptyList(), Collections.<DriftRuleDefinition>emptyList(),
+        Collections.<String>emptyList(), UUID.randomUUID());
     RulesConfigurationChangeRequest rulesConfigurationChangeRequest =
-      new RulesConfigurationChangeRequest(ruleDefinitions, Collections.<String>emptySet(),
+      new RulesConfigurationChangeRequest(ruleDefinitions, Collections.<String, String>emptyMap(),
         Collections.<String>emptySet(), null, null);
 
     metricObserverRunner.setRulesConfigurationChangeRequest(rulesConfigurationChangeRequest);
@@ -98,9 +109,10 @@ public class TestMetricObserverRunner {
 
     //modify metric alert and add it to the list of alerts to be removed
     ruleDefinitions = new RuleDefinitions(Collections.<MetricsRuleDefinition>emptyList(),
-      Collections.<DataRuleDefinition>emptyList(), Collections.<String>emptyList(), UUID.randomUUID());
+      Collections.<DataRuleDefinition>emptyList(), Collections.<DriftRuleDefinition>emptyList(),
+        Collections.<String>emptyList(), UUID.randomUUID());
     rulesConfigurationChangeRequest =
-      new RulesConfigurationChangeRequest(ruleDefinitions, Collections.<String>emptySet(),
+      new RulesConfigurationChangeRequest(ruleDefinitions, Collections.<String, String>emptyMap(),
         ImmutableSet.of(metricsRuleDefinition.getId()), null, null);
 
     metricObserverRunner.setRulesConfigurationChangeRequest(rulesConfigurationChangeRequest);

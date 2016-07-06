@@ -31,11 +31,12 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-abstract public class JdbcBaseRecordWriter implements JdbcRecordWriter {
+public abstract class JdbcBaseRecordWriter implements JdbcRecordWriter {
   private static final Logger LOG = LoggerFactory.getLogger(JdbcBaseRecordWriter.class);
   private final List<JdbcFieldMappingConfig> customMappings;
 
@@ -46,6 +47,12 @@ abstract public class JdbcBaseRecordWriter implements JdbcRecordWriter {
 
   private Map<String, String> columnsToFields = new HashMap<>();
   private Map<String, String> columnsToParameters = new HashMap<>();
+
+  public int getColumnType(String columnName) {
+    return columnType.get(columnName);
+  }
+
+  private Map<String, Integer> columnType = new HashMap<>();
 
   public JdbcBaseRecordWriter(
       String connectionString,
@@ -64,13 +71,15 @@ abstract public class JdbcBaseRecordWriter implements JdbcRecordWriter {
     createCustomFieldMappings();
   }
 
-  protected void createDefaultFieldMappings() throws StageException {
+  private void createDefaultFieldMappings() throws StageException {
     try (Connection connection = dataSource.getConnection()) {
-      ResultSet columns = JdbcUtil.getColumnMetadata(connection, tableName);
-      while (columns.next()) {
-        String columnName = columns.getString(4);
-        columnsToFields.put(columnName, "/" + columnName); // Default implicit field mappings
-        columnsToParameters.put(columnName, "?");
+      try (ResultSet columns = JdbcUtil.getColumnMetadata(connection, tableName)) {
+        while (columns.next()) {
+          String columnName = columns.getString(4);
+          columnsToFields.put(columnName, "/" + columnName); // Default implicit field mappings
+          columnsToParameters.put(columnName, "?");
+          columnType.put(columnName, columns.getInt(5));
+        }
       }
     } catch (SQLException e) {
       String errorMessage = JdbcUtil.formatSqlException(e);
@@ -80,7 +89,7 @@ abstract public class JdbcBaseRecordWriter implements JdbcRecordWriter {
     }
   }
 
-  protected void createCustomFieldMappings() {
+  private void createCustomFieldMappings() {
     for (JdbcFieldMappingConfig mapping : customMappings) {
       LOG.debug("Custom mapping field {} to column {}", mapping.field, mapping.columnName);
       if (columnsToFields.containsKey(mapping.columnName)) {
@@ -92,7 +101,7 @@ abstract public class JdbcBaseRecordWriter implements JdbcRecordWriter {
   }
 
   // This is necessary for supporting array data types. For some awful reason, the JDBC
-  // spec requires a string name for a datatype, rather than just an enum.
+  // spec requires a string name for a data type, rather than just an enum.
   static String getSQLTypeName(Field.Type type) throws OnRecordErrorException {
     switch (type) {
       case BOOLEAN:
@@ -113,6 +122,8 @@ abstract public class JdbcBaseRecordWriter implements JdbcRecordWriter {
         return "DOUBLE";
       case DATE:
         return "DATE";
+      case TIME:
+        return "TIME";
       case DATETIME:
         return "TIMESTAMP";
       case DECIMAL:
@@ -126,9 +137,9 @@ abstract public class JdbcBaseRecordWriter implements JdbcRecordWriter {
         throw new OnRecordErrorException(Errors.JDBCDEST_05, "Unsupported list or map type: MAP");
       case LIST:
         return "ARRAY";
+      default:
+        throw new OnRecordErrorException(Errors.JDBCDEST_05, "Unsupported type: " + type.name());
     }
-
-    throw new OnRecordErrorException(Errors.JDBCDEST_05, "Unsupported type: " + type.name());
   }
   /**
    * Database connection string
@@ -150,7 +161,7 @@ abstract public class JdbcBaseRecordWriter implements JdbcRecordWriter {
    * JDBC DataSource used for writing.
    * @return JDBC DataSource
    */
-  protected DataSource getDataSource() {
+  DataSource getDataSource() {
     return dataSource;
   }
 
@@ -158,7 +169,7 @@ abstract public class JdbcBaseRecordWriter implements JdbcRecordWriter {
    * SQL Table to SDC Field mappings
    * @return map of the mappings
    */
-  protected Map<String, String> getColumnsToFields() {
+  Map<String, String> getColumnsToFields() {
     return columnsToFields;
   }
 
@@ -167,7 +178,7 @@ abstract public class JdbcBaseRecordWriter implements JdbcRecordWriter {
    * an INSERT statement
    * @return map of the mappings
    */
-  protected Map<String, String> getColumnsToParameters() {
+  Map<String, String> getColumnsToParameters() {
     return columnsToParameters;
   }
 
@@ -175,7 +186,16 @@ abstract public class JdbcBaseRecordWriter implements JdbcRecordWriter {
    * Whether or not to try to perform a transaction rollback on error.
    * @return whether to rollback the transaction
    */
-  protected boolean getRollbackOnError() {
+  boolean getRollbackOnError() {
     return rollbackOnError;
   }
+
+  static List<Object> unpackList(List<Field> value) {
+    List<Object> unpackedList = new ArrayList<>();
+    for (Field item : value) {
+      unpackedList.add(item.getValue());
+    }
+    return unpackedList;
+  }
+
 }

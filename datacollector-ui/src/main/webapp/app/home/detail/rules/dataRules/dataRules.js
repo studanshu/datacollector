@@ -67,7 +67,10 @@ angular
               }
             },
             rulesElMetadata: function() {
-              return pipelineService.getRulesElMetadata();
+              return pipelineService.getGeneralRulesElMetadata();
+            },
+            alertTextElMetadata: function() {
+              return pipelineService.getAlertTextElMetadata();
             },
             fieldPaths: function() {
               return $scope.fieldPaths;
@@ -111,7 +114,10 @@ angular
               return angular.copy(dataRuleDefn);
             },
             rulesElMetadata: function() {
-              return pipelineService.getRulesElMetadata();
+              return pipelineService.getGeneralRulesElMetadata();
+            },
+            alertTextElMetadata: function() {
+              return pipelineService.getAlertTextElMetadata();
             },
             fieldPaths: function() {
               return $scope.fieldPaths;
@@ -201,7 +207,7 @@ angular
 
   .controller('CreateDataRuleModalInstanceController', function ($scope, $modalInstance, $translate, $timeout,
                                                                  pipelineService, laneName, rulesElMetadata, fieldPaths,
-                                                                 streamLabelMap) {
+                                                                 streamLabelMap, alertTextElMetadata) {
 
     angular.extend($scope, {
       showLoading: false,
@@ -228,18 +234,20 @@ angular
       refreshCodemirror: false,
       streamLabelMap: streamLabelMap,
 
-      getCodeMirrorOptions: function() {
+      getCodeMirrorOptions: function(fieldType) {
         var codeMirrorOptions = {
-          dictionary: rulesElMetadata,
+          dictionary: (fieldType === 'condition' ? rulesElMetadata : alertTextElMetadata),
           extraKeys: {
             'Tab': false,
             'Ctrl-Space': 'autocomplete'
           }
         };
 
-        $timeout(function() {
-          $scope.refreshCodemirror = true;
-        });
+        if(fieldType === 'condition') {
+          $timeout(function() {
+            $scope.refreshCodemirror = true;
+          });
+        }
 
         return angular.extend({}, pipelineService.getDefaultELEditorOptions(), codeMirrorOptions);
       },
@@ -257,7 +265,7 @@ angular
 
   .controller('EditDataRuleModalInstanceController', function ($scope, $modalInstance, $translate, pipelineService,
                                                                $timeout, dataRuleDefn, rulesElMetadata, fieldPaths,
-                                                               streamLabelMap) {
+                                                               streamLabelMap, alertTextElMetadata) {
 
     angular.extend($scope, {
       showLoading: false,
@@ -269,18 +277,20 @@ angular
       refreshCodemirror: false,
       streamLabelMap: streamLabelMap,
 
-      getCodeMirrorOptions: function() {
+      getCodeMirrorOptions: function(fieldType) {
         var codeMirrorOptions = {
-          dictionary: rulesElMetadata,
+          dictionary: (fieldType === 'condition' ? rulesElMetadata : alertTextElMetadata),
           extraKeys: {
             'Tab': false,
             'Ctrl-Space': 'autocomplete'
           }
         };
 
-        $timeout(function() {
-          $scope.refreshCodemirror = true;
-        });
+        if(fieldType === 'condition') {
+          $timeout(function() {
+            $scope.refreshCodemirror = true;
+          });
+        }
 
         return angular.extend({}, pipelineService.getDefaultELEditorOptions(), codeMirrorOptions);
       },

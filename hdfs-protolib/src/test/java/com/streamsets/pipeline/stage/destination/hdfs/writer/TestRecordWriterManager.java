@@ -26,9 +26,9 @@ import com.streamsets.pipeline.api.Record;
 import com.streamsets.pipeline.api.Stage;
 import com.streamsets.pipeline.api.Target;
 import com.streamsets.pipeline.api.impl.Utils;
-import com.streamsets.pipeline.lib.generator.DataGeneratorFactory;
 import com.streamsets.pipeline.lib.generator.DataGenerator;
 import com.streamsets.pipeline.lib.generator.DataGeneratorException;
+import com.streamsets.pipeline.lib.generator.DataGeneratorFactory;
 import com.streamsets.pipeline.sdk.ContextInfoCreator;
 import com.streamsets.pipeline.sdk.RecordCreator;
 import com.streamsets.pipeline.stage.destination.hdfs.HdfsDTarget;
@@ -43,7 +43,6 @@ import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.DefaultCodec;
-import org.apache.hadoop.io.compress.SnappyCodec;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -57,6 +56,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.DateFormat;
@@ -75,7 +75,27 @@ public class TestRecordWriterManager {
   private static Path testDir;
   private static Target.Context targetContext = ContextInfoCreator.createTargetContext(HdfsDTarget.class,
     "testWritersLifecycle", false, OnRecordError.TO_ERROR, null);
+  private static URI uri;
+  private static Configuration hdfsConf = new HdfsConfiguration();
 
+  @BeforeClass
+  public static void initializeURI() {
+    try {
+      uri = new URI("file:///");
+    } catch (URISyntaxException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private RecordWriterManagerTestBuilder managerBuilder() throws URISyntaxException {
+    return new RecordWriterManagerTestBuilder()
+      .context(targetContext)
+      .hdfsUri(uri)
+      .hdfsConf(hdfsConf)
+      .dirPathTemplate(getTestDir().toString())
+      .generatorFactory(new DummyDataGeneratorFactory(null))
+      .fileType(HdfsFileType.TEXT);
+  }
 
   public static class DummyDataGeneratorFactory extends DataGeneratorFactory {
     protected DummyDataGeneratorFactory(Settings settings) {
@@ -135,24 +155,12 @@ public class TestRecordWriterManager {
 
   @Test
   public void testConstructorAndGetters() throws Exception {
-    URI uri = new URI("file:///");
-    Configuration conf = new HdfsConfiguration();
-    String prefix = "prefix";
-    String template = getTestDir().toString() +
-                      "/${YYYY()}/${YY()}/${MM()}/${DD()}/${hh()}/${mm()}/${ss()}/" +
-                      "${not empty record:value('/') ? record:value('/') : 'blah'}";
-    TimeZone timeZone = TimeZone.getTimeZone("UTC");
-    long cutOffSecs = 10;
-    long cutOffSize = 20;
-    long cutOffRecords = 2;
-    HdfsFileType fileType = HdfsFileType.TEXT;
-    CompressionCodec compressionCodec = null;
-    SequenceFile.CompressionType compressionType = SequenceFile.CompressionType.NONE;
-    String keyEL = "uuid()";
-    DataGeneratorFactory generatorFactory = new DummyDataGeneratorFactory(null);
-    RecordWriterManager mgr = new RecordWriterManager(uri, conf, prefix, template, timeZone, cutOffSecs, cutOffSize,
-      cutOffRecords, fileType, compressionCodec, compressionType, keyEL, generatorFactory, targetContext, "dirPathTemplate");
-    Assert.assertTrue(mgr.validateDirTemplate("g", "dirPathTemplate", new ArrayList<Stage.ConfigIssue>()));
+    RecordWriterManager mgr = managerBuilder()
+      .dirPathTemplate(getTestDir().toString() +
+        "/${YYYY()}/${YY()}/${MM()}/${DD()}/${hh()}/${mm()}/${ss()}/" +
+        "${not empty record:value('/') ? record:value('/') : 'blah'}")
+      .cutOffSecs(10)
+      .build();
 
     Date date = getFixedDate();
 
@@ -179,22 +187,11 @@ public class TestRecordWriterManager {
   }
 
   private void testPath(CompressionCodec compressionCodec) throws Exception {
-    URI uri = new URI("file:///");
-    Configuration conf = new HdfsConfiguration();
-    String prefix = "prefix";
-    String template = getTestDir().toString() + "/${YYYY()}/${YY()}/${MM()}/${DD()}/${hh()}/${mm()}/${ss()}/${record:value('/')}";
-    TimeZone timeZone = TimeZone.getTimeZone("UTC");
-    long cutOffSecs = 10;
-    long cutOffSize = 20;
-    long cutOffRecords = 2;
-    HdfsFileType fileType = HdfsFileType.TEXT;
-    SequenceFile.CompressionType compressionType = (compressionCodec == null) ? SequenceFile.CompressionType.NONE
-                                                                              : SequenceFile.CompressionType.BLOCK;
-    String keyEL = "uuid()";
-    DataGeneratorFactory generatorFactory = new DummyDataGeneratorFactory(null);
-    RecordWriterManager mgr = new RecordWriterManager(uri, conf, prefix, template, timeZone, cutOffSecs, cutOffSize,
-      cutOffRecords, fileType, compressionCodec, compressionType,keyEL, generatorFactory, targetContext, "dirPathTemplate");
-    Assert.assertTrue(mgr.validateDirTemplate("g", "dirPathTemplate", new ArrayList<Stage.ConfigIssue>()));
+    RecordWriterManager mgr = managerBuilder()
+      .dirPathTemplate(getTestDir().toString() + "/${YYYY()}/${YY()}/${MM()}/${DD()}/${hh()}/${mm()}/${ss()}/${record:value('/')}")
+      .fileType(HdfsFileType.TEXT)
+      .compressionCodec(compressionCodec)
+      .build();
 
     if (compressionCodec == null) {
       Assert.assertEquals("", mgr.getExtension());
@@ -206,26 +203,18 @@ public class TestRecordWriterManager {
     Record record = RecordCreator.create();
     record.set(Field.create("a"));
     Assert.assertTrue(mgr.getPath(date, record).toString().startsWith(
-        new Path(getTestDir(), "2015/15/01/20/09/56/01/a/_tmp_" + prefix).toString()));
+        new Path(getTestDir(), "2015/15/01/20/09/56/01/a/_tmp_prefix").toString()));
   }
 
   private void testTextFile(CompressionCodec compressionCodec) throws Exception {
-    URI uri = new URI("file:///");
-    Configuration conf = new HdfsConfiguration();
-    String prefix = "prefix";
-    String template = getTestDir().toString() + "/${YYYY()}";
-    TimeZone timeZone = TimeZone.getTimeZone("UTC");
-    long cutOffSecs = 10;
-    long cutOffSize = 20;
-    long cutOffRecords = 2;
-    HdfsFileType fileType = HdfsFileType.TEXT;
-    SequenceFile.CompressionType compressionType = null;
-    String keyEL = null;
-    DataGeneratorFactory generatorFactory = new DummyDataGeneratorFactory(null);
-    RecordWriterManager mgr = new RecordWriterManager(uri, conf, prefix, template, timeZone, cutOffSecs, cutOffSize,
-      cutOffRecords, fileType, compressionCodec, compressionType, keyEL, generatorFactory, targetContext, "dirPathTemplate");
-    Assert.assertTrue(mgr.validateDirTemplate("g", "dirPathTemplate", new ArrayList<Stage.ConfigIssue>()));
-    FileSystem fs = FileSystem.get(uri, conf);
+    RecordWriterManager mgr = managerBuilder()
+      .dirPathTemplate(getTestDir().toString() + "/${YYYY()}")
+      .fileType(HdfsFileType.TEXT)
+      .compressionCodec(compressionCodec)
+      .build();
+
+    Assert.assertTrue(mgr.validateDirTemplate("g", "dirPathTemplate", "dirPathTemplate", new ArrayList<Stage.ConfigIssue>()));
+    FileSystem fs = FileSystem.get(uri, hdfsConf);
     Path file = new Path(getTestDir(), UUID.randomUUID().toString());
     long expires = System.currentTimeMillis() + 50000;
     RecordWriter writer = mgr.createWriter(fs, file, 50000);
@@ -260,21 +249,14 @@ public class TestRecordWriterManager {
 
   private void testSeqFile(CompressionCodec compressionCodec, SequenceFile.CompressionType compressionType)
       throws Exception {
-    URI uri = new URI("file:///");
-    Configuration conf = new HdfsConfiguration();
-    String prefix = "prefix";
-    String template = getTestDir().toString() + "/${YYYY()}";
-    TimeZone timeZone = TimeZone.getTimeZone("UTC");
-    long cutOffSecs = 10;
-    long cutOffSize = 20;
-    long cutOffRecords = 2;
-    HdfsFileType fileType = HdfsFileType.SEQUENCE_FILE;
-    String keyEL = "${uuid()}";
-    DataGeneratorFactory generatorFactory = new DummyDataGeneratorFactory(null);
-    RecordWriterManager mgr = new RecordWriterManager(uri, conf, prefix, template, timeZone, cutOffSecs, cutOffSize,
-      cutOffRecords, fileType, compressionCodec, compressionType, keyEL, generatorFactory, targetContext, "dirPathTemplate");
-    Assert.assertTrue(mgr.validateDirTemplate("g", "dirPathTemplate", new ArrayList<Stage.ConfigIssue>()));
-    FileSystem fs = FileSystem.get(uri, conf);
+    RecordWriterManager mgr = managerBuilder()
+      .dirPathTemplate(getTestDir().toString() + "/${YYYY()}")
+      .compressionCodec(compressionCodec)
+      .compressionType(compressionType)
+      .fileType(HdfsFileType.SEQUENCE_FILE)
+      .build();
+
+    FileSystem fs = FileSystem.get(uri, hdfsConf);
     Path file = new Path(getTestDir(), UUID.randomUUID().toString());
     long expires = System.currentTimeMillis() + 50000;
     RecordWriter writer = mgr.createWriter(fs, file, 50000);
@@ -311,25 +293,14 @@ public class TestRecordWriterManager {
 
   @Test
   public void testGetWriter() throws Exception {
-    URI uri = new URI("file:///");
-    Configuration conf = new HdfsConfiguration();
-    final String prefix = "prefix";
-    String template = getTestDir().toString() + "/${YYYY()}/${MM()}/${DD()}/${hh()}/${mm()}/${ss()}/${record:value('/')}";
-    TimeZone timeZone = TimeZone.getTimeZone("UTC");
-    long cutOffSecs = 10;
-    long cutOffSize = 5;
-    long cutOffRecords = 2;
-    HdfsFileType fileType = HdfsFileType.TEXT;
-    DefaultCodec compressionCodec = new DefaultCodec();
-    compressionCodec.setConf(conf);
-    SequenceFile.CompressionType compressionType = null;
-    String keyEL = null;
-    DataGeneratorFactory generatorFactory = new DummyDataGeneratorFactory(null);
-    RecordWriterManager mgr = new RecordWriterManager(uri, conf, prefix, template, timeZone, cutOffSecs, cutOffSize,
-      cutOffRecords, fileType, compressionCodec , compressionType, keyEL, generatorFactory, targetContext, "dirPathTemplate");
-    Assert.assertTrue(mgr.validateDirTemplate("g", "dirPathTemplate", new ArrayList<Stage.ConfigIssue>()));
+    RecordWriterManager mgr = managerBuilder()
+      .cutOffSecs(10)
+      .cutOffSizeBytes(5)
+      .cutOffRecords(2)
+      .dirPathTemplate(getTestDir().toString() + "/${YYYY()}/${MM()}/${DD()}/${hh()}/${mm()}/${ss()}/${record:value('/')}")
+      .build();
 
-    FileSystem fs = FileSystem.get(uri, conf);
+    FileSystem fs = FileSystem.get(uri, hdfsConf);
     Date now = getFixedDate();
 
     // record older than cut off
@@ -348,13 +319,13 @@ public class TestRecordWriterManager {
     //committing a closed writer is a NOP
     Assert.assertNull(mgr.commitWriter(writer));
 
-    Assert.assertEquals(1, getFinalFileNameCount(fs, tempPath.getParent(), prefix));
+    Assert.assertEquals(1, getFinalFileNameCount(fs, tempPath.getParent(), "prefix"));
 
     // record qualifies, second file
     writer = mgr.getWriter(now, recordDate, record);
     finalPath = mgr.commitWriter(writer);
 
-    Assert.assertEquals(2, getFinalFileNameCount(fs, tempPath.getParent(), prefix));
+    Assert.assertEquals(2, getFinalFileNameCount(fs, tempPath.getParent(), "prefix"));
 
     // record qualifies, leaving temp file
     writer = mgr.getWriter(now, recordDate, record);
@@ -364,7 +335,7 @@ public class TestRecordWriterManager {
     writer = mgr.getWriter(now, recordDate, record);
     finalPath = mgr.commitWriter(writer);
     Assert.assertFalse(fs.exists(tempPath));
-    Assert.assertEquals(4, getFinalFileNameCount(fs, tempPath.getParent(), prefix));
+    Assert.assertEquals(4, getFinalFileNameCount(fs, tempPath.getParent(), "prefix"));
 
     // verifying thresholds because of record count
     writer = mgr.getWriter(now, recordDate, record);
@@ -399,23 +370,8 @@ public class TestRecordWriterManager {
 
   @Test
   public void testThresholdRecords() throws Exception {
-    URI uri = new URI("file:///");
-    Configuration conf = new HdfsConfiguration();
-    String prefix = "prefix";
-    String template = getTestDir().toString() + "/${YYYY()}/${MM()}/${DD()}/${hh()}/${mm()}/${ss()}/${record:value('/')}";
-    TimeZone timeZone = TimeZone.getTimeZone("UTC");
-    long cutOffSecs = 10;
-    long cutOffSize = 50000;
-    long cutOffRecords = 2;
-    HdfsFileType fileType = HdfsFileType.TEXT;
-    DefaultCodec compressionCodec = new DefaultCodec();
-    compressionCodec.setConf(conf);
-    SequenceFile.CompressionType compressionType = null;
-    String keyEL = null;
-    DataGeneratorFactory generatorFactory = new DummyDataGeneratorFactory(null);
-    RecordWriterManager mgr = new RecordWriterManager(uri, conf, prefix, template, timeZone, cutOffSecs, cutOffSize,
-      cutOffRecords, fileType, compressionCodec , compressionType, keyEL, generatorFactory, targetContext, "dirPathTemplate");
-    Assert.assertTrue(mgr.validateDirTemplate("g", "dirPathTemplate", new ArrayList<Stage.ConfigIssue>()));
+    RecordWriterManager mgr = managerBuilder()
+      .build();
 
     Date now = getFixedDate();
 
@@ -435,23 +391,32 @@ public class TestRecordWriterManager {
 
   @Test
   public void testThresholdSize() throws Exception {
-    URI uri = new URI("file:///");
-    Configuration conf = new HdfsConfiguration();
-    String prefix = "prefix";
-    String template = getTestDir().toString() + "/${YYYY()}/${MM()}/${DD()}/${hh()}/${mm()}/${ss()}/${record:value('/')}";
-    TimeZone timeZone = TimeZone.getTimeZone("UTC");
-    long cutOffSecs = 10;
-    long cutOffSize = 4;
-    long cutOffRecords = 20;
-    HdfsFileType fileType = HdfsFileType.TEXT;
-    DefaultCodec compressionCodec = new DefaultCodec();
-    compressionCodec.setConf(conf);
-    SequenceFile.CompressionType compressionType = null;
-    String keyEL = null;
-    DataGeneratorFactory generatorFactory = new DummyDataGeneratorFactory(null);
-    RecordWriterManager mgr = new RecordWriterManager(uri, conf, prefix, template, timeZone, cutOffSecs, cutOffSize,
-      cutOffRecords, fileType, compressionCodec , compressionType, keyEL, generatorFactory, targetContext, "dirPathTemplate");
-    Assert.assertTrue(mgr.validateDirTemplate("g", "dirPathTemplate", new ArrayList<Stage.ConfigIssue>()));
+    RecordWriterManager mgr = managerBuilder()
+      .cutOffSizeBytes(4)
+      .build();
+
+    Date now = getFixedDate();
+
+    Date recordDate = now;
+    Record record = RecordCreator.create();
+    record.set(Field.create("a"));
+    RecordWriter writer = mgr.getWriter(now, recordDate, record);
+    Assert.assertNotNull(writer);
+    for (int i = 0; i < 2; i++) {
+      Assert.assertFalse(mgr.isOverThresholds(writer));
+      writer.write(record);
+      writer.flush();
+    }
+    Assert.assertTrue(mgr.isOverThresholds(writer));
+    mgr.commitWriter(writer);
+  }
+
+  @Test
+  public void testThresholdOverflow() throws Exception {
+    RecordWriterManager mgr = managerBuilder()
+      .cutOffSecs(Long.MAX_VALUE)
+      .build();
+
     Date now = getFixedDate();
 
     Date recordDate = now;
@@ -470,23 +435,12 @@ public class TestRecordWriterManager {
 
   @Test
   public void testNoThreshold() throws Exception {
-    URI uri = new URI("file:///");
-    Configuration conf = new HdfsConfiguration();
-    String prefix = "prefix";
-    String template = getTestDir().toString() + "/${YYYY()}/${MM()}/${DD()}/${hh()}/${mm()}/${ss()}/${record:value('/')}";
-    TimeZone timeZone = TimeZone.getTimeZone("UTC");
-    long cutOffSecs = 10;
-    long cutOffSize = 0;
-    long cutOffRecords = 0;
-    HdfsFileType fileType = HdfsFileType.TEXT;
-    DefaultCodec compressionCodec = new DefaultCodec();
-    compressionCodec.setConf(conf);
-    SequenceFile.CompressionType compressionType = null;
-    String keyEL = null;
-    DataGeneratorFactory generatorFactory = new DummyDataGeneratorFactory(null);
-    RecordWriterManager mgr = new RecordWriterManager(uri, conf, prefix, template, timeZone, cutOffSecs, cutOffSize,
-      cutOffRecords, fileType, compressionCodec , compressionType, keyEL, generatorFactory, targetContext, "dirPathTemplate");
-    Assert.assertTrue(mgr.validateDirTemplate("g", "dirPathTemplate", new ArrayList<Stage.ConfigIssue>()));
+    RecordWriterManager mgr = managerBuilder()
+      .cutOffSecs(10)
+      .cutOffSizeBytes(0)
+      .cutOffRecords(0)
+      .build();
+
     Date now = getFixedDate();
 
     Date recordDate = now;
@@ -503,30 +457,12 @@ public class TestRecordWriterManager {
     mgr.commitWriter(writer);
   }
 
-
-  private RecordWriterManager getRecordWriterManager(String dirTemplate, long cutOffSecs) throws Exception {
-    URI uri = new URI("file:///");
-    Configuration conf = new HdfsConfiguration();
-    String prefix = "prefix";
-    TimeZone timeZone = TimeZone.getTimeZone("UTC");
-    long cutOffSize = 20;
-    long cutOffRecords = 2;
-    HdfsFileType fileType = HdfsFileType.TEXT;
-    SequenceFile.CompressionType compressionType = null;
-    String keyEL = null;
-    DefaultCodec compressionCodec = new DefaultCodec();
-    DataGeneratorFactory generatorFactory = new DummyDataGeneratorFactory(null);
-
-    RecordWriterManager mgr = new RecordWriterManager(uri, conf, prefix, dirTemplate, timeZone, cutOffSecs, cutOffSize,
-                                   cutOffRecords, fileType, compressionCodec, compressionType, keyEL,
-                                   generatorFactory, targetContext, "dirPathTemplate");
-    Assert.assertTrue(mgr.validateDirTemplate("g", "dirPathTemplate", new ArrayList<Stage.ConfigIssue>()));
-    return mgr;
-  }
-
   @Test
   public void testIncrementDate() throws Exception {
-    RecordWriterManager mgr = getRecordWriterManager("/", 0);
+    RecordWriterManager mgr = managerBuilder()
+      .cutOffSecs(0)
+      .build();
+
     Date date = new Date();
     Date inc = mgr.incrementDate(date, Calendar.HOUR);
     Assert.assertEquals(TimeUnit.HOURS.toMillis(1), inc.getTime() - date.getTime());
@@ -537,13 +473,13 @@ public class TestRecordWriterManager {
     Calendar calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
     calendar.setTime(Utils.parse("2015-05-07T12:35Z"));
 
-    RecordWriterManager mgr = getRecordWriterManager("/foo", 0);
+    RecordWriterManager mgr = managerBuilder().dirPathTemplate("/foo").build();
     Assert.assertEquals("/foo/" + mgr.getTempFileName(), mgr.createGlob(calendar));
 
-    mgr = getRecordWriterManager("/foo/${YYYY()}/${YY()}/${MM()}/${DD()}/${hh()}/${mm()}/${ss()}", 0);
+    mgr = managerBuilder().dirPathTemplate("/foo/${YYYY()}/${YY()}/${MM()}/${DD()}/${hh()}/${mm()}/${ss()}").build();
     Assert.assertEquals("/foo/2015/15/05/07/12/35/00/" + mgr.getTempFileName(), mgr.createGlob(calendar));
 
-    mgr = getRecordWriterManager("/foo/${YYYY()}/${record:value('/foo')}", 0);
+    mgr = managerBuilder().dirPathTemplate("/foo/${YYYY()}/${record:value('/foo')}").build();
     Assert.assertEquals("/foo/2015/*/" + mgr.getTempFileName(), mgr.createGlob(calendar));
   }
 
@@ -567,8 +503,10 @@ public class TestRecordWriterManager {
     Assert.assertTrue(testDir.mkdirs());
 
     // using 1 hour cutoff
-    RecordWriterManager mgr = getRecordWriterManager(testDir.getAbsolutePath() +
-                                                     "/${YY()}_${MM()}_${DD()}_${hh()}/${record:value('/')}", 3600);
+    RecordWriterManager mgr = managerBuilder()
+      .dirPathTemplate(testDir.getAbsolutePath() + "/${YY()}_${MM()}_${DD()}_${hh()}/${record:value('/')}")
+      .cutOffSecs(3600)
+      .build();
 
     //this one should not show up when globing
     String f1 = createTempFile(mgr, beforeLastBatchOutsideCutOff, "a");
@@ -612,7 +550,24 @@ public class TestRecordWriterManager {
     // verifying temps outside boundaries are still there
     Assert.assertTrue(new File(f1).exists());
     Assert.assertTrue(new File(f5).exists());
+  }
 
+  @Test
+  public void testShouldRoll() throws Exception {
+    Record negativeRecord = RecordCreator.create();
+    negativeRecord.set(Field.create("a"));
+
+    Record positiveRecord = RecordCreator.create();
+    positiveRecord.getHeader().setAttribute("roll", "yes please");
+    positiveRecord.set(Field.create("a"));
+
+    RecordWriterManager negativeManager = managerBuilder().build();
+    Assert.assertFalse(negativeManager.shouldRoll(negativeRecord));
+    Assert.assertFalse(negativeManager.shouldRoll(positiveRecord));
+
+    RecordWriterManager positiveManager = managerBuilder().rollHeaderName("roll").rollIfHeader(true).build();
+    Assert.assertFalse(positiveManager.shouldRoll(negativeRecord));
+    Assert.assertTrue(positiveManager.shouldRoll(positiveRecord));
   }
 
   private String createTempFile(RecordWriterManager mgr, Date date, String subDir) throws Exception {
@@ -621,5 +576,4 @@ public class TestRecordWriterManager {
     Files.createDirectories(Paths.get(path));
     return Files.createFile(Paths.get(path + mgr.getTempFileName())).toString();
   }
-
 }

@@ -23,6 +23,7 @@ package com.streamsets.datacollector.execution;
 import com.streamsets.datacollector.config.PipelineConfiguration;
 import com.streamsets.datacollector.creation.PipelineConfigBean;
 import com.streamsets.datacollector.email.EmailSender;
+import com.streamsets.datacollector.event.handler.remote.RemoteDataCollector;
 import com.streamsets.datacollector.execution.alerts.EmailNotifier;
 import com.streamsets.datacollector.execution.runner.common.PipelineRunnerException;
 import com.streamsets.datacollector.main.RuntimeInfo;
@@ -31,15 +32,26 @@ import com.streamsets.datacollector.store.PipelineStoreException;
 import com.streamsets.datacollector.store.PipelineStoreTask;
 import com.streamsets.datacollector.util.Configuration;
 import com.streamsets.datacollector.util.ContainerError;
+import com.streamsets.datacollector.util.PipelineException;
 import com.streamsets.datacollector.util.ValidationUtil;
 import com.streamsets.datacollector.validation.PipelineConfigurationValidator;
+import com.streamsets.pipeline.api.StageException;
 
 import javax.inject.Inject;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 public abstract  class AbstractRunner implements Runner {
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractRunner.class);
 
   @Inject protected EventListenerManager eventListenerManager;
   @Inject protected PipelineStoreTask pipelineStore;
@@ -86,5 +98,25 @@ public abstract  class AbstractRunner implements Runner {
         pipelineConfigBean.emailIDs, states);
       eventListenerManager.addStateEventListener(emailNotifier);
     }
+  }
+
+  protected boolean isRemotePipeline() throws PipelineStoreException {
+    Object isRemote = getState().getAttributes().get(RemoteDataCollector.IS_REMOTE_PIPELINE);
+    // remote attribute will be null for pipelines with version earlier than 1.3
+    return isRemote != null && (boolean) isRemote;
+  }
+
+  protected ScheduledFuture<Void> scheduleForRetries(ScheduledExecutorService runnerExecutor, long delay) {
+    LOG.info("Scheduling retry in '{}' milliseconds", delay);
+    ScheduledFuture<Void> future = runnerExecutor.schedule(new Callable<Void>() {
+      @Override
+      public Void call() throws StageException, PipelineException {
+        LOG.info("Starting the runner now");
+        prepareForStart();
+        start();
+        return null;
+      }
+    }, delay, TimeUnit.MILLISECONDS);
+    return future;
   }
 }

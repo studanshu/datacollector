@@ -24,7 +24,7 @@ import com.google.common.collect.ImmutableList;
 import com.streamsets.datacollector.execution.EventListenerManager;
 import com.streamsets.datacollector.metrics.MetricsModule;
 import com.streamsets.datacollector.util.Configuration;
-import com.streamsets.pipeline.api.ExecutionMode;
+import com.streamsets.lib.security.http.RemoteSSOService;
 import dagger.Module;
 import dagger.Provides;
 import org.slf4j.Logger;
@@ -52,12 +52,12 @@ public class RuntimeModule {
 
   @Provides @Singleton
   public BuildInfo provideBuildInfo() {
-    return new BuildInfo();
+    return new DataCollectorBuildInfo();
   }
 
   @Provides @Singleton
   public RuntimeInfo provideRuntimeInfo(MetricRegistry metrics) {
-    RuntimeInfo info = new RuntimeInfo(SDC_PROPERTY_PREFIX, metrics, stageLibraryClassLoaders);
+    RuntimeInfo info = new StandaloneRuntimeInfo(SDC_PROPERTY_PREFIX, metrics, stageLibraryClassLoaders);
     info.init();
     return info;
   }
@@ -68,11 +68,13 @@ public class RuntimeModule {
     Configuration conf = new Configuration();
     File configFile = new File(runtimeInfo.getConfigDir(), "sdc.properties");
     if (configFile.exists()) {
-      try {
-        conf.load(new FileReader(configFile));
+      try(FileReader reader = new FileReader(configFile)) {
+        conf.load(reader);
         runtimeInfo.setBaseHttpUrl(conf.get(DATA_COLLECTOR_BASE_HTTP_URL, runtimeInfo.getBaseHttpUrl()));
-        // Remove this config;
-        String executionMode = conf.get(PIPELINE_EXECUTION_MODE_KEY, ExecutionMode.STANDALONE.name());
+        String appAuthToken = conf.get(RemoteSSOService.SECURITY_SERVICE_APP_AUTH_TOKEN_CONFIG, "").trim();
+        runtimeInfo.setAppAuthToken(appAuthToken);
+        boolean isDPMEnabled = conf.get(RemoteSSOService.DPM_ENABLED, RemoteSSOService.DPM_ENABLED_DEFAULT);
+        runtimeInfo.setDPMEnabled(isDPMEnabled);
       } catch (IOException ex) {
         throw new RuntimeException(ex);
       }

@@ -21,7 +21,6 @@ package com.streamsets.pipeline.lib.util;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.annotations.VisibleForTesting;
 import com.streamsets.pipeline.api.Field;
 import com.streamsets.pipeline.api.Record;
 import com.streamsets.pipeline.api.StageException;
@@ -29,13 +28,19 @@ import com.streamsets.pipeline.api.impl.Utils;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class JsonUtil {
+
+  private JsonUtil() {}
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   public static Field jsonToField(Object json) throws IOException {
     Field field;
@@ -76,9 +81,11 @@ public class JsonUtil {
     } else if (json instanceof byte[]) {
       field = Field.create((byte[]) json);
     } else if (json instanceof Date) {
-      field = Field.createDate((Date) json);
+      field = Field.createDatetime((Date) json);
     } else if (json instanceof BigDecimal) {
       field = Field.create((BigDecimal) json);
+    } else if (json instanceof UUID) {
+      field = Field.create(json.toString());
     } else {
       throw new IOException(Utils.format("Not recognized type '{}', value '{}'", json.getClass(), json));
     }
@@ -99,6 +106,8 @@ public class JsonUtil {
       obj = field.getValueAsChar();
     } else if(field.getType()== Field.Type.DATE) {
       obj = field.getValueAsDate();
+    } else if(field.getType()== Field.Type.TIME) {
+      obj = field.getValueAsTime();
     } else if(field.getType()== Field.Type.DATETIME) {
       obj = field.getValueAsDatetime();
     } else if(field.getType()== Field.Type.DECIMAL) {
@@ -137,29 +146,36 @@ public class JsonUtil {
   }
 
   public static String jsonRecordToString(Record r) throws StageException {
-    ObjectMapper objectMapper = new ObjectMapper();
     try {
-      return objectMapper.writeValueAsString(JsonUtil.fieldToJsonObject(r, r.get()));
+      return OBJECT_MAPPER.writeValueAsString(JsonUtil.fieldToJsonObject(r, r.get()));
     } catch (JsonProcessingException e) {
       throw new StageException(CommonError.CMN_0101, r.getHeader().getSourceId(), e.toString(), e);
     }
   }
 
   public static byte[] jsonRecordToBytes(Record r, Field f) throws StageException {
-    ObjectMapper objectMapper = new ObjectMapper();
     try {
-      return objectMapper.writeValueAsBytes(JsonUtil.fieldToJsonObject(r, f));
+      return OBJECT_MAPPER.writeValueAsBytes(JsonUtil.fieldToJsonObject(r, f));
     } catch (JsonProcessingException e) {
       throw new StageException(CommonError.CMN_0101, r.getHeader().getSourceId(), e.toString(), e);
     }
   }
 
   public static Field bytesToField(byte[] bytes) throws StageException {
-    ObjectMapper objectMapper = new ObjectMapper();
     try {
-      return jsonToField(objectMapper.readValue(bytes, Object.class));
+      return jsonToField(OBJECT_MAPPER.readValue(bytes, Object.class));
     } catch (Exception e) {
-      throw new StageException(CommonError.CMN_0101, new String(bytes), e.toString(), e);
+      throw new StageException(CommonError.CMN_0101, new String(bytes, StandardCharsets.UTF_8), e.toString(), e);
     }
   }
+
+  public static boolean isJSONValid(String jsonString) {
+    try {
+      OBJECT_MAPPER.readTree(jsonString);
+    } catch (IOException e) {
+      return false;
+    }
+    return true;
+  }
+
 }

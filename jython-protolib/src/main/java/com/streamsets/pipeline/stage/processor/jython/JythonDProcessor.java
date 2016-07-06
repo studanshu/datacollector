@@ -30,10 +30,12 @@ import com.streamsets.pipeline.stage.processor.scripting.ProcessingMode;
 import com.streamsets.pipeline.stage.processor.scripting.ProcessingModeChooserValues;
 
 @StageDef(
-    version = 1,
+    version = 2,
     label = "Jython Evaluator",
     description = "Processes records using Jython",
-    icon="jython.png"
+    icon = "jython.png",
+    upgrader = JythonProcessorUpgrader.class,
+    onlineHelpRefUrl = "index.html#Processors/Jython.html#task_fty_jwx_nr"
 )
 @ConfigGroups(Groups.class)
 @GenerateResourceBundle
@@ -67,9 +69,9 @@ public class JythonDProcessor extends DProcessor {
     "#  log.<loglevel>(msg, obj...): use instead of print to send log messages to the log4j log instead of stdout.\n" +
     "#                               loglevel is any log4j level: e.g. info, error, warn, trace.\n" +
     "#\n" +
-    "#  out.write(record): writes a record to processor output\n" +
+    "#  output.write(record): writes a record to processor output\n" +
     "#\n" +
-    "#  err.write(record, message): sends a record to error\n" +
+    "#  error.write(record, message): sends a record to error\n" +
     "#\n" +
     "# Add additional module search paths:\n" +
     "#import sys\n" +
@@ -100,11 +102,11 @@ public class JythonDProcessor extends DProcessor {
     "    #record.value['A'][0] = 100\n" +
     "\n" +
     "    # Write record to procesor output\n" +
-    "    out.write(record)\n" +
+    "    output.write(record)\n" +
     "\n" +
     "  except Exception as e:\n" +
     "    # Send record to error\n" +
-    "    err.write(record, str(e))\n";
+    "    error.write(record, str(e))\n";
 
   @ConfigDef(
       required = true,

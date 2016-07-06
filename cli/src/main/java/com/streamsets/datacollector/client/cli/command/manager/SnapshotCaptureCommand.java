@@ -48,6 +48,13 @@ public class SnapshotCaptureCommand extends BaseCommand {
   public String snapshotName;
 
   @Option(
+      name = {"-l", "--snapshot-label"},
+      description = "Snapshot Label",
+      required = false
+  )
+  public String snapshotLabel;
+
+  @Option(
     name = {"-b", "--batches"},
     description = "Number of batches",
     required = false
@@ -61,6 +68,7 @@ public class SnapshotCaptureCommand extends BaseCommand {
   )
   public int batchSize;
 
+  @Override
   public void run() {
     if(pipelineRev == null) {
       pipelineRev = "0";
@@ -74,9 +82,13 @@ public class SnapshotCaptureCommand extends BaseCommand {
       batchSize = 10;
     }
 
+    if(snapshotLabel == null) {
+      snapshotLabel = snapshotName;
+    }
+
     ManagerApi managerApi = new ManagerApi(getApiClient());
     try {
-      managerApi.captureSnapshot(pipelineName, snapshotName, pipelineRev, batches, batchSize);
+      managerApi.captureSnapshot(pipelineName, snapshotName, snapshotLabel, pipelineRev, batches, batchSize);
       System.out.println("Capture Snapshot command executed successfully");
     } catch (Exception ex) {
       if(printStackTrace) {

@@ -45,9 +45,9 @@
                                                 id="image_br4_fgs_5r"/></xref></entry>
                                     <entry>Format of data in the file. Use one of the following
                                             options:<ul id="ul_pwv_cr2_zq">
-                                            <li>Text</li>
                                             <li>JSON</li>
                                             <li>Log</li>
+                                            <li>Text</li>
                                         </ul></entry>
                                 </row>
                                 <row>
@@ -57,21 +57,6 @@
                                                 id="image_hxf_lnb_ks"/></xref></entry>
                                     <entry>Regular expression that defines the pattern for the
                                         standard line of text or log line.</entry>
-                                </row>
-                                <row>
-                                    <entry>Data Charset</entry>
-                                    <entry>Character encoding of the data to be processed.</entry>
-                                </row>
-                                <row
-                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/IgnoreControlChars-row">
-                                    <entry/>
-                                </row>
-                                <row>
-                                    <entry>Max Line Length</entry>
-                                    <entry>Maximum number of characters in a record, including
-                                        end-of-line characters. <p>Longer text and log lines are
-                                            truncated. Longer JSON objects are sent to the stage for
-                                            error handling.</p></entry>
                                 </row>
                                 <row>
                                     <entry>Maximum Batch Size</entry>
@@ -96,9 +81,15 @@
                                         of information. </entry>
                                 </row>
                                 <row>
-                                    <entry>Path</entry>
+                                    <entry>Path <xref
+                                            href="FileTail-MultipleDirectories.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_prq_1zx_mv"/></xref></entry>
                                     <entry>Full path to the active file to tail. <p>You can use
-                                            wildcards to define glob patterns. </p></entry>
+                                            wildcards to define glob patterns. Do not use multiple
+                                            wildcards in a row. The path before the wildcard must
+                                            exist unless you enable reading from late
+                                            directories.</p></entry>
                                 </row>
                                 <row>
                                     <entry>Naming <xref
@@ -135,6 +126,27 @@
                                                 id="image_gs4_vnx_fs"/></xref></entry>
                                     <entry>An optional attribute defined for the record to help you
                                         differentiate between different sets of records. </entry>
+                                </row>
+                                <row>
+                                    <entry>Allow Late Directories <xref
+                                            href="FileTail-LateDirectories.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_cxt_zfx_mv"/></xref></entry>
+                                    <entry>Allows reading files from directories that appear after
+                                        the pipeline starts. When enabled, the origin does not
+                                        validate the file path. </entry>
+                                </row>
+                                <row>
+                                    <entry>Charset</entry>
+                                    <entry>Character encoding of the data to be processed.</entry>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/IgnoreControlChars-row">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/Origin-FileCompression">
+                                    <entry/>
                                 </row>
                             </tbody>
                         </tgroup>
@@ -177,7 +189,13 @@
                     </table>
                 </info>
             </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/JSON-2props">
+                <cmd/>
+            </step>
             <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/LogData_Log4j">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/Text">
                 <cmd/>
             </step>
         </steps>

@@ -15,14 +15,56 @@
 <!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
 <concept id="concept_vhs_5tz_xp">
       <title>Reusable phrases for the book</title>
-      <shortdesc>Use the following reusable phrases for conrefs in the book:<draft-comment
+      <shortdesc>Use the following reusable phrases for conrefs in the book. <draft-comment
                   author="Loretta">Company name - not really using this</draft-comment></shortdesc>
       <conbody>
+            <p>
+                  <note>Do NOT use conrefs in headings - it causes problems in the webhelp
+                        navigation panel.</note>
+            </p>
             <p>Company name: <ph id="company">StreamSets</ph></p>
             <draft-comment author="Loretta">product name: trying to consistently use
                   this</draft-comment>
             <p>Full, init cap version of the product name: <ph id="pName-long">Data
                   Collector</ph></p>
+            <p>DPM long only: <ph id="DPM-LongOnly">Data Performance Manager</ph></p>
+            <p>
+                  <draft-comment author="Loretta">List of origins tha are part of the Basic
+                        installation. Used in BasicInstall_Overview and BasicInstall-LibList
+                        (Available Stage Libraries).</draft-comment>
+            </p>
+            <p>
+                  <ul id="BasicOrigins">
+                        <li>Directory</li>
+                        <li>File Tail</li>
+                        <li>HTTP Client</li>
+                        <li>SDC RPC</li>
+                        <li>SFTP/FTP Client</li>
+                        <li>UDP Source</li>
+                  </ul>
+            </p>
+            <draft-comment author="Loretta">All processors except...  </draft-comment>
+            <p><ph id="BasicNotProcessor">except the Groovy Evaluator, Jython Evaluator, HBase
+                        Lookup, and Redis Lookup.</ph></p>
+            <p>
+                  <draft-comment author="Loretta">List of destinations tha are part of the Basic
+                        installation. Used in BasicInstall_Overview and BasicInstall-LibList.
+                  </draft-comment>
+            </p>
+            <p>
+                  <ul id="BasicDestinations">
+                        <li>Local FS</li>
+                        <li>SDC RPC</li>
+                        <li>To Error</li>
+                        <li>Trash</li>
+                  </ul>
+            </p>
+            <p>
+                  <draft-comment author="Loretta">KafkaSecure - used in KConsumer &amp; Producer
+                        encryption areas. Original value: Kafka 0.9.0.0</draft-comment>
+            </p>
+            <p>Kafka version that supports SSL and SASL/Kerberos security: <ph id="KafkaSecure"
+                        >Kafka 0.9.0.0</ph></p>
             <draft-comment author="Loretta">Using this in all DC Console topics:</draft-comment>
             <p>
                   <note id="Note-OptionDispay">Some icons and options might not display in the
@@ -87,18 +129,171 @@
                   </xref>
             </p>
             <p>
-                  <draft-comment author="Loretta">ORIGIN DATA FORMATS - from Directory. DLEntries
-                        are conrefed by Kafka Consumer and Hadoop FS when possible. Also Amazon S3. </draft-comment>
+                  <draft-comment author="Loretta">DataFormats-ALL - used in Kafka Consumer, MapR
+                        Streams Consumer, possibly others.</draft-comment>
+            </p>
+            <p>
+                  <ul id="DataFormats-ALL">
+                        <li>Avro</li>
+                        <li>Binary</li>
+                        <li>Delimited</li>
+                        <li>JSON</li>
+                        <li>Log</li>
+                        <li>Text</li>
+                        <li>Protobuf</li>
+                        <li>SDC Record <xref
+                                    href="../Pipeline_Design/SDCRecordFormat.dita#concept_qkk_mwk_br">
+                                    <image href="../Graphics/icon_moreInfo.png" scale="11"
+                                          id="image_wjh_ycl_br"/></xref></li>
+                        <li>XML</li>
+                  </ul>
+            </p>
+            <p>
+                  <draft-comment author="Loretta">ORIGIN DATA FORMATS</draft-comment>
+            </p>
+            <p>
+                  <draft-comment author="Loretta">AVRO - Used by Kafka Consumer, and Kinesis
+                        Consumer and other message origins</draft-comment>
+                  <dl>
+                        <dlentry id="OriginDF-AVRO">
+                              <dt>Avro</dt>
+                              <dd>Generates a record for every message. </dd>
+                              <dd>To ensure proper data processing, indicate if the message includes
+                                    an Avro schema. </dd>
+                              <dd>You can use the schema associated with the message or provide an
+                                    alternate schema definition. Providing an alternate schema can
+                                    improve performance.</dd>
+                        </dlentry>
+                  </dl>
+            </p>
+            <p>
+                  <draft-comment author="Loretta">AVRO-Files - used by Directory and Amazon S3 and
+                        other file origins except Hadoop FS</draft-comment>
+            </p>
+            <p>
+                  <dl>
+                        <dlentry id="OriginDF-AVROfiles">
+                              <dt>Avro</dt>
+                              <dd>Generates a record for every record. </dd>
+                              <dd>The origin assumes each file includes an Avro schema definition.
+                                    But you can optionally provide an alternate schema. </dd>
+                              <dd>The origin reads files compressed by Avro-supported compression
+                                    codecs without requiring additional configuration. To enable the
+                                    origin to read files compressed by other codecs, use the
+                                    compression format property in the stage.</dd>
+                        </dlentry>
+                  </dl>
+            </p>
+            <p>
+                  <draft-comment author="Loretta">AVRO-HadoopFS - used by Hadoop FS origin -
+                        MapReduce doesn't allow getting the schema from the files. Not adding the
+                        avro-compression-codec </draft-comment>
+            </p>
+            <p>
+                  <dl>
+                        <dlentry id="AVRO-HadoopFS">
+                              <dt>Avro</dt>
+                              <dd>Generates a record for every record. </dd>
+                              <dd>The origin uses the specified schema definition to process Avro
+                                    data.</dd>
+                              <dd>The origin reads files compressed by Avro-supported compression
+                                    codecs without requiring additional configuration.</dd>
+                        </dlentry>
+                  </dl>
+            </p>
+            <p>
+                  <draft-comment author="Loretta">OriginDF-Binary - used by Kafka Consumer and
+                        Kinesis Consumer</draft-comment>
+            </p>
+            <p>
+                  <dl>
+                        <dlentry id="OriginDF-Binary">
+                              <dt>Binary</dt>
+                              <dd>Generates a record with a single byte array field at the root of
+                                    the record. </dd>
+                              <dd>When the data exceeds the user-defined maximum data size, the
+                                    origin cannot process the data. Because the record is not
+                                    created, the origin cannot pass the record to the pipeline to be
+                                    written as an error record. Instead, the origin generates a
+                                    stage error. </dd>
+                        </dlentry>
+                  </dl>
+            </p>
+            <p>
+                  <draft-comment author="Loretta"> - from Directory. DLEntries are conrefed by all
+                        origins except HTTP Client. <note> Content for JSON, Text, and HTML copied
+                              to HTTP Client and altered. When making changes here, check there as
+                              well.</note></draft-comment>
             </p>
             <p>
                   <dl id="ORIGIN-DFormats">
-                        <dlentry id="OriginDF-TEXT">
-                              <dt>Text</dt>
-                              <dd>Generates a record for each line of text. </dd>
-                              <dd>When a line exceeds the maximum line length defined for the
-                                    origin, the origin truncates the line. The origin adds a boolean
-                                    field named Truncated to indicate if the line was
-                                    truncated.</dd>
+                        <dlentry id="OriginDF-DELIM">
+                              <dt>Delimited</dt>
+                              <dd>Generates a record for each delimited line. You can use the
+                                    following delimited format types:<ul id="ul_c12_1k2_gt">
+                                          <li><uicontrol>Default CSV</uicontrol> - File that
+                                                includes comma-separated values. Ignores empty lines
+                                                in the file.</li>
+                                          <li><uicontrol>RFC4180 CSV</uicontrol> - Comma-separated
+                                                file that strictly follows RFC4180 guidelines.</li>
+                                          <li><uicontrol>MS Excel CSV</uicontrol> - Microsoft Excel
+                                                comma-separated file.</li>
+                                          <li><uicontrol>MySQL CSV</uicontrol> - MySQL comma
+                                                separated file.</li>
+                                          <li><uicontrol>Tab-Separated Values</uicontrol> - File
+                                                that includes tab-separated values.</li>
+                                          <li><uicontrol>Custom</uicontrol> - File that uses
+                                                user-defined delimiter, escape, and quote
+                                                characters.</li>
+                                    </ul></dd>
+                              <dd>You can use a list or list-map root field type for delimited data,
+                                    optionally including the header information when available. </dd>
+                              <dd>When a record exceeds the maximum record length defined for the
+                                    origin, the origin processes the object based on the error
+                                    handling configured for the stage.</dd>
+                              <dd>For more information about the root field types, see <xref
+                                          href="../Pipeline_Design/DelimitedDataRootFieldTypes.dita#concept_zcg_bm4_fs"
+                                    />.</dd>
+                        </dlentry>
+                        <dlentry id="OriginDF-DELIMFILE">
+                              <dt>Delimited</dt>
+                              <dd>Generates a record for each delimited line. You can use the
+                                    following delimited format types:<ul id="ul_hbd_f2p_ht">
+                                          <li><uicontrol>Default CSV</uicontrol> - File that
+                                                includes comma-separated values. Ignores empty lines
+                                                in the file.</li>
+                                          <li><uicontrol>RFC4180 CSV</uicontrol> - Comma-separated
+                                                file that strictly follows RFC4180 guidelines.</li>
+                                          <li><uicontrol>MS Excel CSV</uicontrol> - Microsoft Excel
+                                                comma-separated file.</li>
+                                          <li><uicontrol>MySQL CSV</uicontrol> - MySQL comma
+                                                separated file.</li>
+                                          <li><uicontrol>Tab-Separated Values</uicontrol> - File
+                                                that includes tab-separated values.</li>
+                                          <li><uicontrol>Custom</uicontrol> - File that uses
+                                                user-defined delimiter, escape, and quote
+                                                characters.</li>
+                                    </ul></dd>
+                              <dd>You can use a list or list-map root field type for delimited data,
+                                    optionally including the header information when available. </dd>
+                              <dd>When a record exceeds the user-defined maximum record length, the
+                                    origin cannot continue processing data in the file. Records
+                                    already processed from the file are passed to the pipeline. The
+                                    behavior of the origin is then based on the error handling
+                                    configured for the stage:<ul id="ul_it3_g2p_ht">
+                                          <li>Discard - The origin continues processing with the
+                                                next file, leaving the partially-processed file in
+                                                the directory. </li>
+                                          <li>To Error - The origin continues processing with the
+                                                next file. If a post-processing error directory is
+                                                configured for the stage, the origin moves the
+                                                partially-processed file to the error directory.
+                                                Otherwise, it leaves the file in the directory.</li>
+                                          <li>Stop Pipeline - The origin stops the pipeline. </li>
+                                    </ul></dd>
+                              <dd>For more information about the root field types, see <xref
+                                          href="../Pipeline_Design/DelimitedDataRootFieldTypes.dita#concept_zcg_bm4_fs"
+                                    />.</dd>
                         </dlentry>
                         <dlentry id="OriginDF-JSON">
                               <dt>JSON</dt>
@@ -130,73 +325,74 @@
                                           <li>Stop Pipeline - The origin stops the pipeline. </li>
                                     </ul></dd>
                         </dlentry>
-                        <dlentry id="OriginDF-DELIM">
-                              <dt>Delimited</dt>
-                              <dd>Generates a record for each delimited line. You can use the
-                                    following delimited format types:<ul id="ul_c12_1k2_gt">
-                                          <li><uicontrol>Default CSV</uicontrol> - File that
-                                                includes comma-separated values. Ignores empty lines
-                                                in the file.</li>
-                                          <li><uicontrol>RFC4180 CSV</uicontrol> - Comma-separated
-                                                file that strictly follows RFC4180 guidelines.</li>
-                                          <li><uicontrol>MS Excel CSV</uicontrol> - Microsoft Excel
-                                                comma-separated file.</li>
-                                          <li><uicontrol>MySQL CSV</uicontrol> - MySQL comma
-                                                separated file.</li>
-                                          <li><uicontrol>Tab-Separated Values</uicontrol> - File
-                                                that includes tab-separated values.</li>
-                                          <li><uicontrol>Custom</uicontrol> - File that uses
-                                                user-defined delimiter, escape, and quote
-                                                characters.</li>
-                                    </ul></dd>
-                              <dd>You can use a list or list-map record type for delimited data,
-                                    optionally including the header information when available. </dd>
-                              <dd>When a record exceeds the maximum record length defined for the
-                                    origin, the origin processes the object based on the error
-                                    handling configured for the stage.</dd>
-                              <dd>For more information about the record types, see <xref
-                                          href="../Pipeline_Design/DelimitedDataRecordTypes.dita#concept_zcg_bm4_fs"
+                        <dlentry id="OriginDF-LOG">
+                              <dt>Log</dt>
+                              <dd>Generates a record for every log line. </dd>
+                              <dd>When a line exceeds the user-defined maximum line length, the
+                                    origin truncates longer lines. </dd>
+                              <dd>You can include the processed log line as a field in the record.
+                                    If the log line is truncated, and you request the log line in
+                                    the record, the origin includes the truncated line.</dd>
+                              <dd>You can define the log format or type to be read.</dd>
+                        </dlentry>
+                  </dl>
+            </p>
+            <p>
+                  <draft-comment author="Loretta">OriginDF-ProtoMessage - JMS Consumer, Kinesis
+                        Consumer, Kafka Consumer, RabbitMQ</draft-comment>
+                  <dl>
+                        <dlentry id="OriginDF-ProtoMessage">
+                              <dt>Protobuf</dt>
+                              <dd>Generates a record for every protobuf message. By default, the
+                                    origin assumes messages contain multiple protobuf messages.</dd>
+                              <dd>Protobuf messages must match the specified message type and be
+                                    described in the descriptor file. </dd>
+                              <dd>When the data for a record exceeds 1 MB, the origin cannot
+                                    continue processing data in the message. The origin handles the
+                                    message based on the stage error handling property and continues
+                                    reading the next message. </dd>
+                              <dd>For information about generating the descriptor file, see <xref
+                                          href="../Pipeline_Design/Protobuf-Prerequisites.dita"
                                     />.</dd>
                         </dlentry>
-                        <dlentry id="OriginDF-DELIMFILE">
-                              <dt>Delimited</dt>
-                              <dd>Generates a record for each delimited line. You can use the
-                                    following delimited format types:<ul id="ul_hbd_f2p_ht">
-                                          <li><uicontrol>Default CSV</uicontrol> - File that
-                                                includes comma-separated values. Ignores empty lines
-                                                in the file.</li>
-                                          <li><uicontrol>RFC4180 CSV</uicontrol> - Comma-separated
-                                                file that strictly follows RFC4180 guidelines.</li>
-                                          <li><uicontrol>MS Excel CSV</uicontrol> - Microsoft Excel
-                                                comma-separated file.</li>
-                                          <li><uicontrol>MySQL CSV</uicontrol> - MySQL comma
-                                                separated file.</li>
-                                          <li><uicontrol>Tab-Separated Values</uicontrol> - File
-                                                that includes tab-separated values.</li>
-                                          <li><uicontrol>Custom</uicontrol> - File that uses
-                                                user-defined delimiter, escape, and quote
-                                                characters.</li>
-                                    </ul></dd>
-                              <dd>You can use a list or list-map record type for delimited data,
-                                    optionally including the header information when available. </dd>
-                              <dd>When a record exceeds the user-defined maximum record length, the
-                                    origin cannot continue processing data in the file. Records
-                                    already processed from the file are passed to the pipeline. The
-                                    behavior of the origin is then based on the error handling
-                                    configured for the stage:<ul id="ul_it3_g2p_ht">
-                                          <li>Discard - The origin continues processing with the
-                                                next file, leaving the partially-processed file in
-                                                the directory. </li>
-                                          <li>To Error - The origin continues processing with the
-                                                next file. If a post-processing error directory is
-                                                configured for the stage, the origin moves the
-                                                partially-processed file to the error directory.
-                                                Otherwise, it leaves the file in the directory.</li>
-                                          <li>Stop Pipeline - The origin stops the pipeline. </li>
-                                    </ul></dd>
-                              <dd>For more information about the record types, see <xref
-                                          href="../Pipeline_Design/DelimitedDataRecordTypes.dita#concept_zcg_bm4_fs"
-                                    />.</dd>
+                  </dl>
+            </p>
+            <draft-comment author="Loretta">OriginDF-ProtoFile - Amazon S3, Directory? Hadoop
+                  FS?</draft-comment>
+            <dl>
+                  <dlentry id="OriginDF-ProtoFile">
+                        <dt>Protobuf</dt>
+                        <dd>Generates a record for every protobuf message. </dd>
+                        <dd>Protobuf messages must match the specified message type and be described
+                              in the descriptor file. </dd>
+                        <dd>When the data for a record exceeds 1 MB, the origin cannot continue
+                              processing data in the file. The origin handles the file based on file
+                              error handling properties and continues reading the next file. </dd>
+                        <dd>For information about generating the descriptor file, see <xref
+                                    href="../Pipeline_Design/Protobuf-Prerequisites.dita"/>.</dd>
+                  </dlentry>
+            </dl>
+            <p>
+                  <dl>
+                        <dlentry id="OriginDF-SDC">
+                              <dt>SDC Record</dt>
+                              <dd>Generates a record for every record. Use to process records
+                                    generated by a <ph
+                                          conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                    /> pipeline using the SDC Record data format.</dd>
+                              <dd>For error records, the origin provides the original record as read
+                                    from the origin in the original pipeline, as well as error
+                                    information that you can use to correct the record. </dd>
+                              <dd>When processing error records, the origin expects the error file
+                                    names and contents as generated by the original pipeline.</dd>
+                        </dlentry>
+                        <dlentry id="OriginDF-TEXT">
+                              <dt>Text</dt>
+                              <dd>Generates a record for each line of text. </dd>
+                              <dd>When a line exceeds the maximum line length defined for the
+                                    origin, the origin truncates the line. The origin adds a boolean
+                                    field named Truncated to indicate if the line was
+                                    truncated.</dd>
                         </dlentry>
                         <dlentry id="OriginDF-XML">
                               <dt>XML</dt>
@@ -231,70 +427,141 @@
                                           <li>Stop Pipeline - The origin stops the pipeline. </li>
                                     </ul></dd>
                         </dlentry>
-                        <dlentry id="OriginDF-SDC">
-                              <dt>SDC Records</dt>
-                              <dd>Generates a record for every record. Use to process records
-                                    generated by a <ph
-                                          conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                    /> pipeline using the SDC Record data format.</dd>
-                              <dd>For error records, the origin  provides the original record as
-                                    read from the origin in the original pipeline, as well as error
-                                    information that you can use to correct the record. </dd>
-                              <dd>When processing error records, the origin expects the error file
-                                    names and contents as generated by the original pipeline.</dd>
+                  </dl>
+            </p>
+            <p>
+                  <draft-comment author="Loretta">PROCESSOR INFO –-</draft-comment>
+            </p>
+            <p>
+                  <draft-comment author="Loretta">P-HM-CompatChanges - The following is used in a
+                        couple places by the Hive Metadata processor: </draft-comment>
+            </p>
+            <p id="P-HM-CompatChanges ">Compatible changes include new tables and partitions, and
+                  the addition or removal of fields in the record. Changes in data type are not
+                  compatible.</p>
+            <p>
+                  <draft-comment author="Loretta">D-HM-CreatesAndNot_Note , D-HM-CreatesAndNot_PH:
+                        the following is used in a couple places.</draft-comment>
+            </p>
+            <note id="D-HM-CreatesAndNot_Note"><ph id="D-HM-CreatesAndNot_PH">The destination can
+                        create tables and partitions. It can add columns to tables and ignore
+                        existing columns. It does not drop existing columns from tables.</ph></note>
+            <p>
+                  <draft-comment author="Loretta"><uicontrol>P-HM-phPartitionDF</uicontrol> The
+                        following sentence is used in Hive Metadata processor - Configuring, and
+                        Database, Table, and Partition Expressions.</draft-comment>
+            </p>
+            <p>
+                  <ph id="P-HM-phPartitionDF">You can use the Int, Bigint, and String data formats
+                        for partition data.</ph></p>
+            <p>
+                  <draft-comment author="Loretta">Scripting processors - - Groovy and Jython use
+                        both, JavaScript uses Record by Record only
+                              (<uicontrol>P-ProcessM-RbyR</uicontrol>).</draft-comment>
+            </p>
+            <p>
+                  <dl>
+                        <dlentry id="P-ProcessMode-RbyR">
+                              <dt>Record by Record</dt>
+                              <dd>The processor calls the script for each record. The processor
+                                    passes the record to the script as a map and processes each
+                                    record individually. </dd>
+                              <dd>The script does not require error handling logic. Error records
+                                    are passed to the processor for error handling. The processor
+                                    handles error records based on the On Record Error
+                                    property.</dd>
+                              <dd>Use this mode to avoid including error handling logic in the code.
+                                    Since this mode calls the script for each record, pipeline
+                                    performance will be negatively affected. </dd>
                         </dlentry>
-                        <dlentry id="OriginDF-LOG">
-                              <dt>Log</dt>
-                              <dd>Generates a record for every log line. </dd>
-                              <dd>When a line exceeds the user-defined maximum line length, the
-                                    origin truncates longer lines. </dd>
-                              <dd>You can include the processed log line as a field in the record.
-                                    If the log line is truncated, and you request the log line in
-                                    the record, the origin includes the truncated line.</dd>
-                              <dd>You can define the log format or type to be read.</dd>
+                        <dlentry id="P-ProcessM-BbyB">
+                              <dt>Batch by Batch</dt>
+                              <dd>The processor calls the script for each batch. The processor
+                                    passes the batch to the script as a list and processes the batch
+                                    at one time. </dd>
+                              <dd>Include error handling logic in the script. Without error handling
+                                    logic, a single error record sends the entire batch to the
+                                    processor for error handling. The processor handles error
+                                    records based on the On Record Error property.</dd>
+                              <dd>Use this mode to improve performance by processing a batch of data
+                                    at a time.</dd>
                         </dlentry>
                   </dl>
             </p>
             <p>
-                  <draft-comment author="Loretta">AVRO - Used by Kafka Consumer and Hadoop
-                        FS</draft-comment>
-                  <dl>
-                        <dlentry id="OriginDF-AVRO">
-                              <dt>Avro</dt>
-                              <dd>Generates a record for every message. </dd>
-                              <dd>To ensure proper data processing, indicate if the message includes
-                                    an Avro schema. </dd>
-                              <dd>You can use the schema associated with the message or provide an
-                                    alternate schema definition. Providing an alternate schema can
-                                    improve performance.</dd>
-                        </dlentry>
-                  </dl>
-                  <draft-comment author="Loretta">AVRO-Files - used by Directory and Amazon
-                        S3.</draft-comment>
+                  <draft-comment author="Loretta"><uicontrol>P-DL-ScriptObjects</uicontrol> -
+                        Groovy, JavaScript, Jython Processor scripting objects. All three use these,
+                        and they each have their own Record object versions:</draft-comment>
             </p>
             <p>
-                  <dl>
-                        <dlentry id="OriginDF-AVROfiles">
-                              <dt>Avro</dt>
-                              <dd>Generates a record for every record. </dd>
-                              <dd>The origin assumes each file includes an Avro schema definition.
-                                    But you can optionally provide an alternate schema. </dd>
+                  <dl id="P-DL-ScriptObjects">
+                        <dlentry>
+                              <dt>state</dt>
+                              <dd>An object to store information between invocations of this script.
+                                    A state is a map object that includes a collection of key/value
+                                    pairs. You can use the state object to cache data such as
+                                    lookups or counters.</dd>
+                              <dd>The state object functions much like an instance variable: <ul
+                                          id="ul_bh4_1yr_kv">
+                                          <li>You need to populate the object - it has no default
+                                                value.</li>
+                                          <li>The information is transient and is lost when the
+                                                pipeline stops or restarts.</li>
+                                          <li>The state object is available only for the instance of
+                                                the processor stage it is defined in. If the
+                                                pipeline executes in cluster mode, the state object
+                                                is not shared across nodes.</li>
+                                    </ul></dd>
+                              <dd>
+                                    <note type="warning">The state object is best used for a fixed
+                                          or static set of data. Adding to the cache on every record
+                                          or batch can quickly consume the memory allocated to <ph
+                                                conref="#concept_vhs_5tz_xp/pName-long"/> and cause
+                                          out of memory exceptions. </note>
+                              </dd>
+                        </dlentry>
+                        <dlentry>
+                              <dt>log</dt>
+                              <dd>An object to write messages to the log. Includes four methods:
+                                          <codeph>info()</codeph>, <codeph>warn()</codeph>,
+                                          <codeph>debug()</codeph>, and <codeph>trace()</codeph>. </dd>
+                              <dd>The signature of the four methods is as follows:
+                                    <codeblock>(message-template, arguments…) </codeblock>The
+                                    message template can have positional variables denoted by curly
+                                    brackets: { }. The arguments are replaced in the message
+                                    template curly brackets in positional manner, i.e., this is the
+                                    first argument in the first { } occurrence, and so on.</dd>
+                        </dlentry>
+                        <dlentry>
+                              <dt>output</dt>
+                              <dd>An object that writes the record to the output batch. Includes a
+                                          <codeph>write(Record)</codeph> method.</dd>
+                        </dlentry>
+                        <dlentry>
+                              <dt>error</dt>
+                              <dd>An object that passes error records to the processor for error
+                                    handling. Includes a <codeph>write(Record, message)</codeph>
+                                    method.</dd>
                         </dlentry>
                   </dl>
             </p>
             <p>
                   <draft-comment author="Loretta">DESTINATION DATA FORMATS. Used by Kafka and Flume.
-                        They also have additional data formats specific to each destination. Copying
-                        all but SDC Record to Hadoop FS destination.</draft-comment>
+                        They also have additional data formats specific to each destination. Hadoop
+                        FS and Local FS conref individual data formats</draft-comment>
+            </p>
+            <p>
+                  <draft-comment author="Loretta"><b>DESTDataF-Text</b> and others in this list are
+                        used by Kafka, Flume, Hadoop FS, Local FS, Kinesis Firehose. </draft-comment>
                   <dl id="DESTDataFormats">
-                        <dlentry>
+                        <dlentry id="DESTDataF-Text">
                               <dt>Text</dt>
                               <dd>The destination writes a single text field of a record. When you
                                     configure the stage, you select the field to use. When
                                     necessary, merge record data into the field earlier in the
                                     pipeline. </dd>
                         </dlentry>
-                        <dlentry>
+                        <dlentry id="DEST-DataF-JSON">
                               <dt>JSON</dt>
                               <dd>The destination writes records as JSON data. You can use one of
                                     the following formats:<ul id="ul_dd1_5y1_wr">
@@ -306,30 +573,95 @@
                                                 record. </li>
                                     </ul></dd>
                         </dlentry>
-                        <dlentry>
+                        <dlentry id="DEST-DataF-Delim">
                               <dt>Delimited</dt>
                               <dd>The destination writes records as delimited data. When you use
-                                    this data format, you must ensure that the data uses the
-                                    following data structure:<ul id="ul_tr1_ms1_wr">
-                                          <li>A root field that contains an array of maps.</li>
-                                          <li>Each map includes a <term>value</term> element and an
-                                                optional <term>header</term> element.</li>
-                                    </ul></dd>
+                                    this data format, the root field must be list or list-map.</dd>
                         </dlentry>
                         <dlentry>
+                              <dt/>
+                              <dd>
+                                    <draft-comment author="Loretta"><uicontrol>AvroFlume</uicontrol>
+                                          is used only by Flume. <b>AvroFile</b> used by Hadoop FS,
+                                          Local and S3, and other file destinations. <b>AvroMess</b>
+                                          used by Kafka and Kinesis Producer and other message
+                                          destinations. When making changes to these, add updates to
+                                          the Flume data formats topic when necessary. </draft-comment>
+                              </dd>
+                        </dlentry>
+                        <dlentry id="Avro-Flume">
+                              <dt>Avro</dt>
+                              <dd>The destination writes records based on the Avro schema in the
+                                    avroSchema record header attribute or the Avro schema that you
+                                    provide. </dd>
+                              <dd>You can optionally include the schema definition as part of the
+                                    Flume event. Omitting the schema definition can improve
+                                    performance, but requires the appropriate schema management to
+                                    avoid losing track of the schema associated with the data.</dd>
+                              <dd>You can also compress data with an Avro-supported compression
+                                    codec. When using Avro compression, do not use other compression
+                                    available in the destination. </dd>
+                        </dlentry>
+                        <dlentry id="DEST-DF-AvroFILE">
+                              <dt>Avro</dt>
+                              <dd>The destination writes records based on the Avro schema in the
+                                    avroSchema record header attribute or the Avro schema that you
+                                    provide. The schema definition is included in each file.</dd>
+                              <dd>You can compress data with an Avro-supported compression codec.
+                                    When using Avro compression, avoid using other compression
+                                    available in the destination. </dd>
+                        </dlentry>
+                        <dlentry id="D-DF-AvroMess">
+                              <dt>Avro</dt>
+                              <dd>The destination writes records based on the Avro schema in the
+                                    avroSchema record header attribute or the Avro schema that you
+                                    provide. </dd>
+                              <dd>You can optionally include the schema definition as part of the
+                                    message. Omitting the schema definition can improve performance,
+                                    but requires the appropriate schema management to avoid losing
+                                    track of the schema associated with the data.</dd>
+                              <dd>You can compress data with an Avro-supported compression codec.
+                                    When using Avro compression, avoid using other compression
+                                    available in the destination. </dd>
+                        </dlentry>
+                        <dlentry id="DEST-DataF-SDC">
                               <dt>SDC Record</dt>
                               <dd>The destination writes records in the SDC Record data format.
                               </dd>
                         </dlentry>
                   </dl>
             </p>
-            <draft-comment author="Loretta">the following is just for Kafka Producer and Amazon
-                  S3.</draft-comment>
+            <draft-comment author="Loretta"><b>DESTDataFormat-Binary</b> - the following is just for
+                  Kafka Producer and Amazon S3.</draft-comment>
             <dl>
                   <dlentry id="DESTDataFormat-Binary">
                         <dt>Binary</dt>
                         <dd>The destination writes binary data from a single field in the record.
                         </dd>
+                  </dlentry>
+            </dl>
+            <draft-comment author="Loretta"><b>DestDF-ProtoMess</b> - Amazon S3, Directory? Hadoop
+                  FS?</draft-comment>
+            <dl>
+                  <dlentry id="DestDF-ProtoMess">
+                        <dt>Protobuf</dt>
+                        <dd>Writes one record in a message. Uses the user-defined message type and
+                              the definition of the message type in the descriptor file to generate
+                              the message. </dd>
+                        <dd>For information about generating the descriptor file, see <xref
+                                    href="../Pipeline_Design/Protobuf-Prerequisites.dita"/>.</dd>
+                  </dlentry>
+            </dl>
+            <draft-comment author="Loretta"><b>DestDF-ProtoFile</b> - Amazon S3, Directory? Hadoop
+                  FS?</draft-comment>
+            <dl>
+                  <dlentry id="DestDF-ProtoFile">
+                        <dt>Protobuf</dt>
+                        <dd>Writes a batch of messages in each file. </dd>
+                        <dd>Uses the user-defined message type and the definition of the message
+                              type in the descriptor file to generate the messages in the file. </dd>
+                        <dd>For information about generating the descriptor file, see <xref
+                                    href="../Pipeline_Design/Protobuf-Prerequisites.dita"/>.</dd>
                   </dlentry>
             </dl>
             <p>
@@ -340,15 +672,16 @@
             <p id="EXP-p1">Use the expression language to configure expressions and conditions in
                   processors, such as the Expression Evaluator or Stream Selector. Some destination
                   properties also require the expression language, such as the directory template
-                  for Hadoop FS. </p>
+                  for Hadoop FS or Local FS. </p>
             <p id="EXP-p2">Optionally, you can use the expression language to define any stage or
                   pipeline property that represents a numeric or string value. This allows you to
                   use constants or runtime properties throughout the pipeline. You can use
-                  expression completion determine where you can use an expression and the expression
-                  elements that you can use in that location. </p>
+                  expression completion to determine where you can use an expression and the
+                  expression elements that you can use in that location. </p>
             <p id="EXP-p3">You can use the following elements in an expression:<ul
                         id="ul_w34_vxl_2s">
                         <li>Constants</li>
+                        <li>Datetime variables</li>
                         <li>Field names</li>
                         <li>Functions</li>
                         <li>Literals</li>
@@ -401,14 +734,349 @@
                   <li>hbase-site.xml</li>
             </ul>
             <draft-comment author="Loretta">List of config files used by Hive Streaming - used in
-                  Hive Properties &amp; Configuring Hive Streaming dest.</draft-comment>
+                  Hive Properties &amp; Configuring Hive Streaming dest. Also in Hive Metadata
+                  processor - Hive properties &amp; configuring.</draft-comment>
             <ul id="HiveStreamingFiles">
                   <li>core-site.xml</li>
                   <li>hdfs-site.xml</li>
                   <li>hive-site.xml</li>
             </ul>
+            <p>
+                  <draft-comment author="Loretta">The following DD is used by </draft-comment>
+            </p>
+            <p>
+                  <ol id="OL-HiveConfigSteps">
+                        <li>Store the files or a symlink to the files in the <ph
+                                    conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                              /> resources directory or elsewhere in a path local to the <ph
+                                    conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                              />.</li>
+                        <li>If the files are stored in the resources directory, specify a relative
+                              path to the files in the stage. If the files are stored outside of the
+                              resources directory, specify an absolute path to the files. <note>For
+                                    a Cloudera Manager installation, <ph
+                                          conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                    /> automatically creates a symlink to the files named
+                                          <codeph>hive-conf</codeph>. Enter
+                                          <codeph>hive-conf</codeph> for the location of the files
+                                    in the stage.</note></li>
+                  </ol>
+            </p>
+            <p>
+                  <draft-comment author="Loretta">DRIFT-IgnoreWMissing - Using this in the Data
+                        Drift Functions topic:</draft-comment>
+            </p>
+            <p id="DRIFT-ignoreWMissing">Use the ignoreWhenMissing flag to determine the behavior
+                  when the field is missing. When set to "true", a missing field causes no errors.
+                  When set to "false", a missing field generates an alert for the record missing the
+                  field, and for the next record that includes the field.</p>
+            <p>
+                  <draft-comment author="Loretta">ul-KERBprops - Kerberos properties in Data
+                        Collector config file:</draft-comment>
+            </p>
+            <p>
+                  <ul id="ul-KERBprops">
+                        <li>kerberos.client.enabled</li>
+                        <li>kerberos.client.principal</li>
+                        <li>kerberos.client.keytab</li>
+                  </ul>
+            </p>
+            <p>
+                  <draft-comment author="Loretta">Kafka-SSL - using this ordered list for KConsumer
+                        and KProducer</draft-comment>
+            </p>
+            <ol id="KAFKA-SSL-list">
+                  <li>To use SSL to connect, first make sure Kafka is configured for SSL as
+                        described in the Kafka documentation: <xref
+                              href="http://kafka.apache.org/documentation.html#security_ssl"
+                              format="html" scope="external"/>. </li>
+                  <li id="KAFKASetStage">On the <uicontrol>General</uicontrol> tab of the stage, set
+                        the <uicontrol>Stage Library</uicontrol> property to <uicontrol>Apache Kafka
+                              0.9.0.0</uicontrol>.</li>
+                  <li>On the <wintitle>Kafka</wintitle> tab, add the
+                              <uicontrol>security.protocol</uicontrol> Kafka configuration property
+                        and set it to <uicontrol>SSL</uicontrol>.</li>
+                  <li id="KafkaSSLprops">Then, add the following SSL Kafka configuration
+                              properties:<ul id="ul_hkf_ydb_t5">
+                              <li>ssl.truststore.location</li>
+                              <li>ssl.truststore.password</li>
+                        </ul><p>When the Kafka broker requires client authentication - when the
+                              ssl.client.auth broker property is set to "required" - add and
+                              configure the following properties: <ul id="ul_y5b_rml_55">
+                                    <li>ssl.keystore.location</li>
+                                    <li>ssl.keystore.password</li>
+                                    <li>ssl.key.password</li>
+                              </ul></p><p>Some brokers might require adding the following properties
+                              as well:<ul>
+                                    <li>ssl.enabled.protocols</li>
+                                    <li>ssl.truststore.type</li>
+                                    <li>ssl.keystore.type</li>
+                              </ul></p><p>For details about these properties, see the Kafka
+                              documentation.</p></li>
+            </ol>
+            <p>
+                  <draft-comment author="Loretta">Kafka-Kerberos - using this in KConsumer and
+                        KProducer</draft-comment>
+            </p>
+            <p>
+                  <ol id="Kafka-Kerberos">
+                        <li>To use Kerberos, first make sure Kafka is configured for Kerberos as
+                              described in the Kafka documentation: <xref
+                                    href="http://kafka.apache.org/documentation.html#security_sasl"
+                                    format="html" scope="external"/>.</li>
+                        <li id="KafkaKERBsdcprops">In the <ph
+                                    conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                        /> configuration file, <codeph>$SDC_CONF/sdc.properties</codeph>, make sure the following Kerberos properties are
+                                    configured:<ul
+                                    conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/ul-KERBprops"
+                                    id="ul_gyj_jpf_55">
+                                    <li/>
+                              </ul></li>
+                        <li conref="#concept_vhs_5tz_xp/KAFKASetStage"/>
+                        <li>On the <wintitle>Kafka</wintitle> tab, add the
+                                    <uicontrol>security.protocol</uicontrol> Kafka configuration
+                              property, and set it to <uicontrol>SASL_PLAINTEXT</uicontrol>.</li>
+                        <li id="KafkaKERBservicename">Then, add the
+                                    <uicontrol>sasl.kerberos.service.name</uicontrol> configuration
+                              property, and set it to the Kerberos principal name that Kafka runs
+                              as. </li>
+                  </ol>
+            </p>
+            <p>
+                  <draft-comment author="Loretta">KAFKA-SSLandKerberos - used in KConsumer and
+                        KProducer</draft-comment>
+            </p>
+            <p>
+                  <ol id="KAFKA-SSLandKerberos">
+                        <li>Make sure Kafka is configured to use SSL and Kerberos (SASL) as
+                              described in the following Kafka documentation:<ul id="ul_gx4_1sk_55">
+                                    <li><xref
+                                                href="http://kafka.apache.org/documentation.html#security_ssl"
+                                                format="html" scope="external"/></li>
+                                    <li><xref
+                                                href="http://kafka.apache.org/documentation.html#security_sasl"
+                                                format="html" scope="external"/></li>
+                              </ul></li>
+                        <li conref="#concept_vhs_5tz_xp/KafkaKERBsdcprops"/>
+                        <li conref="#concept_vhs_5tz_xp/KAFKASetStage"/>
+                        <li>On the <wintitle>Kafka</wintitle> tab, add the
+                                    <uicontrol>security.protocol</uicontrol> property and set it to
+                                    <uicontrol>SASL_SSL</uicontrol>.</li>
+                        <li conref="#concept_vhs_5tz_xp/KafkaKERBservicename"/>
+                        <li conref="#concept_vhs_5tz_xp/KafkaSSLprops"/>
+                  </ol>
+            </p>
             <draft-comment author="Loretta">UseDefaults: Using this phrase throughout the tutorial
                   as a disclaimer:</draft-comment>
             <p id="UseDefaults">Use the defaults for properties that aren't listed:</p>
+            <p>
+                  <draft-comment author="Loretta">MapR-Prereq - Using in all MapR stages to make
+                        sure they configure SDC.</draft-comment>
+            </p>
+            <p id="MapRPrereq">Before you use any MapR stage in a pipeline, you must perform
+                  additional steps to enable <ph conref="#concept_vhs_5tz_xp/pName-long"/> to
+                  process MapR data. For more information, see <xref
+                        href="../Install_Config/MapR-Prerequisites.dita#concept_jgs_qpg_2v"/>.</p>
+            <draft-comment author="alisontaylor">MapR-PrereqHiveStream - Use in Hive
+                  Streaming destination for MapR library to make sure they configure
+                  SDC.</draft-comment>
+            <p id="MapRPrereqHiveStream">Before you use the Hive Streaming destination with the MapR
+                  library in a pipeline, you must perform additional steps to enable <ph
+                        conref="#concept_vhs_5tz_xp/pName-long"/> to process MapR data. For more
+                  information, see <xref
+                        href="../Install_Config/MapR-Prerequisites.dita#concept_jgs_qpg_2v"/>. </p>
+            <draft-comment author="alisontaylor">Directory Templates - used for Hadoop FS, Local FS,
+                  and MapR FS destinations</draft-comment>
+            <p id="DirectoryTemplate_Intro">When you define a directory template, you can use a mix
+                  of constants, field values, and datetime variables. You can use the
+                        <codeph>every</codeph> function to create new directories at regular
+                  intervals based on seconds or minutes. You can also use the
+                        <codeph>record:valueOrDefault</codeph> function to use field values or a
+                  default in the directory template. </p>
+            <p id="DirectoryTemplate_Example">For example, the following directory template creates
+                  output directories for event data based on the state and timestamp of a record
+                  with hours as the smallest unit of measure, creating a new directory every twelve
+                  hours:<codeblock> /outputfiles/${record:valueOrDefault("/State", "unknown")}/${YY()}-${MM()}-${DD()}-${every(12,hh())}</codeblock></p>
+            <p id="DirectoryTemplate_DL">You can use the following elements in a directory template:<dl>
+                        <dlentry>
+                              <dt>Constants</dt>
+                              <dd>You can use any constant, such as "output" or "lateRecords."</dd>
+                        </dlentry>
+                        <dlentry>
+                              <dt>Datetime Variables</dt>
+                              <dd>You can use datetime variables, such as <codeph>${YYYY()}</codeph>
+                                    or <codeph>${DD()}</codeph>. The destination creates directories
+                                    as needed, based on the smallest datetime variable that you use.
+                                    For example, if the smallest variable is hours, then the
+                                    directories are created for every hour of the day that receives
+                                    output records.</dd>
+                              <dd>When you use datetime variables in an expression, use all of
+                                  the datetime variables between one of the year variables
+                                  and the smallest variable that you want to use. For
+                                  example, to create directories on a daily basis for a
+                                  Hadoop FS destination, use a year variable, a month
+                                  variable, and then a day variable. You might use one of
+                                  the following datetime variable progressions:
+                              </dd>
+                              <dd>
+                                    <codeblock>${YYYY()}-${MM()}-${DD()}
+${YY()}_${MM()}_${DD()}</codeblock>
+                              </dd>
+                              <dd>For details about datetime variables, see <xref
+                                          href="../Expression_Language/DateTimeVariables.dita#concept_gh4_qd2_sv"
+                                    />.</dd>
+                        </dlentry>
+                        <dlentry>
+                              <dt>every() function</dt>
+                              <dd>You can use the <codeph>every()</codeph> function in a directory
+                                    template to create directories at regular intervals based on
+                                    minutes or seconds. The intervals should be a submultiple or
+                                    integer factor of 60. For example, you can create directories
+                                    every 15 minutes or 30 seconds. </dd>
+                              <dd>Use the <codeph>every()</codeph> function to replace the smallest
+                                    datetime variable used in the template.</dd>
+                              <dd>For example, the following directory template creates directories
+                                    every 5
+                                    minutes:<codeblock>/HDFS_output/${YYYY()}-${MM()}-${DD()}-${hh()}-${every(5,mm())}</codeblock></dd>
+                              <dd>For details about the <codeph>every()</codeph> function, see <xref
+                                          href="../Expression_Language/MiscFunctions.dita#concept_ddw_ld1_1s"
+                                    />.</dd>
+                        </dlentry>
+                        <dlentry>
+                              <dt>record:valueOrDefault function</dt>
+                              <dd>You can use the following expression to use the value of a field
+                                    and the specified default value if the field does not exist or
+                                    if the field is null:
+                                    <codeblock>${record:valueOrDefault("/&lt;field name>", &lt;default value>)}</codeblock></dd>
+                              <dd>For example, the following directory template creates a directory
+                                    based on the product field every day, and if the product field
+                                    is empty or null, uses Misc in the directory path:
+                                    <codeblock>/${record:valueOrDefault("/Product", "Misc")}/${YY()}-${MM()}-${DD()}</codeblock></dd>
+                              <dd>This template might create the following
+                                    paths:<codeblock>/Shirts/2015-07-31 
+/Misc/2015-07-31</codeblock></dd>
+                        </dlentry>
+                  </dl></p>
+            <draft-comment author="alisontaylor">Time Basis - used for Hadoop FS, Local FS, and MapR
+                  FS destinations</draft-comment>
+            <dl id="TimeBasis">
+                  <dlentry>
+                        <dt>Processing Time</dt>
+                        <dd>When you use processing time as the time basis, the destination creates
+                              directories based on the processing time and the directory template,
+                              and writes records to the directories based on when they are
+                              processed.</dd>
+                        <dd>For example, say a directory template creates directories every minute
+                              and the time basis is the time of processing. Then, directories are
+                              created for every minute that the destination writes output records.
+                              And the output records are written to the directory for that minute of
+                              processing. </dd>
+                        <dd>To use the processing time as the time basis, use the following
+                              expression: <codeph>${time:now()}</codeph>. This is the default time
+                              basis. </dd>
+                  </dlentry>
+                  <dlentry>
+                        <dt>Record Time</dt>
+                        <dd>When you use the time associated with a record as the time basis, you
+                              specify a Date field in the record. The destination creates
+                              directories based on the datetimes associated with the records and
+                              writes the records to the appropriate directories. </dd>
+                        <dd>For example, say a directory template creates directories every hour and
+                              the time basis is based on the record. Then, directories are created
+                              for every hour associated with output records and the destination
+                              writes the records to the related output directory. </dd>
+                        <dd>To use a time associated with the record, use an expression that calls a
+                              field and resolves to a datetime value, such as
+                                    <codeph>${record:value("/Timestamp")}</codeph>. </dd>
+                  </dlentry>
+            </dl>
+            <draft-comment author="alisontaylor">Late Records and Late Record Handling - used for
+                  Hadoop FS, Local FS, and MapR FS destinations</draft-comment>
+            <p id="LateRecordsOverview">When you use a record time as the time basis, you can define
+                  a time limit for records to be written to their associated output file. When the
+                  destination creates a new output file in a new directory, the previous output file
+                  is kept open for the specified late record time limit. When records that belong in
+                  that file arrive within the time limit, the destination writes the records to the
+                  open output file. When the late record time limit is reached, the output file is
+                  closed and any record that arrives past this limit is considered late.</p>
+            <note type="tip" id="LateRecordsTip">The late records properties are not applicable if
+                  you use processing time as the time basis. If you use processing time, set the
+                  late record time limit to one second.</note>
+            <p id="LateRecordsError">You can send late records to a late records file or to the
+                  stage for error handling. When you send records to a late records file, you define
+                  a late records directory template. </p>
+            <p id="LateRecordsExample1">For example, you use a record time as the time basis,
+                  configure a one hour late record time limit, configure late records to be sent to
+                  the stage for error handling, and use the default directory template value:
+                  <codeblock>/tmp/out/${YYYY()}-${MM()}-${DD()}-${hh()} </codeblock></p>
+            <p id="LateRecordsExample2">The first records that arrive have a datetime between the
+                  hours of 02:00 and 02:59, and so are written to an output file in the 02
+                  directory. When records with a datetime between the hours of 03:00 and 03:59
+                  arrive, the destination creates a new file in an 03 directory. The destination
+                  keeps the file in the 02 directory open for another hour. </p>
+            <p id="LateRecordsExample3">If a record with a datetime between the hours of 02:00 and
+                  02:59 arrives before the hour time limit, the destination writes the record to the
+                  open file in the 02 directory. After one hour, the destination closes the output
+                  file in the 02 directory. Any records with a datetime between the hours of 02:00
+                  and 02:59 that arrive after the one hour time limit are considered late. The late
+                  records are sent to the stage for error handling.</p>
+            <draft-comment author="alisontaylor">Timeout to Close Idle Files - used for Hadoop FS,
+                  Local FS, and MapR FS destinations</draft-comment>
+            <p id="IdleTimeoutOverview">You might want to configure an idle timeout when output
+                  files remain open and idle for too long, thus delaying another system from
+                  processing the files.</p>
+            <p id="IdleTimeoutReasons">Output files might remain idle for too long for the following
+                  reasons:            <ul>
+                        <li>You configured the maximum number of records to be written to output
+                              files or the maximum size of output files, but records have stopped
+                              arriving. An output file that has not reached the maximum number of
+                              records or the maximum file size stays open until more records
+                              arrive.</li>
+                        <li>You configured a date field in the record as the time basis and have
+                              configured a late record time limit, but records arrive in
+                              chronological order. When a new directory is created, the output file
+                              in the previous directory remains open for the configured late record
+                              time limit. However, no records are ever written to the open file in
+                              the previous directory.<p>For example, when a record with a datetime
+                                    of 03:00 arrives, the destination creates a new file in a new 03
+                                    directory. The previous file in the 02 directory is kept open
+                                    for the late record time limit, which is an hour by default.
+                                    However, when records arrive in chronological order, no records
+                                    that belong in the 02 directory arrive after the 03 directory is
+                                    created. </p></li>
+            </ul></p>
+
+            <p id="IdleTimeoutSummary">In either situation, configure an idle timeout so that other
+                  systems can process the files sooner, instead of waiting for the configured
+                  maximum records, maximum file size, or late records conditions to occur. </p>
+            <draft-comment author="alisontaylor">Lookup Cache - used for Redis Lookup and HBase
+                  Lookup processors</draft-comment>
+            <p id="LookupCacheOverview">The processor caches key-value pairs until the cache reaches
+                  the maximum size or the expiration time. When the first limit is reached, the
+                  processor evicts key-value pairs from the cache.</p>
+            <p id="LookupCacheOptions">You can configure the following ways to evict key-value pairs
+                  from the cache:<dl>
+                        <dlentry>
+                              <dt>Size-based eviction</dt>
+                              <dd>Configure the maximum number of key-value pairs that the processor
+                                    caches. When the maximum number is reached, the processor evicts
+                                    the oldest key-value pairs from the cache.</dd>
+                        </dlentry>
+                        <dlentry>
+                              <dt>Time-based eviction</dt>
+                              <dd>Configure the amount of time that a key-value pair can remain in
+                                    the cache without being written to or accessed. When the
+                                    expiration time is reached, the processor evicts the key from
+                                    the cache. The eviction policy determines whether the processor
+                                    measures the expiration time since the last write of the value
+                                    or since the last access of the value.</dd>
+                              <dd>For example, you set the eviction policy to expire after the last
+                                    access and set the expiration time to 60 seconds. After the
+                                    processor does not access a key-value pair for 60 seconds, the
+                                    processor evicts the key-value pair from the cache.</dd>
+                        </dlentry>
+                  </dl></p>
+            <p id="LookupCacheSummary">When you stop the pipeline, the processor clears the
+                  cache.</p>
       </conbody>
 </concept>

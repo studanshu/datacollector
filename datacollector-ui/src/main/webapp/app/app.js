@@ -57,18 +57,24 @@ angular.module('dataCollectorApp')
           if(response && response.data && typeof response.data.indexOf == 'function' &&
             response.data.indexOf('container login-container') !== -1) {
             //Return response is login.html page content due to invalid session
-            window.location.reload();
+            //window.location.reload();
             return;
           }
           return response;
         },
         responseError: function(rejection) {
           console.log(rejection);
-          if(rejection.status === 0 || rejection.status === -1 ||
+          if ((rejection.status === 0 || rejection.status === -1 ||
             (rejection.data && (typeof rejection.data.indexOf == 'function') &&
-            rejection.data.indexOf('login.html') !== -1)) {
-            window.location.reload();
-            return;
+            rejection.data.indexOf('login.html') !== -1))
+          )  {
+            // check if the error is related to remote service
+            if (rejection.config && rejection.config.headers && rejection.config.headers['X-SS-User-Auth-Token']) {
+              rejection.data = 'Failed to connect to Remote Service';
+            } else {
+              window.location.reload();
+              return;
+            }
           }
           return $q.reject(rejection);
         }
@@ -84,7 +90,7 @@ angular.module('dataCollectorApp')
 
   })
   .run(function ($location, $rootScope, $modal, api, pipelineConstant, $localStorage, contextHelpService,
-                 $timeout, $translate, authService, userRoles, configuration, Analytics, $q) {
+                 $timeout, $translate, authService, userRoles, configuration, Analytics, $q, editableOptions, $http) {
 
     var defaultTitle = 'StreamSets Data Collector',
       pipelineStatusTimer,
@@ -106,11 +112,28 @@ angular.module('dataCollectorApp')
       webSocketAlertsURL = webSocketBaseURL + 'rest/v1/webSocket?type=alerts',
       alertsWebSocket;
 
+    editableOptions.theme = 'bs3';
+
+    // Math.random() does not provide cryptographically secure random numbers,
+    // so overriding to use window.crypto.getRandomValues for getting random values.
+    var randomFunction = Math.random;
+    Math.random = function() {
+      if(window.crypto && typeof window.crypto.getRandomValues === "function") {
+        var array = new Uint32Array(10);
+        window.crypto.getRandomValues(array);
+        return array[0]/10000000000;
+      }
+      return randomFunction();
+    };
+
+    $http.defaults.headers.common['X-Requested-By'] = 'Data Collector' ;
+
     $rootScope.pipelineConstant = pipelineConstant;
     $rootScope.$storage = $localStorage.$default({
       displayDensity: pipelineConstant.DENSITY_COMFORTABLE,
-      helpLocation: pipelineConstant.LOCAL_HELP,
-      readNotifications: []
+      helpLocation: pipelineConstant.HOSTED_HELP,
+      readNotifications: [],
+      pipelineGridView: false
     });
 
     $rootScope.common = $rootScope.common || {
@@ -138,6 +161,28 @@ angular.module('dataCollectorApp')
         fetchingLog: false,
         counters: {},
         serverTimeDifference: 0,
+        remoteServerInfo: {
+          registrationStatus: false
+        },
+
+        /**
+         * Open the Enable DPM Modal Dialog
+         */
+        onEnableDPMClick: function() {
+          if (configuration.isManagedByClouderaManager()) {
+            $translate('home.enableDPM.isManagedByClouderaManager').then(function(translation) {
+              $rootScope.common.errors = [translation];
+            });
+            return;
+          }
+
+          $modal.open({
+            templateUrl: 'common/administration/enableDPM/enableDPM.tpl.html',
+            controller: 'EnableDPMModalInstanceController',
+            size: '',
+            backdrop: 'static'
+          });
+        },
 
         /**
          * Open the Shutdown Modal Dialog
@@ -152,10 +197,22 @@ angular.module('dataCollectorApp')
         },
 
         /**
+         * Open the Restart Modal Dialog
+         */
+        restartCollector: function() {
+          $modal.open({
+            templateUrl: 'common/administration/restart/restartModal.tpl.html',
+            controller: 'RestartModalInstanceController',
+            size: '',
+            backdrop: true
+          });
+        },
+
+        /**
          * Logout header link command handler
          */
         logout: function() {
-          api.admin.logout()
+          api.admin.logout($rootScope.common.authenticationType, $rootScope.common.isDPMEnabled)
             .success(function() {
               location.reload();
             })
@@ -300,10 +357,16 @@ angular.module('dataCollectorApp')
 
 
     api.admin.getServerTime().then(function(res) {
-      if(res && res.data) {
+      if (res && res.data) {
         var serverTime = res.data.serverTime,
           browserTime = (new Date()).getTime();
         $rootScope.common.serverTimeDifference = serverTime - browserTime;
+      }
+    });
+
+    api.admin.getRemoteServerInfo().then(function(res) {
+      if (res && res.data) {
+        $rootScope.common.remoteServerInfo.registrationStatus = res.data.registrationStatus;
       }
     });
 
@@ -317,11 +380,17 @@ angular.module('dataCollectorApp')
     $q.all([api.pipelineAgent.getAllAlerts(), configuration.init()])
       .then(function(results) {
         $rootScope.common.authenticationType = configuration.getAuthenticationType();
+        $rootScope.common.isDPMEnabled = configuration.isDPMEnabled();
         $rootScope.common.isSlaveNode = configuration.isSlaveNode();
         $rootScope.common.sdcClusterManagerURL = configuration.getSDCClusterManagerURL();
         $rootScope.common.isMetricsTimeSeriesEnabled = configuration.isMetricsTimeSeriesEnabled();
+        $rootScope.common.headerTitle = configuration.getUIHeaderTitle();
         if(configuration.isAnalyticsEnabled()) {
           Analytics.createAnalyticsScriptTag();
+        }
+
+        if ($rootScope.common.isDPMEnabled) {
+          authService.fetchRemoteUserRoles();
         }
 
         var alertsInfoList = results[0].data;

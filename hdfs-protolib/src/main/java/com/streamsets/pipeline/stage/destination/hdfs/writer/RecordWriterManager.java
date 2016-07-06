@@ -35,6 +35,8 @@ import com.streamsets.pipeline.lib.el.TimeEL;
 import com.streamsets.pipeline.lib.generator.DataGeneratorFactory;
 import com.streamsets.pipeline.stage.destination.hdfs.Errors;
 import com.streamsets.pipeline.stage.destination.hdfs.HdfsFileType;
+import com.streamsets.pipeline.stage.destination.hdfs.HdfsTarget;
+import com.streamsets.pipeline.stage.destination.hdfs.IdleClosedException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -60,9 +62,10 @@ import java.util.concurrent.TimeUnit;
 public class RecordWriterManager {
   private final static Logger LOG = LoggerFactory.getLogger(RecordWriterManager.class);
 
-  private URI hdfsUri;;
+  private URI hdfsUri;
   private Configuration hdfsConf;
   private String uniquePrefix;
+  private boolean dirPathTemplateInHeader;
   private String dirPathTemplate;
   private PathResolver pathResolver;
   private TimeZone timeZone;
@@ -77,17 +80,22 @@ public class RecordWriterManager {
   private Target.Context context;
   private final Path tempFilePath;
   private final LoadingCache<String, Path> dirPathCache;
+  private long idleTimeoutSeconds = -1L;
+  private final boolean rollIfHeader;
+  private final String rollHeaderName;
 
-  public RecordWriterManager(URI hdfsUri, Configuration hdfsConf, String uniquePrefix, String dirPathTemplate,
-      TimeZone timeZone, long cutOffSecs, long cutOffSizeBytes, long cutOffRecords, HdfsFileType fileType,
-      CompressionCodec compressionCodec, SequenceFile.CompressionType compressionType, String keyEL,
-      DataGeneratorFactory generatorFactory, Target.Context context, String config) {
+  public RecordWriterManager(URI hdfsUri, Configuration hdfsConf, String uniquePrefix, boolean dirPathTemplateInHeader,
+      String dirPathTemplate, TimeZone timeZone, long cutOffSecs, long cutOffSizeBytes, long cutOffRecords,
+      HdfsFileType fileType, CompressionCodec compressionCodec, SequenceFile.CompressionType compressionType, String keyEL,
+      boolean rollIfHeader, String rollHeaderName, DataGeneratorFactory generatorFactory, Target.Context context,
+      String config) {
     this.hdfsUri = hdfsUri;
     this.hdfsConf = hdfsConf;
     this.uniquePrefix = uniquePrefix;
+    this.dirPathTemplateInHeader = dirPathTemplateInHeader;
     this.dirPathTemplate = dirPathTemplate;
     this.timeZone = timeZone;
-    this.cutOffMillis = cutOffSecs * 1000;
+    this.cutOffMillis = preventOverflow(cutOffSecs * 1000);
     this.cutOffSize = cutOffSizeBytes;
     this.cutOffRecords = cutOffRecords;
     this.fileType = fileType;
@@ -96,6 +104,8 @@ public class RecordWriterManager {
     this.keyEL = keyEL;
     this.generatorFactory = generatorFactory;
     this.context = context;
+    this.rollIfHeader = rollIfHeader;
+    this.rollHeaderName = rollHeaderName;
     pathResolver = new PathResolver(context, config, dirPathTemplate, timeZone);
 
     // we use/reuse Path as they are expensive to create (it increases the performance by at least 3%)
@@ -109,8 +119,17 @@ public class RecordWriterManager {
         });
   }
 
-  public boolean validateDirTemplate(String group, String config, List<Stage.ConfigIssue> issues) {
-    return pathResolver.validate(group, config, issues);
+  public boolean validateDirTemplate(
+      String group,
+      String config,
+      String qualifiedConfigName,
+      List<Stage.ConfigIssue> issues
+  ) {
+    return pathResolver.validate(group, config, qualifiedConfigName, issues);
+  }
+
+  public void setIdleTimeoutSeconds(long idleTimeoutSeconds) {
+    this.idleTimeoutSeconds = idleTimeoutSeconds;
   }
 
   public long getCutOffMillis() {
@@ -125,7 +144,15 @@ public class RecordWriterManager {
     return cutOffRecords;
   }
 
+  /**
+   * Returns directory path for given record and date.
+   */
   String getDirPath(Date date, Record record) throws StageException {
+    if(dirPathTemplateInHeader) {
+      // We're not validating if the header exists as that job is already done
+      return record.getHeader().getAttribute(HdfsTarget.TARGET_DIRECTORY_HEADER);
+    }
+
     return pathResolver.resolvePath(date, record);
   }
 
@@ -135,6 +162,10 @@ public class RecordWriterManager {
 
   String getTempFileName() {
     return "_tmp_" + uniquePrefix + getExtension();
+  }
+
+  public String getDirPath(Date date) throws StageException {
+    return pathResolver.resolvePath(date, null);
   }
 
   public Path getPath(Date recordDate, Record record) throws StageException {
@@ -161,9 +192,18 @@ public class RecordWriterManager {
   }
 
   long getTimeToLiveMillis(Date now, Date recordDate) {
+    // Getting max date doesn't make sense when path is in record. We're retuning Long.MAX_VALUE which is the same case
+    // as when the target path doesn't contain any date-related information.
+    if(dirPathTemplateInHeader) {
+      return Long.MAX_VALUE;
+    }
     // we up the record date to the greatest one based on the template
     recordDate = pathResolver.getCeilingDate(recordDate);
-    return (recordDate != null) ? recordDate.getTime() + cutOffMillis - now.getTime() : Long.MAX_VALUE;
+    if (recordDate != null) {
+      return preventOverflow(recordDate.getTime() + cutOffMillis) - now.getTime();
+    } else {
+      return Long.MAX_VALUE;
+    }
   }
 
   RecordWriter createWriter(FileSystem fs, Path path, long timeToLiveMillis) throws StageException, IOException {
@@ -178,7 +218,11 @@ public class RecordWriterManager {
               unsatisfiedLinkError);
           }
         }
-        return new RecordWriter(path, timeToLiveMillis, os, generatorFactory);
+        RecordWriter recordWriter = new RecordWriter(path, timeToLiveMillis, os, generatorFactory);
+        if (idleTimeoutSeconds != -1) {
+          recordWriter.setIdleTimeout(idleTimeoutSeconds);
+        }
+        return recordWriter;
       case SEQUENCE_FILE:
         Utils.checkNotNull(compressionType, "compressionType");
         Utils.checkNotNull(keyEL, "keyEL");
@@ -187,7 +231,12 @@ public class RecordWriterManager {
         try {
           SequenceFile.Writer writer = SequenceFile.createWriter(fs, hdfsConf, path, Text.class, Text.class,
                                                                  compressionType, compressionCodec);
-          return new RecordWriter(path, timeToLiveMillis, writer, keyEL, generatorFactory, context);
+          RecordWriter seqRecordWriter =
+              new RecordWriter(path, timeToLiveMillis, writer, keyEL, generatorFactory, context);
+          if (idleTimeoutSeconds != -1) {
+            seqRecordWriter.setIdleTimeout(idleTimeoutSeconds);
+          }
+          return seqRecordWriter;
         } catch (UnsatisfiedLinkError unsatisfiedLinkError) {
           throw new StageException(Errors.HADOOPFS_46, compressionType.name(), unsatisfiedLinkError,
             unsatisfiedLinkError);
@@ -215,15 +264,45 @@ public class RecordWriterManager {
     return writer;
   }
 
+  /**
+   * This method must always be called after the closeLock() method on the writer has been called.
+   */
   public Path commitWriter(RecordWriter writer) throws IOException {
     Path path = null;
-    if (!writer.isClosed()) {
-      writer.close();
+    if (!writer.isClosed() || writer.isIdleClosed()) {
+      // Unset the interrupt flag before close(). InterruptedIOException makes close() fail
+      // resulting that the tmp file never gets renamed when stopping the pipeline.
+      boolean interrupted = Thread.interrupted();
+      try {
+        // Since this method is always called from exactly one thread, and
+        // we checked to make sure that it was not closed or it was idle closed, this method either closes
+        // the file or pushes us into the catch block.
+        writer.close();
+      } catch (IdleClosedException e) {
+        LOG.info("Writer for {} was idle closed, renaming.." , writer.getPath());
+      }
+      // Reset the interrupt flag back.
+      if (interrupted) {
+        Thread.currentThread().interrupt();
+      }
+      LOG.debug("Path[{}] - Committing Writer", writer.getPath());
       FileSystem fs = FileSystem.get(hdfsUri, hdfsConf);
       path = renameToFinalName(fs, writer.getPath());
-      LOG.debug("Path[{}] - Committing Writer to '{}'", writer.getPath(), path);
+      LOG.debug("Path[{}] - Committed Writer to '{}'", writer.getPath(), path);
     }
     return path;
+  }
+
+  /**
+   * Return true if this record should be written into a new file regardless whether we have a file for the record
+   * currently opened or not.
+   */
+  public boolean shouldRoll(Record record) {
+    if(rollIfHeader && record.getHeader().getAttribute(rollHeaderName) != null) {
+      return true;
+    }
+
+    return false;
   }
 
   public boolean isOverThresholds(RecordWriter writer) throws IOException {
@@ -295,6 +374,10 @@ public class RecordWriterManager {
         }
       }
     }
+  }
+
+  private long preventOverflow(long valueToVerify) {
+    return (valueToVerify > 0) ? valueToVerify : Long.MAX_VALUE;
   }
 
 

@@ -25,11 +25,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.SortedMap;
-import java.util.SortedSet;
 
 class PreparedStatementMap {
   private final Connection connection;
@@ -61,12 +59,5 @@ class PreparedStatementMap {
 
   public final Collection<PreparedStatement> getStatements() {
     return cache.values();
-  }
-
-  public void executeStatements() throws SQLException {
-    for (PreparedStatement statement : cache.values()) {
-      statement.executeBatch();
-      statement.close();
-    }
   }
 }

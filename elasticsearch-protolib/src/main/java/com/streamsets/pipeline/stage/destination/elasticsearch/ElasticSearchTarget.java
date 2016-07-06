@@ -19,152 +19,302 @@
  */
 package com.streamsets.pipeline.stage.destination.elasticsearch;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.streamsets.pipeline.api.Batch;
 import com.streamsets.pipeline.api.ErrorCode;
 import com.streamsets.pipeline.api.Record;
 import com.streamsets.pipeline.api.StageException;
 import com.streamsets.pipeline.api.base.BaseTarget;
+import com.streamsets.pipeline.api.base.OnRecordErrorException;
 import com.streamsets.pipeline.api.el.ELEval;
 import com.streamsets.pipeline.api.el.ELEvalException;
 import com.streamsets.pipeline.api.el.ELVars;
 import com.streamsets.pipeline.api.impl.Utils;
 import com.streamsets.pipeline.config.JsonMode;
+import com.streamsets.pipeline.elasticsearch.api.ElasticSearchFactory;
 import com.streamsets.pipeline.lib.el.RecordEL;
+import com.streamsets.pipeline.lib.el.TimeEL;
 import com.streamsets.pipeline.lib.el.TimeNowEL;
 import com.streamsets.pipeline.lib.generator.DataGenerator;
 import com.streamsets.pipeline.lib.generator.DataGeneratorFactory;
 import com.streamsets.pipeline.lib.generator.DataGeneratorFactoryBuilder;
 import com.streamsets.pipeline.lib.generator.DataGeneratorFormat;
+import com.streamsets.pipeline.stage.common.DefaultErrorRecordHandler;
+import com.streamsets.pipeline.stage.common.ErrorRecordHandler;
+import org.apache.http.client.fluent.Request;
+import org.elasticsearch.Version;
 import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.settings.ImmutableSettings;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.transport.InetSocketTransportAddress;
-import org.elasticsearch.common.transport.TransportAddress;
+import org.elasticsearch.common.Base64;
 import org.elasticsearch.common.xcontent.XContentType;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
+import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ElasticSearchTarget extends BaseTarget {
 
-  private final String clusterName;
-  private final List<String> uris;
-  private final Map<String, String> configs;
-  private final String indexTemplate;
-  private final String typeTemplate;
-  private final String docIdTemplate;
-  private final String charset;
-
-  public ElasticSearchTarget(String clusterName, List<String> uris,
-      Map<String, String> configs, String indexTemplate, String typeTemplate, String docIdTemplate, String charset) {
-    this.clusterName = clusterName;
-    this.uris = uris;
-    this.configs = configs;
-    this.indexTemplate = indexTemplate;
-    this.typeTemplate = typeTemplate;
-    this.docIdTemplate = docIdTemplate;
-    this.charset = charset;
-  }
-
+  private static final Pattern URI_PATTERN = Pattern.compile("\\S+:(\\d+)");
+  private static final Pattern SHIELD_USER_PATTERN = Pattern.compile("\\S+:\\S+");
+  private static final Pattern VERSION_NUMBER_PATTERN = Pattern.compile(".*\"number\":\"([^\"]*)\".*");
+  private final ElasticSearchConfigBean conf;
+  private ELEval timeDriverEval;
+  private TimeZone timeZone;
   private Date batchTime;
   private ELEval indexEval;
   private ELEval typeEval;
   private ELEval docIdEval;
   private DataGeneratorFactory generatorFactory;
+  private ErrorRecordHandler errorRecordHandler;
   private Client elasticClient;
+
+  public ElasticSearchTarget(ElasticSearchConfigBean conf) {
+    this.conf = conf;
+    this.timeZone = TimeZone.getTimeZone(conf.timeZoneID);
+  }
 
   private void validateEL(ELEval elEval, String elStr, String config, ErrorCode parseError, ErrorCode evalError,
       List<ConfigIssue> issues) {
     ELVars vars = getContext().createELVars();
     RecordEL.setRecordInContext(vars, getContext().createRecord("validateConfigs"));
-    boolean parsed = false;
+    TimeEL.setCalendarInContext(vars, Calendar.getInstance());
     try {
       getContext().parseEL(elStr);
-      parsed = true;
     } catch (ELEvalException ex) {
       issues.add(getContext().createConfigIssue(Groups.ELASTIC_SEARCH.name(), config, parseError, ex.toString(), ex));
+      return;
     }
-    if (parsed) {
-      try {
-        elEval.eval(vars, elStr, String.class);
-      } catch (ELEvalException ex) {
-        issues
-            .add(getContext().createConfigIssue(Groups.ELASTIC_SEARCH.name(), config, evalError, ex.toString(), ex));
-      }
+    try {
+      elEval.eval(vars, elStr, String.class);
+    } catch (ELEvalException ex) {
+      issues.add(getContext().createConfigIssue(Groups.ELASTIC_SEARCH.name(), config, evalError, ex.toString(), ex));
     }
   }
+
   @Override
   protected List<ConfigIssue> init() {
     List<ConfigIssue> issues = super.init();
+    errorRecordHandler = new DefaultErrorRecordHandler(getContext());
 
     indexEval = getContext().createELEval("indexTemplate");
     typeEval = getContext().createELEval("typeTemplate");
     docIdEval = getContext().createELEval("docIdTemplate");
+    timeDriverEval = getContext().createELEval("timeDriver");
 
-    validateEL(indexEval, indexTemplate, "indexTemplate", Errors.ELASTICSEARCH_00, Errors.ELASTICSEARCH_01, issues);
-    validateEL(typeEval, typeTemplate, "typeTemplate", Errors.ELASTICSEARCH_02, Errors.ELASTICSEARCH_03, issues);
-    if (docIdTemplate != null && !docIdTemplate.isEmpty()) {
-      validateEL(typeEval, docIdTemplate, "docIdTemplate", Errors.ELASTICSEARCH_04, Errors.ELASTICSEARCH_05, issues);
+    //validate timeDriver
+    try {
+      getRecordTime(getContext().createRecord("validateTimeDriver"));
+    } catch (ELEvalException ex) {
+      issues.add(getContext().createConfigIssue(
+          Groups.ELASTIC_SEARCH.name(),
+          "timeDriverEval",
+          Errors.ELASTICSEARCH_18,
+          ex.toString(),
+          ex
+      ));
     }
 
-    boolean clusterInfo = true;
-    if (clusterName == null || clusterName.isEmpty()) {
-      clusterInfo = false;
-      issues.add(getContext().createConfigIssue(Groups.ELASTIC_SEARCH.name(), "clusterName", Errors.ELASTICSEARCH_06));
+    validateEL(
+        indexEval,
+        conf.indexTemplate,
+        ElasticSearchConfigBean.CONF_PREFIX + "indexTemplate",
+        Errors.ELASTICSEARCH_00,
+        Errors.ELASTICSEARCH_01,
+        issues
+    );
+    validateEL(
+        typeEval,
+        conf.typeTemplate,
+        ElasticSearchConfigBean.CONF_PREFIX + "typeTemplate",
+        Errors.ELASTICSEARCH_02,
+        Errors.ELASTICSEARCH_03,
+        issues
+    );
+    if (conf.docIdTemplate != null && !conf.docIdTemplate.isEmpty()) {
+      validateEL(
+          typeEval,
+          conf.docIdTemplate,
+          ElasticSearchConfigBean.CONF_PREFIX + "docIdTemplate",
+          Errors.ELASTICSEARCH_04,
+          Errors.ELASTICSEARCH_05,
+          issues
+      );
     }
-    if (uris == null || uris.isEmpty()) {
-      clusterInfo = false;
-      issues.add(getContext().createConfigIssue(Groups.ELASTIC_SEARCH.name(), "uris", Errors.ELASTICSEARCH_07));
+
+    if (conf.clusterName == null || conf.clusterName.isEmpty()) {
+      issues.add(
+          getContext().createConfigIssue(
+              Groups.ELASTIC_SEARCH.name(),
+              ElasticSearchConfigBean.CONF_PREFIX + "clusterName",
+              Errors.ELASTICSEARCH_06
+          )
+      );
+    }
+    if (conf.uris == null || conf.uris.isEmpty()) {
+      issues.add(
+          getContext().createConfigIssue(
+              Groups.ELASTIC_SEARCH.name(),
+              ElasticSearchConfigBean.CONF_PREFIX + "uris",
+              Errors.ELASTICSEARCH_07
+          )
+      );
     } else {
-      for (String uri : uris) {
-        if (!uri.contains(":")) {
-          clusterInfo = false;
-          issues.add(getContext().createConfigIssue(Groups.ELASTIC_SEARCH.name(), "uris", Errors.ELASTICSEARCH_09, uri));
+      for (String uri : conf.uris) {
+        validateUri(uri, issues, ElasticSearchConfigBean.CONF_PREFIX + "uris");
+      }
+    }
+
+    if (conf.upsert) {
+      if (conf.docIdTemplate == null || conf.docIdTemplate.isEmpty()) {
+        issues.add(
+            getContext().createConfigIssue(
+                Groups.ELASTIC_SEARCH.name(),
+                ElasticSearchConfigBean.CONF_PREFIX + "upsert",
+                Errors.ELASTICSEARCH_19
+            )
+        );
+      }
+    }
+
+    if (conf.useShield) {
+      if (!SHIELD_USER_PATTERN.matcher(conf.shieldConfigBean.shieldUser).matches()) {
+        issues.add(
+            getContext().createConfigIssue(
+                Groups.SHIELD.name(),
+                ShieldConfigBean.CONF_PREFIX + "shieldUser",
+                Errors.ELASTICSEARCH_20,
+                conf.shieldConfigBean.shieldUser
+            )
+        );
+      }
+    }
+
+    if (!issues.isEmpty()) {
+      return issues;
+    }
+
+    // By default, try to use the 1st cluster uri w/ port 9200 as http endpoint.
+    // If this doesn't work, validation will fail and ask the user provide an alternative uri.
+    if (conf.httpUri == null || conf.httpUri.isEmpty() || "hostname:port".equals(conf.httpUri)) {
+      conf.httpUri = conf.uris.get(0).split(":")[0] + ":9200";
+    }
+    validateUri(conf.httpUri, issues, ElasticSearchConfigBean.CONF_PREFIX + "httpUri");
+
+    if (!issues.isEmpty()) {
+      return issues;
+    }
+
+    try {
+      String httpUri;
+      if (!conf.httpUri.startsWith("http://") && !conf.httpUri.startsWith("https://")) {
+        httpUri = "http://" + conf.httpUri;
+      } else {
+        httpUri = conf.httpUri;
+      }
+      Request request = Request.Get(httpUri + "?pretty=false");
+      if (conf.useShield) {
+        // credentials is in form of "username:password".
+        byte[] credentials = conf.shieldConfigBean.shieldUser.getBytes();
+        request.addHeader("Authorization", "Basic " + Base64.encodeBytes(credentials));
+      }
+      String response = request.execute().returnContent().asString();
+      Matcher matcher = VERSION_NUMBER_PATTERN.matcher(response);
+
+      if (!matcher.matches()) {
+        issues.add(
+            getContext().createConfigIssue(
+                Groups.ELASTIC_SEARCH.name(),
+                null,
+                Errors.ELASTICSEARCH_12,
+                response
+            )
+        );
+      } else {
+        Version clientVersion = Version.CURRENT;
+        Version clusterVersion = Version.fromString(matcher.group(1));
+
+        // The major and minor version numbers must match between the client and cluster.
+        if (clientVersion.major != clusterVersion.major || clientVersion.minor != clusterVersion.minor) {
+          issues.add(
+              getContext().createConfigIssue(
+                  Groups.ELASTIC_SEARCH.name(),
+                  null,
+                  Errors.ELASTICSEARCH_13,
+                  clientVersion,
+                  clusterVersion
+              )
+          );
         }
       }
+    } catch (IOException e) {
+      issues.add(
+          getContext().createConfigIssue(
+              Groups.ELASTIC_SEARCH.name(),
+              ElasticSearchConfigBean.CONF_PREFIX + "httpUri",
+              Errors.ELASTICSEARCH_11,
+              e.toString(),
+              e
+          )
+      );
     }
 
-    if (clusterInfo) {
-      try {
-        elasticClient = getElasticClient();
-        elasticClient.admin().cluster().health(new ClusterHealthRequest());
-      } catch (RuntimeException ex) {
-        issues.add(getContext().createConfigIssue(Groups.ELASTIC_SEARCH.name(), null, Errors.ELASTICSEARCH_08,
-                                                  ex.toString(), ex));
-      }
+    if (!issues.isEmpty()) {
+      return issues;
     }
 
-    if (issues.isEmpty()) {
-      generatorFactory = new DataGeneratorFactoryBuilder(getContext(), DataGeneratorFormat.JSON)
-          .setMode(JsonMode.MULTIPLE_OBJECTS).setCharset(Charset.forName(charset)).build();
+    try {
+      elasticClient = ElasticSearchFactory.client(
+          conf.clusterName,
+          conf.uris,
+          conf.clientSniff,
+          conf.configs,
+          conf.useShield,
+          conf.shieldConfigBean.shieldUser,
+          conf.shieldConfigBean.shieldTransportSsl,
+          conf.shieldConfigBean.sslKeystorePath,
+          conf.shieldConfigBean.sslKeystorePassword,
+          conf.shieldConfigBean.sslTruststorePath,
+          conf.shieldConfigBean.sslTruststorePassword,
+          conf.useFound
+      );
+      elasticClient.admin().cluster().health(new ClusterHealthRequest());
+    } catch (RuntimeException|UnknownHostException ex) {
+      issues.add(
+          getContext().createConfigIssue(
+              Groups.ELASTIC_SEARCH.name(),
+              null,
+              Errors.ELASTICSEARCH_08,
+              ex.toString(),
+              ex
+          )
+      );
     }
+
+    if (!issues.isEmpty()) {
+      return issues;
+    }
+
+    generatorFactory = new DataGeneratorFactoryBuilder(getContext(), DataGeneratorFormat.JSON)
+        .setMode(JsonMode.MULTIPLE_OBJECTS)
+        .setCharset(Charset.forName(conf.charset))
+        .build();
+
     return issues;
-  }
-
-  private Client getElasticClient() {
-    Settings settings = ImmutableSettings.settingsBuilder().put("cluster.name", clusterName).put(configs).build();
-    InetSocketTransportAddress[] elasticAddresses = new InetSocketTransportAddress[uris.size()];
-    for (int i = 0; i < uris.size(); i++) {
-      String uri = uris.get(i);
-      String[] parts = uri.split(":");
-      elasticAddresses[i] = new InetSocketTransportAddress(parts[0], Integer.parseInt(parts[1]));
-    }
-    return getElasticClient(settings, elasticAddresses);
-  }
-
-  protected Client getElasticClient(Settings settings, TransportAddress[] addresses) {
-    return new TransportClient(settings, false).addTransportAddresses(addresses);
   }
 
   @Override
@@ -173,6 +323,25 @@ public class ElasticSearchTarget extends BaseTarget {
       elasticClient.close();
     }
     super.destroy();
+  }
+
+  @VisibleForTesting
+  Date getRecordTime(Record record) throws ELEvalException {
+    ELVars variables = getContext().createELVars();
+    TimeNowEL.setTimeNowInContext(variables, getBatchTime());
+    RecordEL.setRecordInContext(variables, record);
+    return timeDriverEval.eval(variables, conf.timeDriver, Date.class);
+  }
+
+  @VisibleForTesting
+  String getRecordIndex(ELVars elVars, Record record) throws ELEvalException {
+    Date date = getRecordTime(record);
+    if (date != null) {
+      Calendar calendar = Calendar.getInstance(timeZone);
+      calendar.setTime(date);
+      TimeEL.setCalendarInContext(elVars, calendar);
+    }
+    return indexEval.eval(elVars, conf.indexTemplate, String.class);
   }
 
   @Override
@@ -197,31 +366,45 @@ public class ElasticSearchTarget extends BaseTarget {
 
       try {
         RecordEL.setRecordInContext(elVars, record);
-        String index = indexEval.eval(elVars, indexTemplate, String.class);
-        String type = typeEval.eval(elVars, typeTemplate, String.class);
+        String index = getRecordIndex(elVars, record);
+        String type = typeEval.eval(elVars, conf.typeTemplate, String.class);
         String id = null;
-        if (docIdTemplate != null && !docIdTemplate.isEmpty()) {
-          id = docIdEval.eval(elVars, docIdTemplate, String.class);
+        if (conf.docIdTemplate != null && !conf.docIdTemplate.isEmpty()) {
+          id = docIdEval.eval(elVars, conf.docIdTemplate, String.class);
         }
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         DataGenerator generator = generatorFactory.getGenerator(baos);
         generator.write(record);
         generator.close();
-        String json = new String(baos.toByteArray());
-        bulkRequest.add(elasticClient.prepareIndex(index, type, id).setContentType(XContentType.JSON).setSource(json));
-      } catch (IOException ex) {
-        switch (getContext().getOnErrorRecord()) {
-          case DISCARD:
-            break;
-          case TO_ERROR:
-            getContext().toError(record, ex);
-            break;
-          case STOP_PIPELINE:
-            throw new StageException(Errors.ELASTICSEARCH_10, record.getHeader().getSourceId(), ex.toString(), ex);
-          default:
-            throw new IllegalStateException(Utils.format("Unknown OnError value '{}'",
-                                                         getContext().getOnErrorRecord(), ex));
+        String json = new String(baos.toByteArray(), StandardCharsets.UTF_8);
+
+        IndexRequest insert = elasticClient.prepareIndex(index, type, id)
+            .setContentType(XContentType.JSON)
+            .setSource(json)
+            .request();
+        if (conf.upsert) {
+          // Upsert cannot be processed without the id. Bulk process does not read document content
+          // but only headers and then pass content to the right shard. To extract the right shard,
+          // Elasticsearch needs to know the id without parsing the body itself.
+          Utils.checkNotNull(id, "Document ID");
+          UpdateRequest upsert = elasticClient.prepareUpdate(index, type, id)
+              .setDoc(json)
+              .setUpsert(insert)
+              .request();
+          bulkRequest.add(upsert);
+        } else {
+          bulkRequest.add(insert);
         }
+      } catch (IOException ex) {
+        errorRecordHandler.onError(
+            new OnRecordErrorException(
+                record,
+                Errors.ELASTICSEARCH_15,
+                record.getHeader().getSourceId(),
+                ex.toString(),
+                ex
+            )
+        );
       }
     }
     if (atLeastOne) {
@@ -234,7 +417,7 @@ public class ElasticSearchTarget extends BaseTarget {
             for (BulkItemResponse item : bulkResponse.getItems()) {
               if (item.isFailed()) {
                 Record record = records.get(item.getItemId());
-                getContext().toError(record, Errors.ELASTICSEARCH_11, item.getFailureMessage());
+                getContext().toError(record, Errors.ELASTICSEARCH_16, item.getFailureMessage());
               }
             }
             break;
@@ -243,7 +426,7 @@ public class ElasticSearchTarget extends BaseTarget {
             if (msg != null && msg.length() > 100) {
               msg = msg.substring(0, 100) + " ...";
             }
-            throw new StageException(Errors.ELASTICSEARCH_12, msg);
+            throw new StageException(Errors.ELASTICSEARCH_17, msg);
           default:
             throw new IllegalStateException(Utils.format("Unknown OnError value '{}'",
                                                          getContext().getOnErrorRecord()));
@@ -261,4 +444,29 @@ public class ElasticSearchTarget extends BaseTarget {
     return batchTime;
   }
 
+  private void validateUri(String uri, List<ConfigIssue> issues, String configName) {
+    Matcher matcher = URI_PATTERN.matcher(uri);
+    if (!matcher.matches()) {
+      issues.add(
+          getContext().createConfigIssue(
+              Groups.ELASTIC_SEARCH.name(),
+              configName,
+              Errors.ELASTICSEARCH_09,
+              uri
+          )
+      );
+    } else {
+      int port = Integer.valueOf(matcher.group(1));
+      if (port < 0 || port > 65535) {
+        issues.add(
+            getContext().createConfigIssue(
+                Groups.ELASTIC_SEARCH.name(),
+                configName,
+                Errors.ELASTICSEARCH_10,
+                port
+            )
+        );
+      }
+    }
+  }
 }

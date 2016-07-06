@@ -23,6 +23,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.icegreen.greenmail.util.GreenMail;
 import com.icegreen.greenmail.util.ServerSetup;
 import com.streamsets.datacollector.config.DataRuleDefinition;
+import com.streamsets.datacollector.config.DriftRuleDefinition;
 import com.streamsets.datacollector.config.MetricsRuleDefinition;
 import com.streamsets.datacollector.config.PipelineConfiguration;
 import com.streamsets.datacollector.config.RuleDefinitions;
@@ -52,6 +53,7 @@ import com.streamsets.datacollector.execution.store.CachePipelineStateStore;
 import com.streamsets.datacollector.execution.store.FilePipelineStateStore;
 import com.streamsets.datacollector.main.RuntimeInfo;
 import com.streamsets.datacollector.main.RuntimeModule;
+import com.streamsets.datacollector.main.StandaloneRuntimeInfo;
 import com.streamsets.datacollector.runner.MockStages;
 import com.streamsets.datacollector.runner.Observer;
 import com.streamsets.datacollector.runner.PipelineRunner;
@@ -101,7 +103,7 @@ public class TestUtil {
   public static final String PIPELINE_WITH_EMAIL = "Pipeline with Email";
   public static final String PIPELINE_REV = "2.0";
   public static final String ZERO_REV = "0";
-  public static boolean EMPTY_OFFSET = false;
+  public volatile static boolean EMPTY_OFFSET = false;
 
   public static class SourceOffsetTrackerImpl implements SourceOffsetTracker {
     private String currentOffset;
@@ -250,8 +252,11 @@ public class TestUtil {
 
   /*************** PipelineStore ***************/
   // TODO - Rename TestPipelineStoreModule after multi pipeline support
-  @Module(injects = PipelineStoreTask.class, library = true, includes = {TestRuntimeModule.class,
-    TestStageLibraryModule.class,  TestPipelineStateStoreModule.class })
+  @Module(
+      injects = {PipelineStoreTask.class, Configuration.class},
+      library = true,
+      includes = {TestRuntimeModule.class, TestStageLibraryModule.class,  TestPipelineStateStoreModule.class }
+  )
   public static class TestPipelineStoreModuleNew {
 
     public TestPipelineStoreModuleNew() {
@@ -267,7 +272,7 @@ public class TestUtil {
         //The if check is needed because the tests restart the pipeline manager. In that case the check prevents
         //us from trying to create the same pipeline again
         if(!pipelineStoreTask.hasPipeline("invalid")) {
-          pipelineStoreTask.create(USER, "invalid", "invalid cox its empty");
+          pipelineStoreTask.create(USER, "invalid", "invalid cox its empty", false);
           PipelineConfiguration pipelineConf = pipelineStoreTask.load("invalid", PIPELINE_REV);
           PipelineConfiguration mockPipelineConf = MockStages.createPipelineConfigurationSourceTarget();
           pipelineConf.setErrorStage(mockPipelineConf.getErrorStage());
@@ -276,11 +281,12 @@ public class TestUtil {
         }
 
         if (!pipelineStoreTask.hasPipeline(MY_PIPELINE)) {
-          pipelineStoreTask.create(USER, MY_PIPELINE, "description");
+          pipelineStoreTask.create(USER, MY_PIPELINE, "description", false);
           PipelineConfiguration pipelineConf = pipelineStoreTask.load(MY_PIPELINE, ZERO_REV);
           PipelineConfiguration mockPipelineConf = MockStages.createPipelineConfigurationSourceTarget();
           pipelineConf.setStages(mockPipelineConf.getStages());
           pipelineConf.setErrorStage(mockPipelineConf.getErrorStage());
+          pipelineConf.setStatsAggregatorStage(mockPipelineConf.getStatsAggregatorStage());
           pipelineConf.getConfiguration().add(new Config("executionMode", ExecutionMode.STANDALONE.name()));
           pipelineConf.getConfiguration().add(new Config("retryAttempts", 3));
           pipelineStoreTask.save("admin", MY_PIPELINE, ZERO_REV, "description", pipelineConf);
@@ -288,22 +294,24 @@ public class TestUtil {
           // create a DataRuleDefinition for one of the stages
           DataRuleDefinition dataRuleDefinition =
             new DataRuleDefinition("myID", "myLabel", "s", 100, 10, "${record:value(\"/name\") != null}", true,
-              "alertText", ThresholdType.COUNT, "100", 100, true, false, true);
+              "alertText", ThresholdType.COUNT, "100", 100, true, false, true, System.currentTimeMillis());
           List<DataRuleDefinition> dataRuleDefinitions = new ArrayList<>();
           dataRuleDefinitions.add(dataRuleDefinition);
 
           RuleDefinitions ruleDefinitions =
             new RuleDefinitions(Collections.<MetricsRuleDefinition> emptyList(), dataRuleDefinitions,
-              Collections.<String> emptyList(), UUID.randomUUID());
+                Collections.<DriftRuleDefinition>emptyList(),
+                Collections.<String> emptyList(), UUID.randomUUID());
           pipelineStoreTask.storeRules(MY_PIPELINE, ZERO_REV, ruleDefinitions);
         }
 
         if(!pipelineStoreTask.hasPipeline(MY_SECOND_PIPELINE)) {
-          pipelineStoreTask.create("user2", MY_SECOND_PIPELINE, "description2");
+          pipelineStoreTask.create("user2", MY_SECOND_PIPELINE, "description2", false);
           PipelineConfiguration pipelineConf = pipelineStoreTask.load(MY_SECOND_PIPELINE, ZERO_REV);
           PipelineConfiguration mockPipelineConf = MockStages.createPipelineConfigurationSourceProcessorTarget();
           pipelineConf.setStages(mockPipelineConf.getStages());
           pipelineConf.setErrorStage(mockPipelineConf.getErrorStage());
+          pipelineConf.setStatsAggregatorStage(mockPipelineConf.getStatsAggregatorStage());
           pipelineConf.getConfiguration().add(new Config("executionMode",
             ExecutionMode.STANDALONE.name()));
           pipelineStoreTask.save("admin2", MY_SECOND_PIPELINE, ZERO_REV, "description"
@@ -311,7 +319,7 @@ public class TestUtil {
         }
 
         if(!pipelineStoreTask.hasPipeline(HIGHER_VERSION_PIPELINE)) {
-          PipelineConfiguration pipelineConfiguration = pipelineStoreTask.create("user2", HIGHER_VERSION_PIPELINE, "description2");
+          PipelineConfiguration pipelineConfiguration = pipelineStoreTask.create("user2", HIGHER_VERSION_PIPELINE, "description2", false);
           PipelineConfiguration mockPipelineConf = MockStages.createPipelineConfigurationSourceProcessorTargetHigherVersion();
           mockPipelineConf.getConfiguration().add(new Config("executionMode",
             ExecutionMode.STANDALONE.name()));
@@ -321,11 +329,12 @@ public class TestUtil {
         }
 
         if(!pipelineStoreTask.hasPipeline(PIPELINE_WITH_EMAIL)) {
-          pipelineStoreTask.create("user2", PIPELINE_WITH_EMAIL, "description2");
+          pipelineStoreTask.create("user2", PIPELINE_WITH_EMAIL, "description2", false);
           PipelineConfiguration pipelineConf = pipelineStoreTask.load(PIPELINE_WITH_EMAIL, ZERO_REV);
           PipelineConfiguration mockPipelineConf = MockStages.createPipelineConfigurationSourceProcessorTarget();
           pipelineConf.setStages(mockPipelineConf.getStages());
           pipelineConf.setErrorStage(mockPipelineConf.getErrorStage());
+          pipelineConf.setStatsAggregatorStage(mockPipelineConf.getStatsAggregatorStage());
           pipelineConf.getConfiguration().add(new Config("executionMode",
             ExecutionMode.STANDALONE.name()));
           pipelineConf.getConfiguration().add(new Config("notifyOnTermination", true));
@@ -397,7 +406,7 @@ public class TestUtil {
 
     @Provides @Singleton
     public RuntimeInfo provideRuntimeInfo() {
-      RuntimeInfo info = new RuntimeInfo(RuntimeModule.SDC_PROPERTY_PREFIX, new MetricRegistry(),
+      RuntimeInfo info = new StandaloneRuntimeInfo(RuntimeModule.SDC_PROPERTY_PREFIX, new MetricRegistry(),
         Arrays.asList(getClass().getClassLoader()));
       return info;
     }

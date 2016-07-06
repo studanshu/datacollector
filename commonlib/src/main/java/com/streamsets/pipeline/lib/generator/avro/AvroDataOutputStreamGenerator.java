@@ -21,55 +21,72 @@ package com.streamsets.pipeline.lib.generator.avro;
 
 import com.streamsets.pipeline.api.Record;
 import com.streamsets.pipeline.api.StageException;
-import com.streamsets.pipeline.lib.generator.DataGenerator;
 import com.streamsets.pipeline.lib.generator.DataGeneratorException;
+import com.streamsets.pipeline.lib.util.AvroJavaSnappyCodec;
 import com.streamsets.pipeline.lib.util.AvroTypeUtil;
 import org.apache.avro.Schema;
+import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
 
+import java.io.Closeable;
+import java.io.Flushable;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Map;
 
-public class AvroDataOutputStreamGenerator implements DataGenerator {
+public class AvroDataOutputStreamGenerator extends BaseAvroDataGenerator {
 
-  private final Schema schema;
-  private boolean closed;
-  private final DataFileWriter<GenericRecord> dataFileWriter;
+  static {
+    // replace Avro Snappy codec with SDC's which is 100% Java
+    AvroJavaSnappyCodec.initialize();
+  }
 
-  public AvroDataOutputStreamGenerator(OutputStream outputStream, String avroSchema)
-      throws IOException {
-    schema = new Schema.Parser().setValidate(true).parse(avroSchema);
+  private OutputStream outputStream;
+  private String compressionCodec;
+  private DataFileWriter<GenericRecord> dataFileWriter;
+
+  public AvroDataOutputStreamGenerator(
+      boolean schemaInHeader,
+      OutputStream outputStream,
+      String compressionCodec,
+      Schema schema,
+      Map<String, Object> defaultValueMap
+  ) throws IOException {
+    super(schemaInHeader, schema, defaultValueMap);
+    this.compressionCodec = compressionCodec;
+    this.outputStream = outputStream;
+    if(!schemaInHeader) {
+      initialize();
+    }
+  }
+
+  @Override
+  protected void initializeWriter() throws IOException {
     DatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<>(schema);
     dataFileWriter = new DataFileWriter<>(datumWriter);
+    dataFileWriter.setCodec(CodecFactory.fromString(compressionCodec));
     dataFileWriter.create(schema, outputStream);
   }
 
   @Override
-  public void write(Record record) throws IOException, DataGeneratorException {
-    if (closed) {
-      throw new IOException("generator has been closed");
-    }
+  protected void writeRecord(Record record) throws IOException, DataGeneratorException {
     try {
-      dataFileWriter.append((GenericRecord)AvroTypeUtil.sdcRecordToAvro(record, schema));
+      dataFileWriter.append((GenericRecord)AvroTypeUtil.sdcRecordToAvro(record, schema, defaultValueMap));
     } catch (StageException e) {
       throw new DataGeneratorException(e.getErrorCode(), e.getParams()); // params includes cause
     }
   }
 
   @Override
-  public void flush() throws IOException {
-    if (closed) {
-      throw new IOException("generator has been closed");
-    }
-    dataFileWriter.flush();
+  protected Flushable getFlushable() {
+    return dataFileWriter;
   }
 
   @Override
-  public void close() throws IOException {
-    closed = true;
-    dataFileWriter.close();
+  protected Closeable getCloseable() {
+    return dataFileWriter;
   }
 }

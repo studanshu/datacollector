@@ -99,6 +99,7 @@ public enum ContainerError implements ErrorCode {
   CONTAINER_0211("Pipeline state doesn't exist for pipeline '{}::{}' in execution mode: '{}'"),
   CONTAINER_0212("Cannot save state of pipeline '{}::{}' in execution mode: '{}' as there is already an existing"
     + "pipeline '{}::{}'"),
+  CONTAINER_0213("{} is a file not a directory, and can't be used as the pipeline store directory!"),
 
   //Previewr
   CONTAINER_0250("Cannot create previewer: '{}'"),
@@ -127,6 +128,7 @@ public enum ContainerError implements ErrorCode {
   CONTAINER_0700("Error stage initialization error: {}"),
   CONTAINER_0701("Stage '{}' initialization error: {}"),
   CONTAINER_0702("Pipeline initialization error: {}"),
+  CONTAINER_0703("Stats Aggregator stage initialization error: {}"),
 
   //Runner
   CONTAINER_0800("Pipeline '{}' validation error : {}"),
@@ -138,6 +140,11 @@ public enum ContainerError implements ErrorCode {
 
   //Email Notifier
   CONTAINER_01000("Error loading email template, reason : {}"),
+  CONTAINER_01001("Error sending email : {}"),
+
+  // Remote Control pipelines
+  CONTAINER_01100("Cannot perform operation: '{}' on local pipeline '{}'"),
+  CONTAINER_01101("Cannot perform operation: '{}' on remote pipeline '{}'")
 
   ;
 

@@ -21,12 +21,18 @@ package com.streamsets.pipeline.lib.el;
 
 import com.streamsets.pipeline.api.ElFunction;
 import com.streamsets.pipeline.api.ElParam;
+import com.streamsets.pipeline.api.el.ELEval;
 import com.streamsets.pipeline.api.impl.Utils;
 
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class StringEL {
+  public static final String MEMOIZED = "memoized";
+
+  private StringEL() {
+  }
 
   @ElFunction(
     prefix = "str",
@@ -113,6 +119,7 @@ public class StringEL {
     return string.substring(0, endIndex);
   }
 
+  @SuppressWarnings("unchecked")
   @ElFunction(
     prefix = "str",
     name = "regExCapture",
@@ -121,12 +128,27 @@ public class StringEL {
     @ElParam("string") String string,
     @ElParam("regEx") String regEx,
     @ElParam("groupNumber") int groupNumber) {
-    Pattern pattern = Pattern.compile(regEx);
-    Matcher matcher = pattern.matcher(string);
-    if(matcher.find()) {
-      return matcher.group(groupNumber);
+    Utils.checkArgument(regEx != null, "Argument regEx for str:regExCapture() cannot be null.");
+    if (string != null) {
+      Map<String, Pattern> patterns = (Map<String, Pattern>) ELEval.getVariablesInScope().getContextVariable(MEMOIZED);
+      Matcher matcher = getPattern(patterns, regEx).matcher(string);
+      if (matcher.find()) {
+        return matcher.group(groupNumber);
+      }
     }
     return null;
+  }
+
+  private static Pattern getPattern(Map<String, Pattern> patterns, String regEx) {
+    if (patterns != null && patterns.containsKey(regEx)) {
+      return patterns.get(regEx);
+    } else {
+      Pattern pattern = Pattern.compile(regEx);
+      if (patterns != null) {
+        patterns.put(regEx, pattern);
+      }
+      return pattern;
+    }
   }
 
   @ElFunction(
@@ -158,4 +180,40 @@ public class StringEL {
     @ElParam("suffix") String suffix) {
     return string.endsWith(suffix);
   }
+
+  @ElFunction(
+      prefix = "str",
+      name = "matches",
+      description = "Tells whether the argument string matches the argument regex.")
+  public static boolean matches(
+      @ElParam("string") String string,
+      @ElParam("regex") String regEx) {
+    Utils.checkArgument(regEx != null, "Argument regEx for str:matches() cannot be null.");
+    return string != null && string.matches(regEx);
+  }
+
+  @ElFunction(
+      prefix = "str",
+      name = "concat",
+      description = "Returns a new string that is a concatenation of the two argument strings.")
+  public static String concat(
+      @ElParam("string1") String string1,
+      @ElParam("string2") String string2) {
+    string1 = (string1 == null)? "" : string1;
+    string2 = (string2 == null)? "" : string2;
+    return string1.concat(string2);
+  }
+
+  @ElFunction(
+      prefix = "str",
+      name = "length",
+      description = "Returns the string length of the string argument."
+  )
+  public static int len (
+      @ElParam("string") String string
+  ) {
+    string = (string == null)? "" : string;
+    return string.length();
+  }
+
 }

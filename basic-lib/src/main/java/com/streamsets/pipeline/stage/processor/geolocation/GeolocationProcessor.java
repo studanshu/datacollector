@@ -75,7 +75,9 @@ public class GeolocationProcessor extends SingleLaneRecordProcessor {
   protected List<ConfigIssue> init() {
     List<ConfigIssue> result = super.init();
     File database = new File(geoIP2DBFile);
-    if ((getContext().getExecutionMode() == ExecutionMode.CLUSTER_BATCH || getContext().getExecutionMode() == ExecutionMode.CLUSTER_STREAMING)
+    if ((getContext().getExecutionMode() == ExecutionMode.CLUSTER_BATCH
+        || getContext().getExecutionMode() == ExecutionMode.CLUSTER_YARN_STREAMING
+        || getContext().getExecutionMode() == ExecutionMode.CLUSTER_MESOS_STREAMING)
       && database.isAbsolute()) {
     //Do not allow absolute geoIP2DBFile in cluster mode
       result.add(getContext().createConfigIssue("GEOLOCATION", "geoIP2DBFile", Errors.GEOIP_10, geoIP2DBFile));
@@ -156,6 +158,11 @@ public class GeolocationProcessor extends SingleLaneRecordProcessor {
     try {
       for (GeolocationFieldConfig config : configs) {
         Field field = record.get(config.inputFieldName);
+
+        if(field == null) {
+          throw new OnRecordErrorException(Errors.GEOIP_11, record.getHeader().getSourceId(), config.inputFieldName);
+        }
+
         try {
           switch (config.targetType) {
             case COUNTRY_NAME:
@@ -214,19 +221,23 @@ public class GeolocationProcessor extends SingleLaneRecordProcessor {
       case INTEGER:
         return InetAddress.getByAddress(ipAsIntToBytes(field.getValueAsInteger()));
       case STRING:
-        String ip = field.getValueAsString().trim();
-        if (ip.contains(".")) {
-          return InetAddress.getByAddress(ipAsStringToBytes(ip));
-        } else {
-          try {
-            return InetAddress.getByAddress(ipAsIntToBytes(Integer.parseInt(ip)));
-          } catch (NumberFormatException nfe) {
-            throw new OnRecordErrorException(Errors.GEOIP_06, ip, nfe);
+        String ip = field.getValueAsString();
+        if(ip != null) {
+          ip = ip.trim();
+          if (ip.contains(".")) {
+            return InetAddress.getByAddress(ipAsStringToBytes(ip));
+          } else {
+            try {
+              return InetAddress.getByAddress(ipAsIntToBytes(Integer.parseInt(ip)));
+            } catch (NumberFormatException nfe) {
+              throw new OnRecordErrorException(Errors.GEOIP_06, ip, nfe);
+            }
           }
+        } else {
+          throw new OnRecordErrorException(Errors.GEOIP_06, ip);
         }
       default:
         throw new IllegalStateException(Utils.format("Unknown field type: ", field.getType()));
-
     }
   }
 

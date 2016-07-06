@@ -21,10 +21,13 @@ package com.streamsets.datacollector.el;
 
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableSet;
-import com.streamsets.datacollector.el.RuntimeEL;
+import com.streamsets.datacollector.http.WebServerTask;
 import com.streamsets.datacollector.main.RuntimeInfo;
 import com.streamsets.datacollector.main.RuntimeModule;
-
+import com.streamsets.datacollector.main.StandaloneRuntimeInfo;
+import com.streamsets.datacollector.util.Configuration;
+import com.streamsets.lib.security.http.RemoteSSOService;
+import dagger.ObjectGraph;
 import org.apache.commons.io.IOUtils;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -35,9 +38,12 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Writer;
+import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -54,27 +60,34 @@ public class TestRuntimeEL {
   private static final String REMOTE_SDC_HOME_VALUE = "../sdc-remote";
 
   private static File resourcesDir;
+  private static File dataDir;
+  private static File configDir;
   private static RuntimeInfo runtimeInfo;
 
   @BeforeClass
   public static void beforeClass() throws IOException {
-    File configDir = new File("target", UUID.randomUUID().toString()).getAbsoluteFile();
+    configDir = new File("target", UUID.randomUUID().toString()).getAbsoluteFile();
     Assert.assertTrue(configDir.mkdirs());
     resourcesDir = new File("target", UUID.randomUUID().toString()).getAbsoluteFile();
     Assert.assertTrue(resourcesDir.mkdirs());
+    dataDir = new File("target", UUID.randomUUID().toString()).getAbsoluteFile();
+    Assert.assertTrue(dataDir.mkdirs());
     System.setProperty(RuntimeModule.SDC_PROPERTY_PREFIX + RuntimeInfo.CONFIG_DIR, configDir.getPath());
     System.setProperty(RuntimeModule.SDC_PROPERTY_PREFIX + RuntimeInfo.RESOURCES_DIR, resourcesDir.getPath());
+    System.setProperty(RuntimeModule.SDC_PROPERTY_PREFIX + RuntimeInfo.DATA_DIR, dataDir.getPath());
+
   }
 
   @AfterClass
   public static void afterClass() throws IOException {
     System.getProperties().remove(RuntimeModule.SDC_PROPERTY_PREFIX + RuntimeInfo.CONFIG_DIR);
     System.getProperties().remove(RuntimeModule.SDC_PROPERTY_PREFIX + RuntimeInfo.RESOURCES_DIR);
+    System.getProperties().remove(RuntimeModule.SDC_PROPERTY_PREFIX + RuntimeInfo.DATA_DIR);
   }
 
   @Before()
   public void setUp() {
-    runtimeInfo = new RuntimeInfo(RuntimeModule.SDC_PROPERTY_PREFIX,new MetricRegistry(),
+    runtimeInfo = new StandaloneRuntimeInfo(RuntimeModule.SDC_PROPERTY_PREFIX,new MetricRegistry(),
       Arrays.asList(getClass().getClassLoader()));
   }
 
@@ -111,17 +124,6 @@ public class TestRuntimeEL {
 
     InputStream is = Thread.currentThread().getContextClassLoader().
       getResourceAsStream(sdcFileName);
-
-    IOUtils.copy(is, os);
-    is.close();
-  }
-
-  private void createRuntimeConfigFile(String runtimeConfigFile) throws IOException {
-    String sdcFile = new File(runtimeInfo.getConfigDir(), runtimeConfigFile).getAbsolutePath();
-    OutputStream os = new FileOutputStream(sdcFile);
-
-    InputStream is = Thread.currentThread().getContextClassLoader().
-      getResourceAsStream(runtimeConfigFile);
 
     IOUtils.copy(is, os);
     is.close();
@@ -167,6 +169,47 @@ public class TestRuntimeEL {
       Files.setPosixFilePermissions(fooFile, ImmutableSet.of(PosixFilePermission.OWNER_READ,
                                                              PosixFilePermission.OWNER_WRITE));
     }
+  }
+
+  @Test
+  public void testAuthToken() throws IOException {
+    Properties props = new Properties();
+    props.setProperty(RemoteSSOService.SECURITY_SERVICE_APP_AUTH_TOKEN_CONFIG, "AUTH_TOKEN");
+    Writer writer = new FileWriter(new File(configDir, "sdc.properties"));
+    props.store(writer, "");
+    writer.close();
+    ObjectGraph og  = ObjectGraph.create(RuntimeModule.class);
+    og.get(Configuration.class);
+    RuntimeInfo info = og.get(RuntimeInfo.class);
+    RuntimeEL.loadRuntimeConfiguration(info);
+    Assert.assertEquals("AUTH_TOKEN", RuntimeEL.authToken());
+  }
+
+  @Test
+  public void testAuthTokenNoFile() throws IOException {
+    OutputStream sdcProps = new FileOutputStream(new File(runtimeInfo.getConfigDir(), "sdc.properties"));
+    sdcProps.close();
+
+    RuntimeEL.loadRuntimeConfiguration(runtimeInfo);
+    Assert.assertEquals(null, RuntimeEL.authToken());
+  }
+
+  @Test
+  public void testHostname() throws IOException {
+    // No configuration, fetch hostname dynamically
+    OutputStream sdcProps = new FileOutputStream(new File(runtimeInfo.getConfigDir(), "sdc.properties"));
+    sdcProps.close();
+
+    RuntimeEL.loadRuntimeConfiguration(runtimeInfo);
+    Assert.assertEquals(InetAddress.getLocalHost().getCanonicalHostName(), RuntimeEL.hostname());
+
+    // Hostname in configuration file
+    sdcProps = new FileOutputStream(new File(runtimeInfo.getConfigDir(), "sdc.properties"));
+    IOUtils.write(WebServerTask.HTTP_BIND_HOST + "=sdc.jarcec.net", sdcProps);
+    sdcProps.close();
+
+    RuntimeEL.loadRuntimeConfiguration(runtimeInfo);
+    Assert.assertEquals("sdc.jarcec.net", RuntimeEL.hostname());
   }
 
 }

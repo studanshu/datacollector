@@ -30,7 +30,8 @@ import com.streamsets.pipeline.configurablestage.DProcessor;
     version=1,
     label="JSON Parser",
     description = "Parses a string field with JSON data",
-    icon="jsonparser.png"
+    icon="jsonparser.png",
+    onlineHelpRefUrl = "index.html#Processors/JSONParser.html#task_kwz_lg2_zq"
 )
 @ConfigGroups(Groups.class)
 @GenerateResourceBundle
@@ -62,8 +63,8 @@ public class JsonParserDProcessor extends DProcessor {
       required = true,
       type = ConfigDef.Type.STRING,
       defaultValue = "",
-      label = "New Parsed Field",
-      description="Name of the new field to set the parsed JSON data",
+      label = "Target Field",
+      description="Name of the field to set the parsed JSON data to",
       displayPosition = 30,
       group = "JSON"
   )

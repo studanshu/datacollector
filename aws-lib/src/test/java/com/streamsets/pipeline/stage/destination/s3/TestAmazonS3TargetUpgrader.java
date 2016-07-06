@@ -48,12 +48,12 @@ public class TestAmazonS3TargetUpgrader {
     configs.add(new Config("s3TargetConfigBean.binaryFieldPath", "/binaryField"));
 
     AmazonS3TargetUpgrader amazonS3TargetUpgrader = new AmazonS3TargetUpgrader();
-    amazonS3TargetUpgrader.upgrade("a", "b", "c", 1, 2, configs);
+    amazonS3TargetUpgrader.upgrade("a", "b", "c", 1, 5, configs);
 
-    Assert.assertEquals(12, configs.size());
+    Assert.assertEquals(15, configs.size());
 
     HashMap<String, Object> configValues = new HashMap<>();
-    for(Config c : configs) {
+    for (Config c : configs) {
       configValues.put(c.getName(), c.getValue());
     }
 
@@ -95,5 +95,31 @@ public class TestAmazonS3TargetUpgrader {
     Assert.assertTrue(configValues.containsKey("s3TargetConfigBean.dataGeneratorFormatConfig.csvCustomQuote"));
     Assert.assertEquals('\"', configValues.get("s3TargetConfigBean.dataGeneratorFormatConfig.csvCustomQuote"));
 
+    Assert.assertEquals("NULL", configValues.get("s3TargetConfigBean.dataGeneratorFormatConfig.avroCompression"));
+
+    Assert.assertEquals("", configValues.get("s3TargetConfigBean.partitionTemplate"));
+
+    Assert.assertEquals("false", configValues.get("s3TargetConfigBean.sseConfig.useSSE"));
+
+    //renamed configs
+
+    configs = new ArrayList<>();
+    configs.add(new Config("s3TargetConfigBean.s3Config.accessKeyId", "MY_KEY_ID"));
+    configs.add(new Config("s3TargetConfigBean.s3Config.secretAccessKey", "MY_ACCESS_KEY"));
+    configs.add(new Config("s3TargetConfigBean.s3Config.folder", "MY_COMMON_PREFIX"));
+
+    amazonS3TargetUpgrader.upgrade("a", "b", "c", 1, 4, configs);
+
+    configValues = new HashMap<>();
+    for (Config c : configs) {
+      configValues.put(c.getName(), c.getValue());
+    }
+
+    Assert.assertTrue(configValues.containsKey("s3TargetConfigBean.s3Config.awsConfig.awsAccessKeyId"));
+    Assert.assertEquals("MY_KEY_ID", configValues.get("s3TargetConfigBean.s3Config.awsConfig.awsAccessKeyId"));
+    Assert.assertTrue(configValues.containsKey("s3TargetConfigBean.s3Config.awsConfig.awsSecretAccessKey"));
+    Assert.assertEquals("MY_ACCESS_KEY", configValues.get("s3TargetConfigBean.s3Config.awsConfig.awsSecretAccessKey"));
+    Assert.assertTrue(configValues.containsKey("s3TargetConfigBean.s3Config.commonPrefix"));
+    Assert.assertEquals("MY_COMMON_PREFIX", configValues.get("s3TargetConfigBean.s3Config.commonPrefix"));
   }
 }

@@ -19,8 +19,14 @@
  */
 package com.streamsets.pipeline;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Method;
 import java.net.URL;
@@ -28,14 +34,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.jar.JarFile;
+import java.util.jar.JarEntry;
 
 /**
  * This class is responsible for all activities which cross classloaders. At present
@@ -56,6 +64,11 @@ public class BootstrapCluster {
   private static ClassLoader sparkCL;
   private static List<ClassLoader> stageLibrariesCLs;
   private static String dataDir;
+  private static final String MESOS_BOOTSTRAP_JAR_REGEX = "streamsets-datacollector-mesos-bootstrap";
+  public static final String SDC_MESOS_BASE_DIR = "sdc_mesos";
+  private static File mesosBootstrapFile;
+
+  private BootstrapCluster() {}
 
   public static synchronized Properties getProperties() throws Exception {
     initialize();
@@ -66,7 +79,6 @@ public class BootstrapCluster {
     if (initialized) {
       return;
     }
-    initialized = true;
     boolean isTestingMode = Boolean.getBoolean("sdc.testing-mode");
     String libraryRoot;
     String etcRoot;
@@ -75,10 +87,15 @@ public class BootstrapCluster {
       libraryRoot = (new File(System.getProperty("user.dir"), "target")).getAbsolutePath();
       etcRoot = (new File(System.getProperty("user.dir"), "target")).getAbsolutePath();
       resourcesRoot = (new File(System.getProperty("user.dir"), "target")).getAbsolutePath();
-    } else {
+    } else if (System.getProperty("SDC_MESOS_BASE_DIR") == null){
       libraryRoot = (new File(System.getProperty("user.dir"), "libs.tar.gz")).getAbsolutePath();
       etcRoot = (new File(System.getProperty("user.dir") + "/etc.tar.gz/etc/")).getAbsolutePath();
       resourcesRoot = (new File(System.getProperty("user.dir") + "/resources.tar.gz/resources/")).getAbsolutePath();
+    } else {
+      String sdcMesosBaseDir = System.getProperty("SDC_MESOS_BASE_DIR");
+      libraryRoot = new File(sdcMesosBaseDir, "libs").getAbsolutePath();
+      etcRoot = new File(sdcMesosBaseDir, "etc").getAbsolutePath();
+      resourcesRoot = new File(sdcMesosBaseDir, "resources").getAbsolutePath();
     }
     System.setProperty("sdc.transient-env", "true");
     System.setProperty("sdc.static-web.dir", (new File(libraryRoot, "sdc-static-web")).getAbsolutePath());
@@ -90,7 +107,9 @@ public class BootstrapCluster {
       throw new IllegalStateException(msg);
     }
     properties = new Properties();
-    properties.load(new FileInputStream(sdcProperties));
+    try (FileInputStream inStream = new FileInputStream(sdcProperties)) {
+      properties.load(inStream);
+    }
     File rootDataDir = new File(etcRoot, "data");
     dataDir = rootDataDir.getAbsolutePath();
     File basePipelineDir = new File(rootDataDir, "pipelines");
@@ -105,10 +124,10 @@ public class BootstrapCluster {
     Map<String, List<URL>> streamsetsLibsUrls;
     Map<String, List<URL>> userLibsUrls;
     if (isTestingMode) {
-      apiUrls = new ArrayList<URL>();
-      containerUrls = new ArrayList<URL>();
-      streamsetsLibsUrls = new HashMap<String, List<URL>>();
-      userLibsUrls = new HashMap<String, List<URL>>();
+      apiUrls = new ArrayList<>();
+      containerUrls = new ArrayList<>();
+      streamsetsLibsUrls = new HashMap<>();
+      userLibsUrls = new HashMap<>();
       // for now we pull in container in for testing mode
       streamsetsLibsUrls.put("streamsets-libs/streamsets-datacollector-spark-protolib",
         BootstrapMain.getClasspathUrls(System.getProperty("user.dir") + "/target/"));
@@ -116,15 +135,27 @@ public class BootstrapCluster {
       apiUrls = BootstrapMain.getClasspathUrls(libraryRoot + "/api-lib/*.jar");
       containerUrls = BootstrapMain.getClasspathUrls(libraryRoot + "/container-lib/*.jar");
 
-      Set<String> systemWhiteList = BootstrapMain.getWhiteList(etcRoot, BootstrapMain.SYSTEM_LIBS_KEY);
-      Set<String> userWhiteList = BootstrapMain.getWhiteList(etcRoot, BootstrapMain.USER_LIBS_KEY);
+      Set<String> systemStageLibs;
+      Set<String> userStageLibs;
+      if (BootstrapMain.isDeprecatedWhiteListConfiguration(etcRoot)) {
+        System.out.println(String.format(
+            BootstrapMain.WARN_MSG,
+            "Using deprecated stage library whitelist configuration file",
+            BootstrapMain.WHITE_LIST_FILE
+        ));
+        systemStageLibs = BootstrapMain.getWhiteList(etcRoot, BootstrapMain.SYSTEM_LIBS_WHITE_LIST_KEY);
+        userStageLibs = BootstrapMain.getWhiteList(etcRoot, BootstrapMain.USER_LIBS_WHITE_LIST_KEY);
+      } else {
+        systemStageLibs = BootstrapMain.getSystemStageLibs(etcRoot);
+        userStageLibs = BootstrapMain.getUserStageLibs(etcRoot);
+      }
 
       String libsCommonLibDir = libraryRoot + "/libs-common-lib";
 
       // in cluster mode, the library extra dir files from the master are collapsed on the library dir
       streamsetsLibsUrls = BootstrapMain.getStageLibrariesClasspaths(libraryRoot + "/streamsets-libs", null,
-                                                                     systemWhiteList, libsCommonLibDir);
-      userLibsUrls = BootstrapMain.getStageLibrariesClasspaths(libraryRoot + "/user-libs", null, userWhiteList,
+                                                                     systemStageLibs, libsCommonLibDir);
+      userLibsUrls = BootstrapMain.getStageLibrariesClasspaths(libraryRoot + "/user-libs", null, userStageLibs,
                                                                libsCommonLibDir);
     }
     Map<String, List<URL>> libsUrls = new LinkedHashMap<String, List<URL>> ();
@@ -190,13 +221,15 @@ public class BootstrapCluster {
       throw new IllegalStateException(msg, ex);
     }
     try {
-      Class<?> runtimeModuleClz = Class.forName("com.streamsets.datacollector.main.RuntimeModule", true, containerCL);
+      Class<?> runtimeModuleClz = Class.forName("com.streamsets.datacollector.main.SlaveRuntimeModule", true,
+          containerCL);
       Method setStageLibraryClassLoadersMethod = runtimeModuleClz.getMethod("setStageLibraryClassLoaders", List.class);
       setStageLibraryClassLoadersMethod.invoke(null, stageLibrariesCLs);
     } catch (Exception ex) {
       String msg = "Error trying to bookstrap Spark while setting stage classloaders: " + ex;
       throw new IllegalStateException(msg, ex);
     }
+    initialized = true;
   }
 
   private static String escapedPipelineName(ClassLoader apiCL, String name) {
@@ -212,12 +245,11 @@ public class BootstrapCluster {
   /**
    * Obtaining a reference on the dummy source which is used to feed a pipeline<br/>
    * Direction: Stage -> Container
-   * @param postBatchRunnable
+   * @param postBatchRunnable runnable to run after each batch is finished
    * @return a source object associated with the newly created pipeline
    * @throws Exception
    */
-  public static /*Source*/ Object startPipeline(
-                                                 Runnable postBatchRunnable) throws Exception {
+  public static /*Source*/ Object startPipeline(Runnable postBatchRunnable) throws Exception {
     BootstrapCluster.initialize();
     ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
     try {
@@ -262,6 +294,120 @@ public class BootstrapCluster {
       throw new IllegalStateException(msg, ex);
     } finally {
       Thread.currentThread().setContextClassLoader(originalClassLoader);
+    }
+  }
+
+  public static void printSystemPropsEnvVariables() {
+    Map<String, String> env = System.getenv();
+    System.out.println("Below are the environment variables: ");
+    for (Map.Entry<String, String> mapEntry : env.entrySet()) {
+       System.out.format("%s=%s%n", mapEntry.getKey(), mapEntry.getValue());
+    }
+    Properties p = System.getProperties();
+    System.out.println("\n\n Below are the Java system properties: ");
+    for (Map.Entry<Object, Object> mapEntry : p.entrySet()) {
+      System.out.format("%s=%s%n", (String)mapEntry.getKey(), (String)mapEntry.getValue());
+    }
+  }
+
+  private static class MesosBootstrapJarFileFilter implements FilenameFilter {
+    @Override
+    public boolean accept(File dir, String name) {
+      return name.startsWith(MESOS_BOOTSTRAP_JAR_REGEX);
+    }
+  }
+
+  public static File getMesosBootstrapFile() {
+    if (mesosBootstrapFile == null) {
+      throw new IllegalStateException("Mesos bootstrap file cannot be found");
+    }
+    return mesosBootstrapFile;
+  }
+
+  public static int findAndExtractJar(File mesosHomeDir, File sparkHomeDir) throws IOException, InterruptedException {
+    FilenameFilter mesosBootstrapJarFilter = new MesosBootstrapJarFileFilter();
+    File[] mesosBootstrapFile = mesosHomeDir.listFiles(mesosBootstrapJarFilter);
+    checkNotNull(mesosBootstrapFile, mesosHomeDir);
+    if (mesosBootstrapFile.length == 0) {
+      mesosBootstrapFile = sparkHomeDir.listFiles(mesosBootstrapJarFilter);
+    }
+    checkNotNull(mesosBootstrapFile, sparkHomeDir);
+    if (mesosBootstrapFile.length == 0) {
+      throw new IllegalStateException("Cannot find file starting with " + MESOS_BOOTSTRAP_JAR_REGEX + " in "
+        + sparkHomeDir + " or in " + mesosHomeDir);
+    } else if (mesosBootstrapFile.length > 1) {
+      throw new IllegalStateException("Found more than one file matching " + MESOS_BOOTSTRAP_JAR_REGEX
+        + "; list of files are: " + Arrays.toString(mesosBootstrapFile));
+    }
+    File mesosBaseDir = new File(mesosHomeDir, SDC_MESOS_BASE_DIR);
+    if (!mesosBaseDir.mkdir()) {
+      throw new IllegalStateException("Error while creating dir: " + mesosBaseDir.getAbsolutePath());
+    }
+    BootstrapCluster.mesosBootstrapFile = mesosBootstrapFile[0];
+    extractFromJar(mesosBootstrapFile[0], mesosBaseDir);
+    return extractArchives(mesosBaseDir);
+  }
+
+  private static void checkNotNull(File[] mesosBootstrapFile, File sourceDir) {
+    if (mesosBootstrapFile == null) {
+      throw new IllegalStateException("Cannot list files in dir: " + sourceDir.getAbsolutePath());
+    }
+  }
+
+  private static int extractArchives(File mesosBaseDir) throws IOException, InterruptedException {
+   // Extract archives from the uber jar
+    String[] cmd = {"/bin/bash", "-c",
+          "cd " + mesosBaseDir.getAbsolutePath() + " && "
+        + "tar -xf etc.tar.gz && "
+        + "mkdir libs && "
+        + "tar -xf libs.tar.gz -C libs/ && "
+        + "tar -xf resources.tar.gz" };
+    ProcessBuilder processBuilder = new ProcessBuilder(cmd);
+    processBuilder.redirectErrorStream(true);
+    Process process = processBuilder.start();
+    try (BufferedReader stdOutReader =
+      new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+      String line = null;
+      while ((line = stdOutReader.readLine()) != null) {
+        System.out.println(line);
+      }
+      process.waitFor();
+    }
+    return process.exitValue();
+  }
+
+  private static void extractFromJar(File sourceFile, File destDir) throws IOException {
+    JarFile jar = new JarFile(sourceFile);
+    Enumeration enumEntries = jar.entries();
+    while (enumEntries.hasMoreElements()) {
+      JarEntry jarEntry = (JarEntry) enumEntries.nextElement();
+      java.io.File destFile = new java.io.File(destDir, jarEntry.getName());
+      File parentDestFile = destFile.getParentFile();
+      // if parent file does not exist, create the chain of dirs for this file
+      if (!parentDestFile.isDirectory() && !parentDestFile.mkdirs()) {
+        throw new IllegalStateException("Cannot create parent directories for file: " + destFile.getAbsolutePath());
+      }
+      if (jarEntry.isDirectory()) {
+        continue;
+      }
+      InputStream is = null;
+      FileOutputStream fos = null;
+      try {
+        is = jar.getInputStream(jarEntry); // get the input stream
+        fos = new java.io.FileOutputStream(destFile);
+        byte[] buffer = new byte[8092];
+        int bytesRead;
+        while ((bytesRead = is.read(buffer)) != -1) { // write contents of 'is' to 'fos'
+          fos.write(buffer, 0, bytesRead);
+        }
+      } finally {
+        if (fos != null) {
+          fos.close();
+        }
+        if (is != null) {
+          is.close();
+        }
+      }
     }
   }
 }

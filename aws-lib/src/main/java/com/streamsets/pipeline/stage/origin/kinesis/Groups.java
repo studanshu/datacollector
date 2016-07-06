@@ -25,6 +25,16 @@ import com.streamsets.pipeline.api.Label;
 @GenerateResourceBundle
 public enum Groups implements Label {
   KINESIS("Kinesis"),
+  TEXT("Text"),
+  JSON("JSON"),
+  DELIMITED("Delimited"),
+  XML("XML"),
+  LOG("Log"),
+  AVRO("Avro"),
+  BINARY("Binary"),
+  PROTOBUF("Protobuf"),
+  ADVANCED("Advanced"),
+  DATAGRAM("Datagram")
   ;
 
   private final String label;
@@ -33,6 +43,7 @@ public enum Groups implements Label {
     this.label = label;
   }
 
+  @Override
   public String getLabel() {
     return this.label;
   }

@@ -24,6 +24,7 @@ import com.streamsets.datacollector.client.auth.HttpBasicAuth;
 import com.streamsets.datacollector.client.auth.HttpDigestAuth;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
+import org.glassfish.jersey.client.filter.CsrfProtectionFilter;
 import org.glassfish.jersey.filter.LoggingFilter;
 
 import javax.ws.rs.client.Client;
@@ -399,12 +400,12 @@ public class ApiClient {
       builder = target.request();
     }
 
-    for (String key : headerParams.keySet()) {
-      builder = builder.header(key, headerParams.get(key));
+    for (Map.Entry<String, String> entry : headerParams.entrySet()) {
+      builder = builder.header(entry.getKey(), entry.getValue());
     }
-    for (String key : defaultHeaderMap.keySet()) {
-      if (!headerParams.containsKey(key)) {
-        builder = builder.header(key, defaultHeaderMap.get(key));
+    for (Map.Entry<String, String> entry : defaultHeaderMap.entrySet()) {
+      if (!headerParams.containsKey(entry.getKey())) {
+        builder = builder.header(entry.getKey(), entry.getValue());
       }
     }
 
@@ -519,6 +520,7 @@ public class ApiClient {
       ClientConfig config = new ClientConfig();
       config.property(ClientProperties.SUPPRESS_HTTP_COMPLIANCE_VALIDATION, true);
       Client client = ClientBuilder.newClient(config);
+      client.register(new CsrfProtectionFilter("CSRF"));
       hostMap.put(basePath, client);
     }
     return hostMap.get(basePath);

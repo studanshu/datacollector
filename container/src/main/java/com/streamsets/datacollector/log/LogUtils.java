@@ -22,6 +22,11 @@ package com.streamsets.datacollector.log;
 import com.google.common.annotations.VisibleForTesting;
 import com.streamsets.datacollector.main.RuntimeInfo;
 import com.streamsets.pipeline.api.impl.Utils;
+import com.streamsets.pipeline.lib.parser.DataParserException;
+import com.streamsets.pipeline.lib.parser.log.Constants;
+import com.streamsets.pipeline.lib.parser.log.Log4jHelper;
+import com.streamsets.pipeline.lib.parser.shaded.org.aicer.grok.dictionary.GrokDictionary;
+import com.streamsets.pipeline.lib.parser.shaded.org.aicer.grok.util.Grok;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,9 +37,22 @@ import java.util.Properties;
 public class LogUtils {
   public static final String LOG4J_FILE_ATTR = "log4j.filename";
   public static final String LOG4J_APPENDER_STREAMSETS_FILE_PROPERTY = "log4j.appender.streamsets.File";
+  public static final String LOG4J_APPENDER_STREAMSETS_LAYOUT_CONVERSION_PATTERN =
+      "log4j.appender.streamsets.layout.ConversionPattern";
+  public static final String LOG4J_APPENDER_STDERR_LAYOUT_CONVERSION_PATTERN = "log4j.appender.stderr.layout.ConversionPattern";
+  public static final String LOG4J_GROK_ATTR = "log4j.grok";
+  public static final String LOG4J_CONVERSION_PATTERN = "%d{ISO8601} [user:%X{s-user}] [pipeline:%X{s-entity}] [thread:%t] %-5p %c{1} - %m%n";
+
+  private LogUtils() {}
 
   public static String getLogFile(RuntimeInfo runtimeInfo) throws IOException {
     if(Boolean.getBoolean("sdc.transient-env")) {
+      // running under mesos
+      // TODO - find a better way, as this logs all spark stuff under sdc pipeline logs
+      String mesosRootDir = System.getenv("MESOS_DIRECTORY");
+      if (mesosRootDir!=null) {
+        return new File(mesosRootDir, "stderr").getAbsolutePath();
+      }
       // we are running under YARN
       String logDirs = System.getenv("LOG_DIRS");
       if (logDirs == null) {
@@ -42,8 +60,9 @@ public class LogUtils {
           logDirs = System.getProperty("user.dir") + "/target/";
         } else {
           throw new IllegalStateException("When running in transient environment, environment variable " +
-            "LOG_DIRS must be defined");
+              "LOG_DIRS must be defined");
         }
+
       }
       File syslog = new File(logDirs, "syslog");
       if (syslog.isFile()) {
@@ -64,7 +83,7 @@ public class LogUtils {
             logFile = resolveValue(logFile);
           } else {
             throw new IOException(Utils.format("Could not determine the log file, '{}' does not define property '{}'",
-                                               RuntimeInfo.LOG4J_CONFIGURATION_URL_ATTR,
+                                               logFile,
                                                LOG4J_APPENDER_STREAMSETS_FILE_PROPERTY));
           }
           if (!logFile.endsWith(".log")) {
@@ -78,6 +97,48 @@ public class LogUtils {
       }
     }
     return logFile;
+  }
+
+  public static Grok getLogGrok(RuntimeInfo runtimeInfo) throws IOException, DataParserException {
+    Grok logFileGrok = runtimeInfo.getAttribute(LOG4J_GROK_ATTR);
+    String logPattern;
+    if(logFileGrok == null) {
+      if(Boolean.getBoolean("sdc.transient-env")) {
+        // hack for Worker SDC until we use single log4j property for Standalone and Worker SDC
+        logPattern = LOG4J_CONVERSION_PATTERN;
+      } else {
+        URL log4jConfig = runtimeInfo.getAttribute(RuntimeInfo.LOG4J_CONFIGURATION_URL_ATTR);
+        if (log4jConfig != null) {
+          try (InputStream is = log4jConfig.openStream()) {
+            Properties props = new Properties();
+            props.load(is);
+            logPattern = props.getProperty(LOG4J_APPENDER_STREAMSETS_LAYOUT_CONVERSION_PATTERN);
+            if (logPattern == null) {
+              logPattern = props.getProperty(LOG4J_APPENDER_STDERR_LAYOUT_CONVERSION_PATTERN);
+            }
+          }
+        } else {
+          throw new IOException(Utils.format("RuntimeInfo does not has attribute '{}'",
+              RuntimeInfo.LOG4J_CONFIGURATION_URL_ATTR));
+        }
+      }
+
+      if (logPattern != null) {
+        String grokPattern = Log4jHelper.translateLog4jLayoutToGrok(logPattern);
+        GrokDictionary grokDictionary = new GrokDictionary();
+        grokDictionary.addDictionary(LogUtils.class.getClassLoader().
+            getResourceAsStream(Constants.GROK_PATTERNS_FILE_NAME));
+        grokDictionary.addDictionary(LogUtils.class.getClassLoader().getResourceAsStream(
+            Constants.GROK_JAVA_LOG_PATTERNS_FILE_NAME));
+        grokDictionary.bind();
+        logFileGrok = grokDictionary.compileExpression(grokPattern);
+        runtimeInfo.setAttribute(LOG4J_GROK_ATTR, logFileGrok);
+      } else {
+        throw new IllegalStateException("Cannot find log4j layout conversion pattern");
+      }
+
+    }
+    return logFileGrok;
   }
 
   @VisibleForTesting

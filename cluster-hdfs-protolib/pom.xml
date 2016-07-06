@@ -21,12 +21,12 @@
   <parent>
     <groupId>com.streamsets</groupId>
     <artifactId>streamsets-datacollector-root-lib</artifactId>
-    <version>1.2.0-SNAPSHOT</version>
+    <version>1.6.0.0-SNAPSHOT</version>
     <relativePath>../root-lib</relativePath>
   </parent>
   <groupId>com.streamsets</groupId>
   <artifactId>streamsets-datacollector-cluster-hdfs-protolib</artifactId>
-  <version>1.2.0-SNAPSHOT</version>
+  <version>1.6.0.0-SNAPSHOT</version>
   <description>StreamSets Data Collector Cluster HDFS protolib</description>
   <name>StreamSets Data Collector Cluster HDFS protolib</name>
   <packaging>jar</packaging>
@@ -36,6 +36,12 @@
   </properties>
 
   <dependencies>
+   <dependency>
+      <groupId>com.streamsets</groupId>
+      <artifactId>streamsets-datacollector-hadoop-common</artifactId>
+      <scope>compile</scope>
+      <version>${project.version}</version>
+    </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>

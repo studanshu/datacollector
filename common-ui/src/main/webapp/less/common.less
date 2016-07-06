@@ -1,4 +1,6 @@
 /**
+ * Copyright 2015 StreamSets Inc.
+ *
  * Licensed under the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -46,7 +48,9 @@ ng\:form {
 }
 
 body {
-  overflow: hidden;
+  min-width: 1000px;
+  overflow-x: scroll;
+  overflow-y: hidden;
 
   .navbar-fixed-top {
     height: 50px;
@@ -57,6 +61,7 @@ body {
       width: 260px;
       height: 50px;
       overflow: hidden;
+      float: left;
 
       img {
         width: 210px;
@@ -64,8 +69,32 @@ body {
       }
     }
 
+    .remote-enabled-icon {
+      margin-right: 30px;
+    }
+
+    .navbar-brand {
+      border-left: 1px solid rgba(128, 128, 128, 0.19);
+      display: inline-block;
+      height: 28px;
+      margin-top: 11px;
+      padding-top: 3px;
+      padding-left: 13px;
+      color: @streamsets-color;
+      font-weight: bold;
+
+      &:hover {
+        color: @streamsets-color;
+      }
+    }
+
     .navbar-nav {
-      padding-right: 2.4 * @defaultPadding;
+      padding-right: @defaultPadding;
+
+      .menu-label {
+        display: none;
+      }
+
       >li {
         min-width: 50px;
         >a {
@@ -85,6 +114,36 @@ body {
         }
       }
     }
+
+    @media (max-width: 768px) {
+      .container-fluid {
+        .navbar-nav{
+          background-color: #f8f8f8;
+
+          .menu-label {
+            display: inline;
+            padding-left: @smallPadding;
+            position: absolute;
+          }
+
+          .tooltip {
+            visibility: hidden;
+          }
+        }
+      }
+    }
+
+
+    @media (min-width: 768px) {
+      .container-fluid {
+        .navbar-nav{
+          >li {
+            height: 50px;
+          }
+        }
+      }
+    }
+
   }
 
 
@@ -93,7 +152,6 @@ body {
   }
 
   .notifications-dropdown {
-    padding-left: @smallPadding;
     height: 50px;
 
     .dropdown-toggle {
@@ -122,12 +180,24 @@ body {
         background-color: #d9534f;
         font-size: .7em;
       }
+
+      .menu-label {
+        margin-left: 20px;
+      }
     }
 
     li {
       a {
         white-space: normal;
         width: 400px;
+
+        .alert-text {
+          padding-right: @defaultPadding;
+
+          &:nth-child(even) {
+            opacity: .5;
+          }
+        }
       }
 
       &.dropdown-header {
@@ -250,7 +320,7 @@ body {
   .scrollable-menu {
     height: auto;
     max-height: 400px;
-    overflow-x: hidden;
+    overflow-x: auto;
   }
 
   .form-horizontal-checkbox {
@@ -263,10 +333,10 @@ body {
   .login-container {
     background: #29b4e1 url('/assets/logo-watermark-big.png') no-repeat center bottom;
     position: absolute;
-    top: 50px;
+    top: 0px;
     left: 0;
     width: 100%;
-    height: calc(~"100% - 50px");
+    height: 100%;
     overflow: hidden;
 
     .alert-danger {
@@ -286,6 +356,15 @@ body {
         border-bottom-width:1px;
         padding-bottom:10px;
       }
+
+      .img_container {
+        text-align: center;
+        img {
+          width: 220px;
+          margin-bottom: 30px;
+        }
+      }
+
 
       input {
         margin-bottom: @defaultPadding * 2;

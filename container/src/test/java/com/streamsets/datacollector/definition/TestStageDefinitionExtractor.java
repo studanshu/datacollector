@@ -34,6 +34,7 @@ import com.streamsets.pipeline.api.ErrorStage;
 import com.streamsets.pipeline.api.ExecutionMode;
 import com.streamsets.pipeline.api.HideConfigs;
 import com.streamsets.pipeline.api.Label;
+import com.streamsets.pipeline.api.OffsetCommitTrigger;
 import com.streamsets.pipeline.api.RawSource;
 import com.streamsets.pipeline.api.RawSourcePreviewer;
 import com.streamsets.pipeline.api.StageDef;
@@ -41,7 +42,6 @@ import com.streamsets.pipeline.api.StageException;
 import com.streamsets.pipeline.api.StageUpgrader;
 import com.streamsets.pipeline.api.base.BaseSource;
 import com.streamsets.pipeline.api.base.BaseTarget;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -78,7 +78,14 @@ public class TestStageDefinitionExtractor {
     }
   }
 
-  @StageDef(version = 1, label = "L", description = "D", icon = "TargetIcon.svg", libJarsRegex = {ClusterModeConstants.AVRO_JAR_REGEX, ClusterModeConstants.AVRO_MAPRED_JAR_REGEX})
+  @StageDef(
+      version = 1,
+      label = "L",
+      description = "D",
+      icon = "TargetIcon.svg",
+      libJarsRegex = {ClusterModeConstants.AVRO_JAR_REGEX, ClusterModeConstants.AVRO_MAPRED_JAR_REGEX},
+      onlineHelpRefUrl = ""
+  )
   public static class Source1 extends BaseSource {
 
     @ConfigDef(
@@ -122,7 +129,9 @@ public class TestStageDefinitionExtractor {
 
   @StageDef(version = 2, label = "LL", description = "DD", icon = "TargetIcon.svg",
       execution = {ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH}, outputStreams = TwoOutputStreams.class, recordsByRef = true,
-      privateClassLoader = true, upgrader = Source2Upgrader.class)
+      privateClassLoader = true, upgrader = Source2Upgrader.class,
+      onlineHelpRefUrl = ""
+  )
   @ConfigGroups(Group1.class)
   @RawSource(rawSourcePreviewer = Previewer.class)
   @HideConfigs(value = "config2", preconditions = true, onErrorRecord = true)
@@ -151,7 +160,7 @@ public class TestStageDefinitionExtractor {
   }
 
   @StageDef(version = 1, label = "L", outputStreams = StageDef.VariableOutputStreams.class,
-      outputStreamsDrivenByConfig = "config1")
+      outputStreamsDrivenByConfig = "config1", onlineHelpRefUrl = "")
   public static class Source3 extends Source1 {
 
     @Override
@@ -160,7 +169,7 @@ public class TestStageDefinitionExtractor {
     }
   }
 
-  @StageDef(version = 1, label = "L")
+  @StageDef(version = 1, label = "L", onlineHelpRefUrl = "")
   @HideConfigs(preconditions = true)
   public static class Target1 extends BaseTarget {
     @Override
@@ -169,7 +178,7 @@ public class TestStageDefinitionExtractor {
     }
   }
 
-  @StageDef(version = 1, label = "L")
+  @StageDef(version = 1, label = "L", onlineHelpRefUrl = "")
   public static class Target2 extends BaseTarget {
     @Override
     public void write(Batch batch) throws StageException {
@@ -177,7 +186,16 @@ public class TestStageDefinitionExtractor {
     }
   }
 
-  @StageDef(version = 1, label = "L")
+  @StageDef(version = 1, label = "L", onlineHelpRefUrl = "")
+  @HideConfigs({"this.config.does.not.exists"})
+  public static class HideNonExistingConfigTarget extends BaseTarget {
+    @Override
+    public void write(Batch batch) throws StageException {
+
+    }
+  }
+
+  @StageDef(version = 1, label = "L", onlineHelpRefUrl = "")
   @ErrorStage
   public static class ToErrorTarget1 extends Target1 {
     @Override
@@ -186,12 +204,27 @@ public class TestStageDefinitionExtractor {
     }
   }
 
-  @StageDef(version = 1, label = "", icon="missing.svg")
+  @StageDef(version = 1, label = "", icon="missing.svg", onlineHelpRefUrl = "")
   @ErrorStage
   public static class MissingIcon extends BaseTarget {
     @Override
     public void write(Batch batch) throws StageException {
 
+    }
+  }
+
+  @StageDef(version = 1, label = "L", outputStreams = StageDef.VariableOutputStreams.class,
+    outputStreamsDrivenByConfig = "config1", onlineHelpRefUrl = "")
+  public static class OffsetCommitSource extends Source1 implements OffsetCommitTrigger {
+
+    @Override
+    public String produce(String lastSourceOffset, int maxBatchSize, BatchMaker batchMaker) throws StageException {
+      return null;
+    }
+
+    @Override
+    public boolean commit() {
+      return false;
     }
   }
 
@@ -212,7 +245,7 @@ public class TestStageDefinitionExtractor {
     Assert.assertEquals(0, def.getConfigGroupDefinition().getGroupNames().size());
     Assert.assertEquals(3, def.getConfigDefinitions().size());
     Assert.assertEquals(1, def.getOutputStreams());
-    Assert.assertEquals(3, def.getExecutionModes().size());
+    Assert.assertEquals(4, def.getExecutionModes().size());
     Assert.assertEquals(2, def.getLibJarsRegex().size());
     Assert.assertEquals("TargetIcon.svg", def.getIcon());
     Assert.assertEquals(StageDef.DefaultOutputStreams.class.getName(), def.getOutputStreamLabelProviderClass());
@@ -281,6 +314,16 @@ public class TestStageDefinitionExtractor {
   }
 
   @Test
+  public void testExtractHiveNonExistingConfigTarget() {
+    try {
+      StageDefinitionExtractor.get().extract(MOCK_LIB_DEF, HideNonExistingConfigTarget.class, "x");
+      Assert.fail("Should fail on hiding non-existing config.");
+    } catch(IllegalArgumentException ex) {
+      Assert.assertTrue(ex.getMessage().contains("is hiding non-existing config this.config.does.not.exists"));
+    }
+  }
+
+  @Test
   public void testExtractToErrorTarget1() {
     StageDefinition def = StageDefinitionExtractor.get().extract(MOCK_LIB_DEF, ToErrorTarget1.class, "x");
     Assert.assertEquals(StageType.TARGET, def.getType());
@@ -296,6 +339,11 @@ public class TestStageDefinitionExtractor {
   @Test(expected = IllegalArgumentException.class)
   public void testExtractMissingIcon() {
     StageDefinitionExtractor.get().extract(MOCK_LIB_DEF, MissingIcon.class, "x");
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testNonTargetOffsetCommit() {
+    StageDefinitionExtractor.get().extract(MOCK_LIB_DEF, OffsetCommitSource.class, "x");
   }
 
   @Test

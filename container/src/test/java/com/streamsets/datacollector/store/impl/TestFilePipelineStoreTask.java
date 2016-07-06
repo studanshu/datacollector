@@ -20,9 +20,8 @@
 package com.streamsets.datacollector.store.impl;
 
 
-import static org.junit.Assert.assertEquals;
-
 import com.streamsets.datacollector.config.DataRuleDefinition;
+import com.streamsets.datacollector.config.DriftRuleDefinition;
 import com.streamsets.datacollector.config.MetricElement;
 import com.streamsets.datacollector.config.MetricType;
 import com.streamsets.datacollector.config.MetricsRuleDefinition;
@@ -37,15 +36,11 @@ import com.streamsets.datacollector.stagelibrary.StageLibraryTask;
 import com.streamsets.datacollector.store.PipelineInfo;
 import com.streamsets.datacollector.store.PipelineStoreException;
 import com.streamsets.datacollector.store.PipelineStoreTask;
-import com.streamsets.datacollector.store.impl.CachePipelineStoreTask;
-import com.streamsets.datacollector.store.impl.FilePipelineStoreTask;
 import com.streamsets.datacollector.util.ContainerError;
 import com.streamsets.datacollector.util.LockCache;
 import com.streamsets.datacollector.util.LockCacheModule;
-
 import dagger.ObjectGraph;
 import dagger.Provides;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -53,11 +48,14 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import javax.inject.Singleton;
-
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import static org.junit.Assert.assertEquals;
 
 public class TestFilePipelineStoreTask {
 
@@ -89,6 +87,17 @@ public class TestFilePipelineStoreTask {
     @Singleton
     public PipelineStateStore providePipelineStateStore() {
       return null;
+    }
+
+    @Provides
+    @Singleton
+    public FilePipelineStoreTask providePipelineStoreTask(
+        RuntimeInfo runtimeInfo,
+        StageLibraryTask stageLibraryTask,
+        PipelineStateStore pipelineStateStore,
+        LockCache<String> lockCache
+    ) {
+      return new FilePipelineStoreTask(runtimeInfo, stageLibraryTask, pipelineStateStore, lockCache);
     }
   }
 
@@ -127,7 +136,7 @@ public class TestFilePipelineStoreTask {
     try {
       store.init();
       Assert.assertEquals(0, store.getPipelines().size());
-      store.create("foo", "a", "A");
+      store.create("foo", "a", "A", false);
       Assert.assertEquals(1, store.getPipelines().size());
       store.save("foo2", "a", "A", "", store.load("a", "0"));
       assertEquals("foo2", store.getPipelines().get(0).getLastModifier());
@@ -143,8 +152,8 @@ public class TestFilePipelineStoreTask {
   public void testCreateExistingPipeline() throws Exception {
     try {
       store.init();
-      store.create("foo", "a", "A");
-      store.create("foo", "a", "A");
+      store.create("foo", "a", "A", false);
+      store.create("foo", "a", "A", false);
     } finally {
       store.stop();
     }
@@ -207,6 +216,9 @@ public class TestFilePipelineStoreTask {
 
   private PipelineConfiguration createPipeline(UUID uuid) {
     PipelineConfiguration pc = MockStages.createPipelineConfigurationSourceTarget();
+    Map<String, Object> metadata = new HashMap<>();
+    metadata.put("a", "A");
+    pc.setMetadata(metadata);
     pc.setUuid(uuid);
     return pc;
   }
@@ -250,6 +262,8 @@ public class TestFilePipelineStoreTask {
       Assert.assertEquals(pc.getUuid(), pc2.getUuid());
       PipelineInfo info = store.getInfo(DEFAULT_PIPELINE_NAME);
       Assert.assertEquals(pc.getUuid(), info.getUuid());
+      Assert.assertNotNull(pc2.getMetadata());
+      Assert.assertEquals(pc.getMetadata(), pc2.getMetadata());
     } finally {
       store.stop();
     }
@@ -265,21 +279,22 @@ public class TestFilePipelineStoreTask {
     Assert.assertTrue(ruleDefinitions.getDataRuleDefinitions().isEmpty());
     Assert.assertTrue(ruleDefinitions.getMetricsRuleDefinitions().isEmpty());
 
+    long timestamp = System.currentTimeMillis();
     List<MetricsRuleDefinition> metricsRuleDefinitions = ruleDefinitions.getMetricsRuleDefinitions();
     metricsRuleDefinitions.add(new MetricsRuleDefinition("m1", "m1", "a", MetricType.COUNTER,
-      MetricElement.COUNTER_COUNT, "p", false, true));
+      MetricElement.COUNTER_COUNT, "p", false, true, timestamp));
     metricsRuleDefinitions.add(new MetricsRuleDefinition("m2", "m2", "a", MetricType.TIMER,
-      MetricElement.TIMER_M15_RATE, "p", false, true));
+      MetricElement.TIMER_M15_RATE, "p", false, true, timestamp));
     metricsRuleDefinitions.add(new MetricsRuleDefinition("m3", "m3", "a", MetricType.HISTOGRAM,
-      MetricElement.HISTOGRAM_MEAN, "p", false, true));
+      MetricElement.HISTOGRAM_MEAN, "p", false, true, timestamp));
 
     List<DataRuleDefinition> dataRuleDefinitions = ruleDefinitions.getDataRuleDefinitions();
     dataRuleDefinitions.add(new DataRuleDefinition("a", "a", "a", 20, 300, "x", true, "c", ThresholdType.COUNT, "200",
-      1000, true, false, true));
+      1000, true, false, true, timestamp));
     dataRuleDefinitions.add(new DataRuleDefinition("b", "b", "b", 20, 300, "x", true, "c", ThresholdType.COUNT, "200",
-      1000, true, false, true));
+      1000, true, false, true, timestamp));
     dataRuleDefinitions.add(new DataRuleDefinition("c", "c", "c", 20, 300, "x", true, "c", ThresholdType.COUNT, "200",
-      1000, true, false, true));
+      1000, true, false, true, timestamp));
 
     store.storeRules(DEFAULT_PIPELINE_NAME, FilePipelineStoreTask.REV, ruleDefinitions);
 
@@ -303,23 +318,25 @@ public class TestFilePipelineStoreTask {
       FilePipelineStoreTask.REV);
     //Mimick two different clients [browsers] retrieving from the store
     RuleDefinitions ruleDefinitions2 = new RuleDefinitions(tempRuleDef.getMetricsRuleDefinitions(),
-      tempRuleDef.getDataRuleDefinitions(), tempRuleDef.getEmailIds(), tempRuleDef.getUuid());
+      tempRuleDef.getDataRuleDefinitions(), new ArrayList<DriftRuleDefinition>(), tempRuleDef.getEmailIds(),
+        tempRuleDef.getUuid());
 
+    long timestamp = System.currentTimeMillis();
     List<MetricsRuleDefinition> metricsRuleDefinitions = ruleDefinitions1.getMetricsRuleDefinitions();
     metricsRuleDefinitions.add(new MetricsRuleDefinition("m1", "m1", "a", MetricType.COUNTER,
-      MetricElement.COUNTER_COUNT, "p", false, true));
+      MetricElement.COUNTER_COUNT, "p", false, true, timestamp));
     metricsRuleDefinitions.add(new MetricsRuleDefinition("m2", "m2", "a", MetricType.TIMER,
-      MetricElement.TIMER_M15_RATE, "p", false, true));
+      MetricElement.TIMER_M15_RATE, "p", false, true, timestamp));
     metricsRuleDefinitions.add(new MetricsRuleDefinition("m3", "m3", "a", MetricType.HISTOGRAM,
-      MetricElement.HISTOGRAM_MEAN, "p", false, true));
+      MetricElement.HISTOGRAM_MEAN, "p", false, true, timestamp));
 
     List<DataRuleDefinition> dataRuleDefinitions = ruleDefinitions2.getDataRuleDefinitions();
     dataRuleDefinitions.add(new DataRuleDefinition("a", "a", "a", 20, 300, "x", true, "c", ThresholdType.COUNT, "200",
-      1000, true, false, true));
+      1000, true, false, true, timestamp));
     dataRuleDefinitions.add(new DataRuleDefinition("b", "b", "b", 20, 300, "x", true, "c", ThresholdType.COUNT, "200",
-      1000, true, false, true));
+      1000, true, false, true, timestamp));
     dataRuleDefinitions.add(new DataRuleDefinition("c", "c", "c", 20, 300, "x", true, "c", ThresholdType.COUNT, "200",
-      1000, true, false, true));
+      1000, true, false, true, timestamp));
 
     //store ruleDefinition1
     store.storeRules(DEFAULT_PIPELINE_NAME, FilePipelineStoreTask.REV, ruleDefinitions1);
@@ -337,11 +354,11 @@ public class TestFilePipelineStoreTask {
       FilePipelineStoreTask.REV);
     dataRuleDefinitions = ruleDefinitions2.getDataRuleDefinitions();
     dataRuleDefinitions.add(new DataRuleDefinition("a", "a", "a", 20, 300, "x", true, "c", ThresholdType.COUNT, "200",
-      1000, true, false, true));
+      1000, true, false, true, timestamp));
     dataRuleDefinitions.add(new DataRuleDefinition("b", "b", "b", 20, 300, "x", true, "c", ThresholdType.COUNT, "200",
-      1000, true, false, true));
+      1000, true, false, true, timestamp));
     dataRuleDefinitions.add(new DataRuleDefinition("c", "c", "c", 20, 300, "x", true, "c", ThresholdType.COUNT, "200",
-      1000, true, false, true));
+      1000, true, false, true, timestamp));
 
     store.storeRules(DEFAULT_PIPELINE_NAME, FilePipelineStoreTask.REV, ruleDefinitions2);
 
@@ -352,7 +369,7 @@ public class TestFilePipelineStoreTask {
   }
 
   private void createDefaultPipeline(PipelineStoreTask store) throws PipelineStoreException {
-    store.create(SYSTEM_USER, DEFAULT_PIPELINE_NAME, DEFAULT_PIPELINE_DESCRIPTION);
+    store.create(SYSTEM_USER, DEFAULT_PIPELINE_NAME, DEFAULT_PIPELINE_DESCRIPTION, false);
   }
 
   @Test

@@ -29,6 +29,7 @@ import com.streamsets.pipeline.config.OnStagePreConditionFailure;
 import com.streamsets.pipeline.lib.util.FieldRegexUtil;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -52,7 +53,7 @@ public class FieldValueReplacerProcessor extends SingleLaneRecordProcessor {
 
   @Override
   protected void process(Record record, SingleLaneBatchMaker batchMaker) throws StageException {
-    Set<String> fieldPaths = record.getFieldPaths();
+    Set<String> fieldPaths = record.getEscapedFieldPaths();
     Set<String> fieldsThatDoNotExist = new HashSet<>();
     if(fieldsToNull != null && !fieldsToNull.isEmpty()) {
       for (String fieldToNull : fieldsToNull) {
@@ -104,12 +105,15 @@ public class FieldValueReplacerProcessor extends SingleLaneRecordProcessor {
       case BYTE:
         return Byte.valueOf(stringValue);
       case BYTE_ARRAY:
-        return stringValue.getBytes();
+        return stringValue.getBytes(StandardCharsets.UTF_8);
       case CHAR:
         return stringValue.charAt(0);
       case DATE:
         DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH);
         return dateFormat.parse(stringValue);
+      case TIME:
+        DateFormat timeFormat = new SimpleDateFormat("HH:mm:ss", Locale.ENGLISH);
+        return timeFormat.parse(stringValue);
       case DATETIME:
         DateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSZ", Locale.ENGLISH);
         return dateTimeFormat.parse(stringValue);

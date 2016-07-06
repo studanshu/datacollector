@@ -25,19 +25,29 @@
 angular
   .module('dataCollectorApp.home')
 
-  .controller('LibraryController', function ($scope, $rootScope,  $route, $location, $modal, _, api, pipelineService) {
+  .controller('LibraryController', function ($scope, $rootScope,  $route, $location, $modal, _, api,
+                                             pipelineService, $q) {
+
+    var predefinedLabels = [
+      'All Pipelines',
+      'Running Pipelines',
+      'Non Running Pipelines',
+      'Invalid Pipelines',
+      'Error Pipelines'
+    ];
 
     angular.extend($scope, {
+      pipelineLabels: predefinedLabels,
+      existingPipelineLabels: [],
 
       /**
        * Emit 'onPipelineConfigSelect' event when new configuration is selected in library panel.
        *
        * @param pipeline
        */
-      onSelect : function(pipeline) {
-        //$rootScope.$broadcast('onPipelineConfigSelect', pipeline);
-        $scope.reloadingNewPipeline();
-        $location.path('/collector/pipeline/' + pipeline.name);
+      onSelectLabel : function(label) {
+        $scope.selectPipelineLabel(label);
+
       },
 
       /**
@@ -67,7 +77,11 @@ angular
       duplicatePipelineConfig: function(pipelineInfo, $event) {
         pipelineService.duplicatePipelineConfigCommand(pipelineInfo, $event)
           .then(function(newPipelineConfig) {
-            $location.path('/collector/pipeline/' + newPipelineConfig.info.name);
+            if (!angular.isArray(newPipelineConfig)) {
+              $location.path('/collector/pipeline/' + newPipelineConfig.info.name);
+            } else {
+              $location.path('/collector/pipeline/' + newPipelineConfig[0].info.name);
+            }
           });
       },
 
@@ -81,10 +95,31 @@ angular
       /**
        * Export link command handler
        */
-      exportPipelineConfig: function(pipelineInfo, $event) {
+      exportPipelineConfig: function(pipelineInfo, includeDefinitions, $event) {
         $event.stopPropagation();
-        api.pipelineAgent.exportPipelineConfig(pipelineInfo.name);
+        api.pipelineAgent.exportPipelineConfig(pipelineInfo.name, includeDefinitions);
+      },
+
+      /**
+       * Download Remote Pipeline Config
+       */
+      downloadRemotePipelineConfig: function() {
+        pipelineService.downloadRemotePipelineConfigCommand()
+          .then(function() {
+            $route.reload();
+          });
       }
 
     });
+
+
+    $q.all([pipelineService.init(true)])
+      .then(
+        function (results) {
+          $scope.existingPipelineLabels = pipelineService.existingPipelineLabels;
+        },
+        function (results) {
+
+        }
+      );
   });

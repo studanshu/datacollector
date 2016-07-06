@@ -27,8 +27,11 @@ import com.streamsets.datacollector.config.RawSourceDefinition;
 import com.streamsets.datacollector.config.StageDefinition;
 import com.streamsets.datacollector.config.StageLibraryDefinition;
 import com.streamsets.datacollector.config.StageType;
+import com.streamsets.datacollector.creation.PipelineBeanCreator;
 import com.streamsets.datacollector.creation.PipelineConfigBean;
 import com.streamsets.datacollector.creation.StageConfigBean;
+import com.streamsets.pipeline.api.OffsetCommitTrigger;
+import com.streamsets.pipeline.api.StatsAggregatorStage;
 import com.streamsets.pipeline.api.ConfigGroups;
 import com.streamsets.pipeline.api.ErrorStage;
 import com.streamsets.pipeline.api.ExecutionMode;
@@ -41,10 +44,14 @@ import com.streamsets.pipeline.api.StageUpgrader;
 import com.streamsets.pipeline.api.Target;
 import com.streamsets.pipeline.api.impl.ErrorMessage;
 import com.streamsets.pipeline.api.impl.Utils;
+import org.apache.commons.lang3.ClassUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -61,17 +68,29 @@ public abstract class StageDefinitionExtractor {
   }
 
   public static List<String> getGroups(Class<? extends Stage> klass) {
-    List<String> list = new ArrayList<>();
+    Set<String> set = new LinkedHashSet<>();
+    addGroupsToList(klass, set);
+    List<Class<?>> allSuperclasses = ClassUtils.getAllSuperclasses(klass);
+    for(Class<?> superClass : allSuperclasses) {
+      if(!superClass.isInterface() && superClass.isAnnotationPresent(ConfigGroups.class)) {
+        addGroupsToList(superClass, set);
+      }
+    }
+    if(set.isEmpty()) {
+      set.add(""); // the default empty group
+    }
+
+    return new ArrayList<>(set);
+  }
+
+  private static void addGroupsToList(Class<?> klass, Set<String> set) {
     ConfigGroups groups = klass.getAnnotation(ConfigGroups.class);
     if (groups != null) {
       Class<? extends Enum> groupKlass = (Class<? extends Enum>) groups.value();
       for (Enum e : groupKlass.getEnumConstants()) {
-        list.add(e.name());
+        set.add(e.name());
       }
-    } else {
-      list.add(""); // the default empty group
     }
-    return list;
   }
 
   public List<ErrorMessage> validate(StageLibraryDefinition libraryDef, Class<? extends Stage> klass, Object contextMsg) {
@@ -95,6 +114,11 @@ public abstract class StageDefinitionExtractor {
       if (type != null && errorStage && type == StageType.SOURCE) {
         errors.add(new ErrorMessage(DefinitionError.DEF_303, contextMsg));
       }
+
+      if (OffsetCommitTrigger.class.isAssignableFrom(klass) && type != StageType.TARGET) {
+        errors.add(new ErrorMessage(DefinitionError.DEF_312, contextMsg));
+      }
+
       HideConfigs hideConfigs = klass.getAnnotation(HideConfigs.class);
 
       List<String> stageGroups = getGroups(klass);
@@ -136,7 +160,7 @@ public abstract class StageDefinitionExtractor {
       }
 
       if (configErrors.isEmpty() && configGroupErrors.isEmpty()) {
-        List<ConfigDefinition> configDefs = extractConfigDefinitions(libraryDef, klass, hideConfigs, contextMsg);
+        List<ConfigDefinition> configDefs = extractConfigDefinitions(libraryDef, klass, hideConfigs, errors, contextMsg);
         ConfigGroupDefinition configGroupDef = ConfigGroupExtractor.get().extract(klass, contextMsg);
         errors.addAll(validateConfigGroups(configDefs, configGroupDef, contextMsg));
         if (variableOutputStreams) {
@@ -161,98 +185,145 @@ public abstract class StageDefinitionExtractor {
   public StageDefinition extract(StageLibraryDefinition libraryDef, Class<? extends Stage> klass, Object contextMsg) {
     List<ErrorMessage> errors = validate(libraryDef, klass, contextMsg);
     if (errors.isEmpty()) {
-      contextMsg = Utils.formatL("{} Stage='{}'", contextMsg, klass.getSimpleName());
-
-      StageDef sDef = klass.getAnnotation(StageDef.class);
-      String name = getStageName(klass);
-      int version = sDef.version();
-      String label = sDef.label();
-      String description = sDef.description();
-      String icon = sDef.icon();
-      StageType type = extractStageType(klass);
-      boolean errorStage = klass.getAnnotation(ErrorStage.class) != null;
-      HideConfigs hideConfigs = klass.getAnnotation(HideConfigs.class);
-      boolean preconditions = !errorStage && type != StageType.SOURCE &&
-                              ((hideConfigs == null) || !hideConfigs.preconditions());
-      boolean onRecordError = !errorStage && ((hideConfigs == null) || !hideConfigs.onErrorRecord());
-      List<ConfigDefinition> configDefinitions = extractConfigDefinitions(libraryDef, klass, hideConfigs, contextMsg);
-      RawSourceDefinition rawSourceDefinition = RawSourceDefinitionExtractor.get().extract(klass, contextMsg);
-      ConfigGroupDefinition configGroupDefinition = ConfigGroupExtractor.get().extract(klass, contextMsg);
-      String outputStreamLabelProviderClass = (type != StageType.TARGET) ? sDef.outputStreams().getName() : null;
-      boolean variableOutputStreams = StageDef.VariableOutputStreams.class.isAssignableFrom(sDef.outputStreams());
-      int outputStreams = (variableOutputStreams || type == StageType.TARGET)
-                          ? 0 : sDef.outputStreams().getEnumConstants().length;
-      List<ExecutionMode> executionModes = ImmutableList.copyOf(sDef.execution());
-      List<ExecutionMode> executionModesLibraryOverride = libraryDef.getStageExecutionModesOverride(klass);
-      if (executionModesLibraryOverride != null) {
-        executionModes = executionModesLibraryOverride;
-      }
-      List<String> libJarsRegex = ImmutableList.copyOf(sDef.libJarsRegex());
-      boolean recordsByRef = sDef.recordsByRef();
-
-      List<ConfigDefinition> systemConfigs = ConfigDefinitionExtractor.get().extract(StageConfigBean.class,
-                                                                                     Collections.<String>emptyList(),
-                                                                                     "systemConfigs");
-
-      for (ConfigDefinition def : systemConfigs) {
-        switch (def.getName()) {
-          case StageConfigBean.STAGE_PRECONDITIONS_CONFIG:
-          case StageConfigBean.STAGE_REQUIRED_FIELDS_CONFIG:
-            if (preconditions) {
-              configDefinitions.add(def);
-            }
-            break;
-          case StageConfigBean.STAGE_ON_RECORD_ERROR_CONFIG:
-            if (onRecordError) {
-              configDefinitions.add(def);
-            }
-            break;
-          default:
-            configDefinitions.add(def);
-        }
-      }
-
-      for (ConfigDefinition cDef : configDefinitions) {
-        cDef.addAutoELDefinitions(libraryDef);
-      }
-
-      boolean privateClassLoader = sDef.privateClassLoader();
-
-      StageUpgrader upgrader;
       try {
-        upgrader = sDef.upgrader().newInstance();
-      } catch (Exception ex) {
-        throw new IllegalArgumentException(Utils.format(
-            "Could not instantiate StageUpgrader for StageDefinition '{}': {}", name, ex.toString(), ex));
+        contextMsg = Utils.formatL("{} Stage='{}'", contextMsg, klass.getSimpleName());
+
+        StageDef sDef = klass.getAnnotation(StageDef.class);
+        String name = getStageName(klass);
+        int version = sDef.version();
+        String label = sDef.label();
+        String description = sDef.description();
+        String icon = sDef.icon();
+        StageType type = extractStageType(klass);
+        boolean errorStage = klass.getAnnotation(ErrorStage.class) != null;
+        boolean statsAggregatorStage = klass.getAnnotation(StatsAggregatorStage.class) != null;
+        HideConfigs hideConfigs = klass.getAnnotation(HideConfigs.class);
+        boolean preconditions = !errorStage && type != StageType.SOURCE &&
+            ((hideConfigs == null) || !hideConfigs.preconditions());
+        boolean onRecordError = !errorStage && ((hideConfigs == null) || !hideConfigs.onErrorRecord());
+        List<ConfigDefinition> configDefinitions = extractConfigDefinitions(libraryDef, klass, hideConfigs, new ArrayList(), contextMsg);
+        RawSourceDefinition rawSourceDefinition = RawSourceDefinitionExtractor.get().extract(klass, contextMsg);
+        ConfigGroupDefinition configGroupDefinition = ConfigGroupExtractor.get().extract(klass, contextMsg);
+        String outputStreamLabelProviderClass = (type != StageType.TARGET) ? sDef.outputStreams().getName() : null;
+        boolean variableOutputStreams = StageDef.VariableOutputStreams.class.isAssignableFrom(sDef.outputStreams());
+        int outputStreams = (variableOutputStreams || type == StageType.TARGET)
+            ? 0 : sDef.outputStreams().getEnumConstants().length;
+        List<ExecutionMode> executionModes = ImmutableList.copyOf(sDef.execution());
+        List<ExecutionMode> executionModesLibraryOverride = libraryDef.getStageExecutionModesOverride(klass);
+        if (executionModesLibraryOverride != null) {
+          executionModes = executionModesLibraryOverride;
+        }
+        List<String> libJarsRegex = ImmutableList.copyOf(sDef.libJarsRegex());
+        boolean recordsByRef = sDef.recordsByRef();
+
+        // If not a stage library, then dont add stage system configs
+        if (!PipelineBeanCreator.PIPELINE_LIB_DEFINITION.equals(libraryDef.getName())) {
+          List<ConfigDefinition> systemConfigs =
+            ConfigDefinitionExtractor.get().extract(StageConfigBean.class, Collections.<String> emptyList(),
+              "systemConfigs");
+
+          for (ConfigDefinition def : systemConfigs) {
+            switch (def.getName()) {
+              case StageConfigBean.STAGE_PRECONDITIONS_CONFIG:
+              case StageConfigBean.STAGE_REQUIRED_FIELDS_CONFIG:
+                if (preconditions) {
+                  configDefinitions.add(def);
+                }
+                break;
+              case StageConfigBean.STAGE_ON_RECORD_ERROR_CONFIG:
+                if (onRecordError) {
+                  configDefinitions.add(def);
+                }
+                break;
+              default:
+                configDefinitions.add(def);
+            }
+          }
+        }
+
+        for (ConfigDefinition cDef : configDefinitions) {
+          cDef.addAutoELDefinitions(libraryDef);
+        }
+
+        boolean privateClassLoader = sDef.privateClassLoader();
+
+        StageUpgrader upgrader;
+        try {
+          upgrader = sDef.upgrader().newInstance();
+        } catch (Exception ex) {
+          throw new IllegalArgumentException(Utils.format(
+              "Could not instantiate StageUpgrader for StageDefinition '{}': {}", name, ex.toString(), ex));
+        }
+
+        boolean resetOffset = sDef.resetOffset();
+
+
+        String onlineHelpRefUrl = sDef.onlineHelpRefUrl();
+
+        boolean offsetCommitController = (type == StageType.TARGET) &&
+          OffsetCommitTrigger.class.isAssignableFrom(klass);
+
+        return new StageDefinition(
+            libraryDef,
+            privateClassLoader,
+            klass,
+            name,
+            version,
+            label,
+            description,
+            type,
+            errorStage,
+            preconditions,
+            onRecordError,
+            configDefinitions,
+            rawSourceDefinition,
+            icon,
+            configGroupDefinition,
+            variableOutputStreams,
+            outputStreams,
+            outputStreamLabelProviderClass,
+            executionModes,
+            recordsByRef,
+            upgrader,
+            libJarsRegex,
+            resetOffset,
+            onlineHelpRefUrl,
+            statsAggregatorStage,
+            offsetCommitController
+        );
+      } catch (Exception e) {
+        throw new IllegalStateException("Exception while extracting stage definition for " + getStageName(klass), e);
       }
 
-      boolean resetOffset = sDef.resetOffset();
-
-      return new StageDefinition(libraryDef, privateClassLoader, klass, name, version, label, description, type,
-                                 errorStage, preconditions, onRecordError, configDefinitions, rawSourceDefinition, icon,
-                                 configGroupDefinition, variableOutputStreams, outputStreams,
-                                 outputStreamLabelProviderClass, executionModes, recordsByRef, upgrader, libJarsRegex,
-                                 resetOffset);
     } else {
       throw new IllegalArgumentException(Utils.format("Invalid StageDefinition: {}", errors));
     }
   }
 
   private List<ConfigDefinition> extractConfigDefinitions(StageLibraryDefinition libraryDef,
-      Class<? extends Stage> klass, HideConfigs hideConfigs, Object contextMsg) {
+      Class<? extends Stage> klass, HideConfigs hideConfigs, List<ErrorMessage> errors, Object contextMsg) {
 
     List<String> stageGroups = getGroups(klass);
 
     List<ConfigDefinition> cDefs = ConfigDefinitionExtractor.get().extract(klass, stageGroups, contextMsg);
 
-    Set<String> hideConfigSet = (hideConfigs != null) ? ImmutableSet.copyOf(hideConfigs.value())
-                                                     : Collections.<String>emptySet();
+    Set<String> hideConfigSet = (hideConfigs != null) ?
+      new HashSet<>(Arrays.asList(hideConfigs.value())) :
+      Collections.<String>emptySet();
 
     if (!hideConfigSet.isEmpty()) {
       Iterator<ConfigDefinition> iterator = cDefs.iterator();
       while (iterator.hasNext()) {
-        if (hideConfigSet.contains(iterator.next().getName())) {
+        ConfigDefinition current = iterator.next();
+        if(hideConfigSet.contains(current.getName())) {
           iterator.remove();
+          hideConfigSet.remove(current.getName());
+        }
+      }
+
+      if(!hideConfigSet.isEmpty()) {
+        for(String toHide : hideConfigSet) {
+          errors.add(new ErrorMessage(DefinitionError.DEF_313, contextMsg, toHide));
         }
       }
     }

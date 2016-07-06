@@ -19,19 +19,23 @@
  */
 package com.streamsets.datacollector.el;
 
+import com.streamsets.datacollector.http.WebServerTask;
 import com.streamsets.datacollector.main.RuntimeInfo;
+import com.streamsets.datacollector.util.Configuration;
+import com.streamsets.lib.security.http.RemoteSSOService;
 import com.streamsets.pipeline.api.ElConstant;
 import com.streamsets.pipeline.api.ElFunction;
 import com.streamsets.pipeline.api.ElParam;
 import com.streamsets.pipeline.api.impl.Utils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.attribute.PosixFilePermission;
@@ -47,10 +51,14 @@ public class RuntimeEL {
   private static final String RUNTIME_CONF_LOCATION_DEFAULT = "embedded";
   private static final String RUNTIME_CONF_PREFIX = "runtime.conf_";
   private static Properties RUNTIME_CONF_PROPS = null;
+  private static String AUTH_TOKEN = null;
+  private static String HOSTNAME = null;
   private static RuntimeInfo runtimeInfo;
 
   @ElConstant(name = "NULL", description = "NULL value")
   public static final Object NULL = null;
+
+  private RuntimeEL() {}
 
   @ElFunction(
     prefix = "runtime",
@@ -74,7 +82,8 @@ public class RuntimeEL {
       description = "Loads the contents of a file under the Data Collector resources directory. " +
                     "If restricted is set to 'true', the file must be readable only by its owner."
   )
-  public static String loadResource(
+  public static String loadResource
+    (
       @ElParam("fileName") String fileName,
       @ElParam("restricted") boolean restricted) {
     String resource = null;
@@ -119,36 +128,61 @@ public class RuntimeEL {
 
      */
 
-    Properties sdcProps = new Properties();
-    try(InputStream is = new FileInputStream(new File(runtimeInfo.getConfigDir(), SDC_PROPERTIES))) {
-      sdcProps.load(is);
-    } catch (IOException e) {
-      LOG.error("Could not read '{}' from classpath: {}", SDC_PROPERTIES, e.toString(), e);
-    }
+    Configuration configuration = new Configuration();
+    File configFile = new File(runtimeInfo.getConfigDir(), SDC_PROPERTIES);
+    if (configFile.exists()) {
+      try(FileReader reader = new FileReader(configFile)) {
+        configuration.load(reader);
+      } catch (IOException ex) {
+        LOG.error("Error loading configuration file {} : {}", configFile, ex.getMessage());
+        throw new RuntimeException(ex);
+      }
 
-    RUNTIME_CONF_PROPS = new Properties();
-    String runtimeConfLocation = sdcProps.getProperty(RUNTIME_CONF_LOCATION_KEY, RUNTIME_CONF_LOCATION_DEFAULT);
-    if(runtimeConfLocation.equals(RUNTIME_CONF_LOCATION_DEFAULT)) {
-      //runtime configuration is embedded in sdc.properties file. Find, trim, cache.
-      for(String confName : sdcProps.stringPropertyNames()) {
-        if(confName.startsWith(RUNTIME_CONF_PREFIX)) {
-          RUNTIME_CONF_PROPS.put(confName.substring(RUNTIME_CONF_PREFIX.length()).trim(),
-            sdcProps.getProperty(confName));
+      AUTH_TOKEN = runtimeInfo.getAppAuthToken();
+      HOSTNAME = configuration.get(WebServerTask.HTTP_BIND_HOST, InetAddress.getLocalHost().getCanonicalHostName());
+
+      RUNTIME_CONF_PROPS = new Properties();
+      String runtimeConfLocation = configuration.get(RUNTIME_CONF_LOCATION_KEY, RUNTIME_CONF_LOCATION_DEFAULT);
+      if(runtimeConfLocation.equals(RUNTIME_CONF_LOCATION_DEFAULT)) {
+        //runtime configuration is embedded in sdc.properties file. Find, trim, cache.
+        for(String confName : configuration.getNames()) {
+          if(confName.startsWith(RUNTIME_CONF_PREFIX)) {
+            RUNTIME_CONF_PROPS.put(confName.substring(RUNTIME_CONF_PREFIX.length()).trim(),
+              configuration.get(confName, null));
+          }
+        }
+      } else {
+        File runtimeConfFile = new File(runtimeInfo.getConfigDir(), runtimeConfLocation);
+        try (FileInputStream fileInputStream = new FileInputStream(runtimeConfFile)) {
+          RUNTIME_CONF_PROPS.load(fileInputStream);
+        } catch (IOException e) {
+          LOG.error("Could not read '{}': {}", runtimeConfFile.getAbsolutePath(), e.toString(), e);
+          throw e;
         }
       }
     } else {
-      File runtimeConfFile = new File(runtimeInfo.getConfigDir(), runtimeConfLocation);
-      try (FileInputStream fileInputStream = new FileInputStream(runtimeConfFile)) {
-        RUNTIME_CONF_PROPS.load(fileInputStream);
-      } catch (IOException e) {
-        LOG.error("Could not read '{}': {}", runtimeConfFile.getAbsolutePath(), e.toString(), e);
-        throw e;
-      }
+      LOG.error("Error did not find sdc.properties at expected location: {}", configFile);
     }
+  }
+
+  @ElFunction(
+    prefix = "sdc",
+    name = "authToken",
+    description = "Returns the auth token of this data collector")
+  public static String authToken() {
+    return AUTH_TOKEN;
   }
 
   public static Set<Object> getRuntimeConfKeys() {
     return (RUNTIME_CONF_PROPS != null) ? RUNTIME_CONF_PROPS.keySet() : Collections.emptySet();
+  }
+
+  @ElFunction(
+    prefix = "sdc",
+    name = "hostname",
+    description = "Return hostname where SDC runs")
+  public static String hostname() throws UnknownHostException {
+    return HOSTNAME;
   }
 
 }

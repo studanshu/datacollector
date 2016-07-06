@@ -27,7 +27,7 @@
                 <cmd/>
             </step>
             <step>
-                <cmd>On the JDBC tab, configure the following properties:</cmd>
+                <cmd>On the <wintitle>JDBC</wintitle> tab, configure the following properties:</cmd>
                 <info>
                     <table frame="all" rowsep="1" colsep="1" id="table_nkm_dlr_bs">
                         <tgroup cols="2">
@@ -45,7 +45,7 @@
                                     <entry>JDBC connection string.</entry>
                                 </row>
                                 <row>
-                                    <entry>Incremental Mode  <xref
+                                    <entry>Incremental Mode <xref
                                             href="JDBCConsumer-Full-IncrementalQueries.dita"><image
                                                 href="../Graphics/icon_moreInfo.png" scale="10"
                                                 id="image_mm5_tvg_cs"/>
@@ -55,7 +55,7 @@
                                             <p>Default is incremental mode. </p></entry>
                                 </row>
                                 <row>
-                                    <entry>SQL Query  <xref href="JDBC-SQLQuery.dita"><image
+                                    <entry>SQL Query <xref href="JDBC-SQLQuery.dita"><image
                                                 href="../Graphics/icon_moreInfo.png" scale="10"
                                                 id="image_yxz_srq_ds"/>
                                         </xref></entry>
@@ -67,7 +67,7 @@
                                     <entry>Offset value to use when the pipeline starts.</entry>
                                 </row>
                                 <row>
-                                    <entry>Offset Column  <xref
+                                    <entry>Offset Column <xref
                                             href="JDBCConsumer-OffsetColumn_Value.dita"><image
                                                 href="../Graphics/icon_moreInfo.png" scale="10"
                                                 id="image_rqs_srq_ds"/>
@@ -85,6 +85,23 @@
                                     <entry>Use Credentials</entry>
                                     <entry>Indicates whether to use a login to access the
                                         database.</entry>
+                                </row>
+                                <row>
+                                    <entry>Root Field Type</entry>
+                                    <entry>Root field type to use for generated records. Use the
+                                        default List-Map option unless using the origin in a
+                                        pipeline built with <ph
+                                            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                        /> version 1.1.0 or earlier.</entry>
+                                </row>
+                                <row>
+                                    <entry>Max Batch Size (records)</entry>
+                                    <entry>Maximum number of records to include in a batch.</entry>
+                                </row>
+                                <row>
+                                    <entry>Max Clob Size (characters)</entry>
+                                    <entry>Maximum number of characters to be read in a Clob field.
+                                        Larger data is truncated.</entry>
                                 </row>
                                 <row>
                                     <entry>Additional JDBC Configuration</entry>
@@ -115,7 +132,7 @@
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
-                                    <entry>Change Data Capture  Property</entry>
+                                    <entry>Change Data Capture Property</entry>
                                     <entry>Description</entry>
                                 </row>
                             </thead>
@@ -142,6 +159,62 @@
             </step>
             <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/JDBC-Legacy">
                 <cmd/>
+            </step>
+            <step id="JDBC-Advanced">
+                <cmd>On the <wintitle>Advanced</wintitle> tab, optionally configure advanced
+                    properties.</cmd>
+                <info>The defaults for these properties should work in most cases:<table frame="all"
+                        rowsep="1" colsep="1" id="table_z1c_hjj_kw">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Advanced Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/row-MaxPoolSize">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/row-MaxIdleConn">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/row-ConTimeout">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/row-IdleTimeout">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/row-MaxConLife">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/row-EnReadOnly">
+                                    <entry/>
+                                </row>
+                                <row>
+                                    <entry>Create JDBC Namespace Headers <xref
+                                            href="JDBCConsumer-HeaderAttributes.dita"><image
+                                                href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_n2r_rjj_kw"/>
+                                        </xref></entry>
+                                    <entry>Use to add JDBC namespace header attributes to
+                                        records.</entry>
+                                </row>
+                                <row>
+                                    <entry>JDBC Header Prefix</entry>
+                                    <entry>Prefix for namespace header attributes. </entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table></info>
             </step>
         </steps>
     </taskbody>

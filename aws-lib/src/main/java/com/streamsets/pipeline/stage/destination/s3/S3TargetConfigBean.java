@@ -24,17 +24,44 @@ import com.streamsets.pipeline.api.ConfigDefBean;
 import com.streamsets.pipeline.api.Stage;
 import com.streamsets.pipeline.api.ValueChooserModel;
 import com.streamsets.pipeline.config.DataFormat;
+import com.streamsets.pipeline.lib.el.RecordEL;
+import com.streamsets.pipeline.lib.el.TimeEL;
+import com.streamsets.pipeline.lib.el.TimeNowEL;
 import com.streamsets.pipeline.lib.generator.DataGeneratorFactory;
 import com.streamsets.pipeline.stage.destination.lib.DataGeneratorFormatConfig;
-import com.streamsets.pipeline.stage.origin.s3.S3AdvancedConfig;
+import com.streamsets.pipeline.stage.lib.aws.SSEConfigBean;
+import com.streamsets.pipeline.stage.lib.aws.ProxyConfig;
 import com.streamsets.pipeline.stage.origin.s3.S3Config;
 
 import java.util.List;
 
 public class S3TargetConfigBean {
 
-  @ConfigDefBean(groups = {"S3"})
+  public static final String S3_TARGET_CONFIG_BEAN_PREFIX = "s3TargetConfigBean.";
+  public static final String S3_CONFIG_PREFIX = S3_TARGET_CONFIG_BEAN_PREFIX + "s3Config.";
+  public static final String S3_SEE_CONFIG_PREFIX = S3_TARGET_CONFIG_BEAN_PREFIX + "sseConfig.";
+
+  @ConfigDefBean(groups = "S3")
   public S3Config s3Config;
+
+  @ConfigDefBean(groups = "SSE")
+  public SSEConfigBean sseConfig;
+
+  @ConfigDefBean(groups = "ADVANCED")
+  public ProxyConfig advancedConfig;
+
+  @ConfigDef(
+      required = false,
+      type = ConfigDef.Type.STRING,
+      elDefs = {RecordEL.class, TimeEL.class, TimeNowEL.class},
+      evaluation = ConfigDef.Evaluation.EXPLICIT,
+      defaultValue = "",
+      label = "Partition Prefix",
+      description = "Partition to write to. If the partition doesn't exist on Amazon S3, it will be created.",
+      displayPosition = 180,
+      group = "S3"
+  )
+  public String partitionTemplate;
 
   @ConfigDef(
     required = true,
@@ -70,19 +97,34 @@ public class S3TargetConfigBean {
   @ConfigDefBean(groups = {"S3"})
   public DataGeneratorFormatConfig dataGeneratorFormatConfig;
 
-  @ConfigDefBean(groups = {"ADVANCED"})
-  public S3AdvancedConfig advancedConfig;
-
   public List<Stage.ConfigIssue> init(Stage.Context context, List<Stage.ConfigIssue> issues) {
-    s3Config.init(context, issues, advancedConfig);
+    s3Config.init(context, S3_CONFIG_PREFIX, advancedConfig, issues);
 
     if(s3Config.bucket == null || s3Config.bucket.isEmpty()) {
-      issues.add(context.createConfigIssue(Groups.S3.name(), "bucket", Errors.S3_01));
+      issues.add(
+          context.createConfigIssue(
+              Groups.S3.name(),
+              S3_CONFIG_PREFIX + "bucket",
+              Errors.S3_01
+          )
+      );
     } else if (!s3Config.getS3Client().doesBucketExist(s3Config.bucket)) {
-      issues.add(context.createConfigIssue(Groups.S3.name(), "bucket", Errors.S3_02, s3Config.bucket));
+      issues.add(
+          context.createConfigIssue(
+              Groups.S3.name(),
+              S3_CONFIG_PREFIX + "bucket",
+              Errors.S3_02, s3Config.bucket
+          )
+      );
     }
 
-    dataGeneratorFormatConfig.init(context, dataFormat, Groups.S3.name(), "dataFormat", issues);
+    dataGeneratorFormatConfig.init(
+        context,
+        dataFormat,
+        Groups.S3.name(),
+        S3_TARGET_CONFIG_BEAN_PREFIX + "dataGeneratorFormatConfig",
+        issues
+    );
 
     if(issues.size() == 0) {
       generatorFactory = dataGeneratorFormatConfig.getDataGeneratorFactory();

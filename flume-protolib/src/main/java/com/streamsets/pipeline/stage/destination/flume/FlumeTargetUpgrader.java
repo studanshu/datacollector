@@ -78,6 +78,9 @@ public class FlumeTargetUpgrader implements StageUpgrader {
           configsToRemove.add(config);
           configsToAdd.add(new Config("flumeConfigBean.dataGeneratorFormatConfig." + config.getName(), config.getValue()));
           break;
+        default:
+          // no upgrade action required
+          break;
       }
     }
 
@@ -88,5 +91,6 @@ public class FlumeTargetUpgrader implements StageUpgrader {
     configs.add(new Config("flumeConfigBean.dataGeneratorFormatConfig.csvCustomEscape", '\\'));
     configs.add(new Config("flumeConfigBean.dataGeneratorFormatConfig.csvCustomQuote", '\"'));
     configs.add(new Config("flumeConfigBean.dataGeneratorFormatConfig.binaryFieldPath", "/"));
+    configs.add(new Config("flumeConfigBean.dataGeneratorFormatConfig.avroCompression", "NULL"));
   }
 }

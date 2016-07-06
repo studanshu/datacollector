@@ -2,7 +2,7 @@
 <!DOCTYPE html
   SYSTEM "about:legacy-compat">
 <html xml:lang="en-us" lang="en-us">
-<head><meta name="description" content="The following table lists all available functions. For details about each function, see the related function type: Function Type Functions Record functions record:attribute('&lt;attribute name&gt;') ..."></meta><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><meta name="copyright" content="(C) Copyright 2005"></meta><meta name="DC.rights.owner" content="(C) Copyright 2005"></meta><meta name="DC.Type" content="concept"></meta><meta name="DC.Title" content="Functions"></meta><meta name="DC.Relation" scheme="URI" content="../Expression_Language/ExpressionLanguage_title.html"></meta><meta name="DC.Format" content="XHTML"></meta><meta name="DC.Identifier" content="concept_lhz_pyp_1r"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/commonltr.css"><!----></link><title>Functions</title><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/webhelp_topic.css"><!----></link><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/skins/skin.css"><!----></link><link rel="stylesheet" type="text/css" href="../skin.css"></link><script type="text/javascript"><!--
+<head><meta name="description" content="The following table lists all available functions. For details about each function, see the related function type: Function Type Functions Record functions record:attribute('&lt;attribute name&gt;') ..."></meta><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><meta name="copyright" content="(C) Copyright 2005"></meta><meta name="DC.rights.owner" content="(C) Copyright 2005"></meta><meta name="DC.Type" content="concept"></meta><meta name="DC.Title" content="Functions"></meta><meta name="DC.Relation" scheme="URI" content="../Expression_Language/ExpressionLanguage_title.html"></meta><meta name="DC.Format" content="XHTML"></meta><meta name="DC.Identifier" content="concept_lhz_pyp_1r"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/commonltr.css"><!----></link><title>Functions</title><!--  Generated with Oxygen version 17.1, build number 2016020417.  --><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/webhelp_topic.css"><!----></link><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/skins/skin.css"><!----></link><link rel="stylesheet" type="text/css" href="../skin.css"></link><script type="text/javascript"><!--
           
           var prefix = "../index.html";
           
@@ -45,9 +45,9 @@
      
      <thead class="thead" align="left">
       <tr class="row">
-       <th class="entry" valign="top" width="31.25%" id="d20527e40">Function Type</th>
+       <th class="entry" valign="top" width="31.25%" id="d65932e40">Function Type</th>
 
-       <th class="entry" valign="top" width="68.75%" id="d20527e43">Functions</th>
+       <th class="entry" valign="top" width="68.75%" id="d65932e43">Functions</th>
 
       </tr>
 
@@ -55,12 +55,14 @@
 
      <tbody class="tbody">
       <tr class="row">
-       <td class="entry" valign="top" width="31.25%" headers="d20527e40 "><a class="xref" href="Functions.html#concept_p1z_ggv_1r" title="Use record functions to determine information about a record, such as the stage that created it or whether a field exists in the record.">Record functions</a></td>
+       <td class="entry" valign="top" width="31.25%" headers="d65932e40 "><a class="xref" href="Functions.html#concept_p1z_ggv_1r" title="Use record functions to determine information about a record, such as the stage that created it or whether a field exists in the record.">Record functions</a></td>
 
-       <td class="entry" valign="top" width="68.75%" headers="d20527e43 ">
+       <td class="entry" valign="top" width="68.75%" headers="d65932e43 ">
         <div class="p">
          <ul class="ul" id="concept_lhz_pyp_1r__ul_gdz_wb2_gs">
           <li class="li">record:attribute('&lt;attribute name&gt;') </li>
+
+          <li class="li">record:attributeOrDefault('&lt;attribute name&gt;' , &lt;default value&gt;)</li>
 
           <li class="li">record:creator()</li>
 
@@ -85,10 +87,10 @@
       </tr>
 
       <tr class="row">
-       <td class="entry" valign="top" width="31.25%" headers="d20527e40 "><a class="xref" href="Functions.html#concept_s2c_q14_fs" title="Use delimited data record functions to process list record type delimited data. If you configured an origin to process the data using the list-map record type, you can use standard record functions.">Delimited data record
+       <td class="entry" valign="top" width="31.25%" headers="d65932e40 "><a class="xref" href="Functions.html#concept_s2c_q14_fs" title="Use delimited data record functions to process delimited data with the list root field type. If you configured an origin to process the delimited data with the list-map root field type, you can use standard record functions.">Delimited data record
          functions</a></td>
 
-       <td class="entry" valign="top" width="68.75%" headers="d20527e43 ">
+       <td class="entry" valign="top" width="68.75%" headers="d65932e43 ">
         <ul class="ul" id="concept_lhz_pyp_1r__ul_z2x_jc2_gs">
          <li class="li">record:dExists('&lt;header&gt;') </li>
 
@@ -111,10 +113,29 @@
       </tr>
 
       <tr class="row">
-       <td class="entry" valign="top" width="31.25%" headers="d20527e40 "><a class="xref" href="Functions.html#concept_ndj_43v_1r" title="Error record functions provide information about error records. Use error functions to process error records.">Error record
+       <td class="entry" valign="top" width="31.25%" headers="d65932e40 "><a class="xref" href="Functions.html#concept_hpn_xfk_p5" title="Use data drift functions to create alerts when data drift occurs. You can use these functions in data drift rules.">Data drift functions</a></td>
+
+       <td class="entry" valign="top" width="68.75%" headers="d65932e43 ">
+        <ul class="ul" id="concept_lhz_pyp_1r__ul_wsq_kfk_p5">
+         <li class="li">drift:names('&lt;field path&gt;', &lt;ignoreWhenMissing: true | false&gt;)</li>
+
+         <li class="li">drift:order('&lt;field path&gt;', &lt;ignoreWhenMissing: true | false&gt;)</li>
+
+         <li class="li">drift:size('&lt;field path&gt;', &lt;ignoreWhenMissing: true | false&gt;)</li>
+
+         <li class="li">drift:type('&lt;field path&gt;', &lt;ignoreWhenMissing: true | false&gt;)</li>
+
+        </ul>
+
+       </td>
+
+      </tr>
+
+      <tr class="row">
+       <td class="entry" valign="top" width="31.25%" headers="d65932e40 "><a class="xref" href="Functions.html#concept_ndj_43v_1r" title="Error record functions provide information about error records. Use error functions to process error records.">Error record
         functions</a></td>
 
-       <td class="entry" valign="top" width="68.75%" headers="d20527e43 ">
+       <td class="entry" valign="top" width="68.75%" headers="d65932e43 ">
         <ul class="ul" id="concept_lhz_pyp_1r__ul_n1v_z12_gs">
          <li class="li">record:errorCode()</li>
 
@@ -135,14 +156,62 @@
       </tr>
 
       <tr class="row">
-       <td class="entry" valign="top" width="31.25%" headers="d20527e40 "><a class="xref" href="Functions.html#concept_ahp_f4v_1r" title="Use string functions to transform string data.">String functions</a></td>
+       <td class="entry" valign="top" width="31.25%" headers="d65932e40 "><a class="xref" href="Functions.html#concept_ylk_v44_jw" title="Use Base64 functions to encode or decode data using Base64.">Base64 functions</a></td>
 
-       <td class="entry" valign="top" width="68.75%" headers="d20527e43 ">
+       <td class="entry" valign="top" width="68.75%" headers="d65932e43 ">
+        <ul class="ul" id="concept_lhz_pyp_1r__ul_ecm_y1d_kw">
+         <li class="li">base64:decodeBytes("&lt;string&gt;")</li>
+
+         <li class="li">base64:decodeString("&lt;string&gt;", "&lt;charset&gt;")</li>
+
+         <li class="li">base64:encodeBytes(&lt;byte array&gt;, &lt;urlSafe: true | false&gt;)</li>
+
+         <li class="li">base64:encodeString("&lt;string&gt;", &lt;urlSafe: true | false&gt;, "&lt;charset&gt;")</li>
+
+        </ul>
+
+       </td>
+
+      </tr>
+
+      <tr class="row">
+       <td class="entry" valign="top" width="31.25%" headers="d65932e40 "><a class="xref" href="Functions.html#concept_m2m_s1f_lw">Math functions</a></td>
+
+       <td class="entry" valign="top" width="68.75%" headers="d65932e43 ">
+        <ul class="ul" id="concept_lhz_pyp_1r__ul_ntg_zhf_lw">
+         <li class="li">math:abs(&lt;number&gt;)</li>
+
+         <li class="li">math:ceil(&lt;number&gt;)</li>
+
+         <li class="li">math:floor (&lt;number&gt;)</li>
+
+         <li class="li">math:max(&lt;number1&gt;, &lt;number2&gt;)</li>
+
+         <li class="li">math:min(&lt;number1&gt;, &lt;number2&gt;)</li>
+
+         <li class="li">math:round(&lt;number&gt;)</li>
+
+        </ul>
+
+       </td>
+
+      </tr>
+
+      <tr class="row">
+       <td class="entry" valign="top" width="31.25%" headers="d65932e40 "><a class="xref" href="Functions.html#concept_ahp_f4v_1r" title="Use string functions to transform string data.">String functions</a></td>
+
+       <td class="entry" valign="top" width="68.75%" headers="d65932e43 ">
         <div class="p">
          <ul class="ul" id="concept_lhz_pyp_1r__ul_f15_xf2_gs">
+          <li class="li">str:concat("&lt;string1&gt;", "&lt;string2&gt;")</li>
+
           <li class="li">str:contains("&lt;string&gt;", "&lt;subset&gt;") </li>
 
           <li class="li">str:endsWith("&lt;string&gt;", "&lt;subset&gt;")</li>
+
+          <li class="li">str:length("&lt;string&gt;")</li>
+
+          <li class="li">str:matches("&lt;string&gt;", &lt;regEx&gt;)</li>
 
           <li class="li">str:regexCapture("&lt;string&gt;", &lt;regEx&gt;, &lt;group&gt;)</li>
 
@@ -171,16 +240,20 @@
       </tr>
 
       <tr class="row">
-       <td class="entry" valign="top" width="31.25%" headers="d20527e40 "><a class="xref" href="Functions.html#concept_ddw_ld1_1s">Miscellaneous
+       <td class="entry" valign="top" width="31.25%" headers="d65932e40 "><a class="xref" href="Functions.html#concept_ddw_ld1_1s">Miscellaneous
         functions</a></td>
 
-       <td class="entry" valign="top" width="68.75%" headers="d20527e43 ">
+       <td class="entry" valign="top" width="68.75%" headers="d65932e43 ">
         <ul class="ul" id="concept_lhz_pyp_1r__ul_xks_xg2_gs">
+         <li class="li">alert:info()</li>
+
          <li class="li">emptyList</li>
 
          <li class="li">emptyMap</li>
 
          <li class="li">every(&lt;interval&gt;, &lt;mm() | ss()&gt;)</li>
+
+         <li class="li">field:field()</li>
 
          <li class="li">jvm:maxMemoryMB()</li>
 
@@ -188,7 +261,11 @@
 
          <li class="li">runtime:loadResource("&lt;file name&gt;", &lt;restricted: true | false&gt;)</li>
 
+         <li class="li">sdc:hostname()</li>
+
          <li class="li">sdc:id()</li>
+
+         <li class="li">time:now()</li>
 
         </ul>
 
@@ -228,6 +305,19 @@
     <dd class="dd">For example, the following expression returns the value of a tag attribute added by a File
      Tail origin:<pre class="pre codeblock">${record:attribute('tag')}</pre>
 </dd>
+
+   
+   
+    <dt class="dt dlterm">record:attributeOrDefault('&lt;attribute name&gt;' , &lt;default value&gt;)</dt>
+
+    <dd class="dd">Returns the value of the attribute in the appropriate data type. If the attribute does not
+     exist or if the field is null, returns the default value.</dd>
+
+    <dd class="dd">Use to provide a default value when an attribute does not exist or when the attribute is
+     null. </dd>
+
+    <dd class="dd">Return type: Variable, based on whether the function returns the attribute value or default
+     value.</dd>
 
    
    
@@ -337,24 +427,13 @@
    
     <dt class="dt dlterm">record:valueOrDefault('&lt;field path&gt;' , &lt;default value&gt;)</dt>
 
-    <dd class="dd">Returns the value of the field in the appropriate data type. If the field does not exist,
-     returns the default value. If the field is null, the function returns a null value. </dd>
+    <dd class="dd">Returns the value of the field in the appropriate data type. If the field does not exist or
+     if the field is null, returns the default value.</dd>
 
-    <dd class="dd">Use to provide a default value when a field does not exist. </dd>
+    <dd class="dd">Use to provide a default value when a field does not exist or when a field is null. </dd>
 
     <dd class="dd">Return type: Variable, based on whether the function returns the field value or default
      value.</dd>
-
-    <dd class="dd">
-     <div class="p">
-      <div class="note tip"><span class="tiptitle">Tip:</span> To replace null values, you might add a tertiary
-       operator as
-       follows:<pre class="pre codeblock">record:value('/field path') == null ? '&lt;default value&gt;' : record:value('/field path')</pre>
-</div>
-
-     </div>
-
-    </dd>
 
    
   </dl>
@@ -366,12 +445,12 @@
  <h2 class="title topictitle2">Delimited Data Record Functions</h2>
 
  
- <div class="body conbody"><p class="shortdesc">Use delimited data record functions to process list record type delimited data. If you
-    configured an origin to process the data using the list-map record type, you can use standard
-    record functions.</p>
+ <div class="body conbody"><p class="shortdesc">Use delimited data record functions to process delimited data with the list root field
+  type. If you configured an origin to process the delimited data with the list-map root field type,
+  you can use standard record functions.</p>
 
-  <p class="p">For more information about the
-      delimited data record types, see <a class="xref" href="../Pipeline_Design/DelimitedDataRecordTypes.html#concept_zcg_bm4_fs" title="For delimited data in the list-map record type, you can use standard record functions to process data. For data in the list record type, you should either use the delimited data functions or include the full field path in standard record functions.">Delimited Data Record Types</a>.</p>
+  <p class="p">For more information about the delimited
+   data root field types, see <a class="xref" href="../Pipeline_Design/DelimitedDataRootFieldTypes.html#concept_zcg_bm4_fs">Delimited Data Root Field Type</a>.</p>
 
   <div class="p">The expression language provides the following delimited data record functions:<dl class="dl">
     
@@ -410,9 +489,15 @@
     
      <dt class="dt dlterm">record:dToMap()</dt>
 
-     <dd class="dd">Converts the record to a JSON map using headers as keys.</dd>
+     <dd class="dd">Converts a record with a List root field to a List-Map root field. Use to convert delimited
+      List records to List-Map to allow easier use with standard record functions. For more
+      information about root field types, see <a class="xref" href="../Pipeline_Design/DelimitedDataRootFieldTypes.html#concept_zcg_bm4_fs">Delimited Data Root Field Type</a>.</dd>
 
-     <dd class="dd">Return type: Record in map format.</dd>
+     <dd class="dd">Return type: Records with a List-Map root field.</dd>
+
+     <dd class="dd">To use record:dToMap(), use a slash as the root output field as follows:</dd>
+
+     <dd class="dd"><img class="image" id="concept_s2c_q14_fs__image_bg2_jhk_35" src="../Graphics/Delim-ConvertType.png" height="99" width="679"></img></dd>
 
     
     
@@ -432,6 +517,105 @@
 
     
    </dl>
+</div>
+
+ </div>
+
+</div>
+<div class="topic concept nested1" id="concept_hpn_xfk_p5">
+ <h2 class="title topictitle2">Data Drift Functions</h2>
+
+ 
+ <div class="body conbody"><p class="shortdesc">Use data drift functions to create alerts when data drift occurs. You can use these
+        functions in data drift rules.</p>
+
+  <div class="p">The expression language
+            provides the following data drift functions: <dl class="dl">
+                
+                    <dt class="dt dlterm">drift:names('&lt;field path&gt;', &lt;ignoreWhenMissing: true | false&gt;)</dt>
+
+                    <dd class="dd">Triggers an alert when key values change in map or list-map field. When key
+                        values are field names, triggers an alert when field names change. Use with
+                        list-map or map fields. </dd>
+
+                    <dd class="dd">
+                        <p class="p">Use the ignoreWhenMissing flag to determine the behavior
+                  when the field is missing. When set to "true", a missing field causes no errors.
+                  When set to "false", a missing field generates an alert for the record missing the
+                  field, and for the next record that includes the field.</p>
+
+                    </dd>
+
+                    <dd class="dd">For example, to trigger an alert when any field name in the record changes
+                        and ignore empty records, you can use the root field in the expression as
+                        follows:<pre class="pre codeblock">${drift:names('/', true)}</pre>
+</dd>
+
+                
+                
+                    <dt class="dt dlterm">drift:order('&lt;field path&gt;', &lt;ignoreWhenMissing: true | false&gt;)</dt>
+
+                    <dd class="dd">Triggers an alert when the field order changes for fields within a list-map
+                        field. Use only with list-map fields. </dd>
+
+                    <dd class="dd">Note that this function triggers alerts when field names change as
+                        well.</dd>
+
+                    <dd class="dd">
+                        <p class="p">Use the ignoreWhenMissing flag to determine the behavior
+                  when the field is missing. When set to "true", a missing field causes no errors.
+                  When set to "false", a missing field generates an alert for the record missing the
+                  field, and for the next record that includes the field.</p>
+
+                    </dd>
+
+                    <dd class="dd">To alert on field order or name changes within a delimited record and ignore
+                        empty records, use the root field as
+                        follows:<pre class="pre codeblock">${drift:order('/', true)}</pre>
+</dd>
+
+                
+                
+                    <dt class="dt dlterm">drift:size('&lt;field path&gt;', &lt;ignoreWhenMissing: true | false&gt;)</dt>
+
+                    <dd class="dd">Triggers an alert when the number of fields changes within a list, list-map,
+                        or map field. Use with list, list-map, or map fields.</dd>
+
+                    <dd class="dd">
+                        <p class="p">Use the ignoreWhenMissing flag to determine the behavior
+                  when the field is missing. When set to "true", a missing field causes no errors.
+                  When set to "false", a missing field generates an alert for the record missing the
+                  field, and for the next record that includes the field.</p>
+
+                    </dd>
+
+                    <dd class="dd">To alert when the number of columns change within the Depts map field and
+                        when a record is missing the Depts field, use the following
+                        expression:<pre class="pre codeblock">${drift:size('/Depts', false)}</pre>
+</dd>
+
+                
+                
+                    <dt class="dt dlterm">drift:type('&lt;field path&gt;', &lt;ignoreWhenMissing: true | false&gt;)</dt>
+
+                    <dd class="dd">Triggers an alert when the data type of the specified field changes.
+                        Evaluates only the specified field.</dd>
+
+                    <dd class="dd">
+                        <p class="p">Use the ignoreWhenMissing flag to determine the behavior
+                  when the field is missing. When set to "true", a missing field causes no errors.
+                  When set to "false", a missing field generates an alert for the record missing the
+                  field, and for the next record that includes the field.</p>
+
+                    </dd>
+
+                    <dd class="dd">For example, to receive alerts when the data type of the ID field changes
+                        and when the ID field does not exist in the record, use the following
+                        expression:<pre class="pre codeblock">${drift:type('/ID', false)}</pre>
+</dd>
+
+                
+            </dl>
 </div>
 
  </div>
@@ -518,6 +702,192 @@
  </div>
 
 </div>
+<div class="topic concept nested1" id="concept_ylk_v44_jw">
+ <h2 class="title topictitle2">Base64 Functions</h2>
+
+ 
+ <div class="body conbody"><p class="shortdesc">Use Base64 functions to encode or decode data using Base64.</p>
+
+  <p class="p">The expression language
+            provides the following Base64 functions:</p>
+
+        <dl class="dl">
+            
+                <dt class="dt dlterm">base64:decodeBytes("&lt;string&gt;")</dt>
+
+                <dd class="dd">Returns a decoded byte array from a Base64 encoded string.</dd>
+
+                <dd class="dd">Return type: Byte Array.</dd>
+
+                <dd class="dd">Uses the following argument:<ul class="ul" id="concept_ylk_v44_jw__ul_jvq_sx4_jw">
+                        <li class="li">string - The Base64 encoded string to decode.</li>
+
+                    </ul>
+</dd>
+
+                <dd class="dd">For example, ${base64:decodeBytes(record:value("/ID"))} decodes the Base64
+                    encoded string in the ID field as a byte array value.</dd>
+
+            
+            
+                <dt class="dt dlterm">base64:decodeString("&lt;string&gt;", "&lt;charset&gt;")</dt>
+
+                <dd class="dd">Returns a decoded string from a Base64 encoded string using the specified
+                    character set.</dd>
+
+                <dd class="dd">Return type: String.</dd>
+
+                <dd class="dd">Uses the following arguments:<ul class="ul" id="concept_ylk_v44_jw__ul_ogd_ty4_jw">
+                        <li class="li">string - The Base64 encoded string to decode.</li>
+
+                        <li class="li">charset - The character set to use to decode the data.</li>
+
+                    </ul>
+</dd>
+
+                <dd class="dd">For example, ${base64:decodeString(record:value("/ID"), "UTF-8")} decodes the
+                    Base64 encoded string in the ID field using the UTF-8 character set as a string
+                    value.</dd>
+
+            
+            
+                <dt class="dt dlterm">base64:encodeBytes(&lt;byte array&gt;, &lt;urlSafe: true | false&gt;)</dt>
+
+                <dd class="dd">Returns a Base64 encoded string value of the specified byte array.</dd>
+
+                <dd class="dd">Return type: String.</dd>
+
+                <dd class="dd">Uses the following arguments:<ul class="ul" id="concept_ylk_v44_jw__ul_hsr_kz4_jw">
+                        <li class="li">byte array - The byte array to encode using Base64.</li>
+
+                        <li class="li">urlSafe - When set to true, encodes the data so that it can be safely
+                            sent in a URL. </li>
+
+                    </ul>
+</dd>
+
+                <dd class="dd">For example, ${base64:encodeBytes(record:value("/ID"), true)} uses Base64 to
+                    encode the byte array in the ID field such that the encoded data is URL
+                    safe.</dd>
+
+            
+            
+                <dt class="dt dlterm">base64:encodeString("&lt;string&gt;", &lt;urlSafe: true | false&gt;,
+                    "&lt;charset&gt;")</dt>
+
+                <dd class="dd">
+                    <p class="p">Returns a Base64 encoded string value of the specified string. </p>
+
+                </dd>
+
+                <dd class="dd">Return type: String.</dd>
+
+                <dd class="dd">Uses the following arguments:<ul class="ul" id="concept_ylk_v44_jw__ul_okr_dbp_jw">
+                        <li class="li">string - The string to encode using Base64.</li>
+
+                        <li class="li">urlSafe - When set to true, encodes the data so that it can be safely
+                            sent in a URL. </li>
+
+                        <li class="li">charset - The character set to use to encode the data.</li>
+
+                    </ul>
+</dd>
+
+                <dd class="dd">For example, ${base64:encodeString(record:value("/ID"), false, "UTF-8")} uses
+                    Base64 to encode the string in the ID field using the UTF-8 character set such
+                    that the encoded data is not URL safe.</dd>
+
+            
+        </dl>
+
+ </div>
+
+</div>
+<div class="topic concept nested1" id="concept_m2m_s1f_lw">
+ <h2 class="title topictitle2">Math Functions</h2>
+
+ <div class="body conbody">
+  <p class="p">Use math functions to
+            perform math on numeric values. You can replace any argument with a constant, or a field
+            or expression that evaluates to a number.</p>
+
+        <div class="p">You can use the following data types with math functions:<ul class="ul" id="concept_m2m_s1f_lw__ul_qz1_3bf_lw">
+                <li class="li">Double</li>
+
+                <li class="li">Float  </li>
+
+                <li class="li">Integer </li>
+
+                <li class="li">Long </li>
+
+                <li class="li">String<div class="note note"><span class="notetitle">Note:</span> <span class="ph">Data
+                  Collector</span> parses a string as a Double value if the numeric value in a String field
+                        contains a dot ( . ). Otherwise, <span class="ph">Data
+                  Collector</span> parses the string as a Long value.</div>
+</li>
+
+            </ul>
+</div>
+
+        <div class="p">The expression language provides the following math functions:<dl class="dl">
+                
+                    <dt class="dt dlterm">math:abs(&lt;number&gt;)</dt>
+
+                    <dd class="dd">Returns the absolute value, or positive version, of the argument. If the
+                        argument is already positive, returns the original number.</dd>
+
+                    <dd class="dd">Return type: Double, Float, Int, or Long, based on the data type of the
+                        argument.</dd>
+
+                
+                
+                    <dt class="dt dlterm">math:ceil(&lt;number&gt;)</dt>
+
+                    <dd class="dd">Returns the smallest integer greater than or equal to the argument.</dd>
+
+                    <dd class="dd">Return type: Double.</dd>
+
+                
+                
+                    <dt class="dt dlterm">math:floor (&lt;number&gt;)</dt>
+
+                    <dd class="dd">Returns the largest integer greater than or equal to the argument.</dd>
+
+                    <dd class="dd">Return type: Double.</dd>
+
+                
+                
+                    <dt class="dt dlterm">math:max(&lt;number1&gt;, &lt;number2&gt;)</dt>
+
+                    <dd class="dd">Returns the greater of two arguments.</dd>
+
+                    <dd class="dd">Return type: Double, Float, Int, or Long, based on the data type of the
+                        argument.</dd>
+
+                
+                
+                    <dt class="dt dlterm">math:min(&lt;number1&gt;, &lt;number2&gt;)</dt>
+
+                    <dd class="dd">Returns the lesser of two arguments.</dd>
+
+                    <dd class="dd">Return type: Double, Float, Int, or Long, based on the data type of the
+                        argument.</dd>
+
+                
+                
+                    <dt class="dt dlterm">math:round(&lt;number&gt;)</dt>
+
+                    <dd class="dd">Returns the closest integer to the argument, rounding up for ties.</dd>
+
+                    <dd class="dd">Return type: Double or Long.</dd>
+
+                
+            </dl>
+</div>
+
+ </div>
+
+</div>
 <div class="topic concept nested1" id="concept_ahp_f4v_1r">
  <h2 class="title topictitle2">String Functions</h2>
 
@@ -534,9 +904,30 @@
   <div class="p">
    <dl class="dl">
         
+          <dt class="dt dlterm">str:concat("&lt;string1&gt;", "&lt;string2&gt;")</dt>
+
+          <dd class="dd">Concatenates two strings together. </dd>
+
+          <dd class="dd">Uses the following arguments:<ul class="ul" id="concept_ahp_f4v_1r__ul_w3w_w2t_2v">
+              <li class="li">string1 - The first string to concatenate.</li>
+
+              <li class="li">string2 - The second string to concatenate.</li>
+
+            </ul>
+</dd>
+
+          <dd class="dd">Use the str:concat function to concatenate strings within an expression. For example,
+            to concatenate the FirstName field with the LastName field and then check if that result
+            matches a pattern, use the following expression:</dd>
+
+          <dd class="dd">${str:matches(str:concat(record:value("/FirstName") , record:value("/LastName")) ,
+            "[A-Z][a-z]+[A-Z][a-z]+")}</dd>
+
+        
+        
           <dt class="dt dlterm">str:contains("&lt;string&gt;", "&lt;subset&gt;")</dt>
 
-          <dd class="dd">Returns a true or false based on whether the string contains the configured subset of
+          <dd class="dd">Returns true or false based on whether the string contains the configured subset of
             characters.</dd>
 
           <dd class="dd">Uses the following arguments:<ul class="ul" id="concept_ahp_f4v_1r__ul_fwp_p4k_br">
@@ -568,6 +959,39 @@
 
         
         
+          <dt class="dt dlterm">str:length("&lt;string&gt;")</dt>
+
+          <dd class="dd">Returns the length of a string.</dd>
+
+          <dd class="dd">Return type: Integer.</dd>
+
+          <dd class="dd">Uses the following argument:<ul class="ul" id="concept_ahp_f4v_1r__ul_mdj_5hm_gv">
+              <li class="li">string - The string to return the length for.</li>
+
+            </ul>
+</dd>
+
+          <dd class="dd">For example, ${str:length("tomorrow")} returns: 8.</dd>
+
+        
+        
+          <dt class="dt dlterm">str:matches("&lt;string&gt;", &lt;regEx&gt;)</dt>
+
+          <dd class="dd">Returns true or false based on whether a string matches a Java regex pattern.</dd>
+
+          <dd class="dd">Uses the following arguments:<ul class="ul" id="concept_ahp_f4v_1r__ul_yjb_wjq_fv">
+              <li class="li">string - The string to evaluate.</li>
+
+              <li class="li">regEx - Regular expression that describes the pattern of the string.</li>
+
+            </ul>
+</dd>
+
+          <dd class="dd">For example, ${str:matches(record:value("/HostName"), ".*\.com$")} checks if the
+            string in the HostName field ends with the characters ".com".</dd>
+
+        
+     
           <dt class="dt dlterm">str:regExCapture("&lt;string&gt;", &lt;regEx&gt;, &lt;group&gt;)</dt>
 
           <dd class="dd">Parses a complex string into groups based on a Java regex pattern and returns the
@@ -735,6 +1159,13 @@
       the following miscellaneous functions:</p>
 
   <dl class="dl">
+      
+        <dt class="dt dlterm">alert:info()</dt>
+
+        <dd class="dd">Returns information about the trigger for a data drift alert. Use only in alert text for
+          data drift alerts. </dd>
+
+      
    
     <dt class="dt dlterm">emptyList</dt>
 
@@ -751,9 +1182,9 @@
         <dt class="dt dlterm">every( &lt;interval&gt;, &lt; mm() | ss() &gt; )</dt>
 
         <dd class="dd">Represents the interval of minutes or seconds for generating output directories for the
-          Hadoop FS destination. You can use the function once in the Directory Template property in
-          place of the minutes or seconds datetime variables. Use the function to replace the
-          smallest time interval in the directory template.</dd>
+          Hadoop FS, Local FS, or MapR FS destination. You can use the function once in the
+          Directory Template property in place of the minutes or seconds datetime variables. Use the
+          function to replace the smallest time interval in the directory template.</dd>
 
         <dd class="dd">For example, the following usage in the Directory Template property generates a new
           directory every
@@ -775,6 +1206,15 @@
 
           </ul>
 </dd>
+
+      
+      
+        <dt class="dt dlterm">field:field()</dt>
+
+        <dd class="dd">Returns the field name. Available only in the Decimal field expression properties of the
+          Hive Metadata processor. </dd>
+
+        <dd class="dd">Return type: String.</dd>
 
       
       
@@ -814,9 +1254,7 @@
 
         <dd class="dd">Uses the following arguments:<ul class="ul" id="concept_ddw_ld1_1s__ul_ytn_xmm_2s">
             <li class="li">file name - Name of the file that contains the information to be loaded. The file
-              should reside in the following location:
-              <pre class="pre codeblock">&lt;SDCinstalldir&gt;/resources</pre>
-</li>
+              must reside in the <samp class="ph codeph">$SDC_RESOURCES</samp> directory: </li>
 
             <li class="li">restricted - Whether the file has restricted permissions. If set to true, the file
               must be owned by the system user who runs the <span class="ph">Data
@@ -826,7 +1264,22 @@
           </ul>
 </dd>
 
-        <dd class="dd">For more information about runtime resources, see <a class="xref" href="../Advanced_Config/RuntimeResources.html#concept_bs4_5nm_2s" title="Similar to runtime properties, runtime resources are values that you define in a file local to the Data Collector and call from within pipeline. But with runtime resources, you can restrict the permissions for the files to secure sensitive information. Use runtime properties to load sensitive information from files at runtime.">Runtime Resources</a>.</dd>
+        <dd class="dd">For more information about runtime resources, see <a class="xref" href="../Advanced_Config/RuntimeResources.html#concept_bs4_5nm_2s" title="Similar to runtime properties, runtime resources are values that you define in a file local to the Data Collector and call from within a pipeline. But with runtime resources, you can restrict the permissions for the files to secure sensitive information. Use runtime resources to load sensitive information from files at runtime.">Runtime Resources</a>.</dd>
+
+      
+      
+        <dt class="dt dlterm">sdc:hostname()</dt>
+
+        <dd class="dd">Returns the host name of the <span class="ph">Data
+                  Collector</span>
+          machine. </dd>
+
+        <dd class="dd">For example, you might use the function in the directory template for the Hadoop FS
+          destination to write to a directory that includes the <span class="ph">Data
+                  Collector</span> host
+          name.</dd>
+
+        <dd class="dd">Return type: String.</dd>
 
       
       
@@ -838,22 +1291,39 @@
             associated with the <span class="ph">Data
                   Collector</span>,
             such as 58efbb7c-faf4-4d8e-a056-f38667e325d0. The ID is stored in the following file:
-              <span class="ph filepath">&lt;SDCinstalldir&gt;/data/sdc.id</span>.</p>
-<p class="p">For a pipeline that runs in
-            cluster mode, the ID is the <span class="ph">Data
+              <span class="ph filepath">$SDC_DATA/sdc.id</span>.</p>
+<p class="p">For a pipeline that runs in cluster mode,
+            the ID is the <span class="ph">Data
                   Collector</span>
             worker partition ID generated by a cluster application, such as Spark or
           MapReduce.</p>
 </dd>
 
       
+      
+        <dt class="dt dlterm">time:now()</dt>
+
+        <dd class="dd">Returns the current time of the <span class="ph">Data
+                  Collector</span>
+          machine as a java.util.Date object. Use in the Expression Evaluator only. </dd>
+
+        <dd class="dd">For example, you might use the function in the Expression Evaluator to create a field
+          with the time of processing.</dd>
+
+        <dd class="dd">Return type: Date.</dd>
+
+      
   </dl>
 
  </div>
 
+  <div class="related-links"><div class="relinfo"><strong>Related information</strong><br xmlns="http://www.w3.org/1999/xhtml" />
+<div class="related_link"><a class="navheader_parent_path" href="../Install_Config/DCEnvironmentConfig.html#concept_rng_qym_qr" title="You can edit the Data Collector environment configuration file to modify the directories used to store configuration, data, log, and resource files.When you run Data Collector as a service, you must create a system user and group named sdc, or you must edit the values of the SDC_USER and SDC_GROUP environment variables to point to an existing system user or group.You can define the Data Collector Java heap size. By default, the Java heap size is 1024 MB. When you use Data Collector with Java 7, you can define the Java Permanent Generation size, also known as the PermGen size.Data Collector includes a Java Security Manager that is enabled by default. You can edit the Data Collector environment configuration file to configure the path to jar files to be added to the Data Collector root classloader.">Data Collector Environment Configuration</a></div>
+</div>
+</div>
 </div>
 </div>
 <div class="navfooter"><!---->
-<span class="navparent"><a class="link" href="../Expression_Language/ExpressionLanguage_title.html" title="Expression Language"><span class="navheader_label">Parent topic</span><span class="navheader_separator">: </span><span class="navheader_linktext">Expression Language</span></a></span>  </div><div class="footer"></div>
+<span class="navparent"><a class="link" href="../Expression_Language/ExpressionLanguage_title.html" title="Expression Language"><span class="navheader_label">Parent topic</span><span class="navheader_separator">: </span><span class="navheader_linktext">Expression Language</span></a></span>  </div>
 </body>
 </html>

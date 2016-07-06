@@ -32,21 +32,21 @@ public class FieldRenamerConfig {
   @ConfigDef(
       required = true,
       type = ConfigDef.Type.MODEL,
-      defaultValue="",
-      label = "From Field",
-      description = "The field in the incoming record to rename.",
+      defaultValue = "",
+      label = "Source Field Expression",
+      description = "Existing fields to rename. You can use regular expressions to rename a set of fields.",
       displayPosition = 10
   )
   @FieldSelectorModel(singleValued = true)
-  public String fromField;
+  public String fromFieldExpression;
 
   @ConfigDef(
       required = true,
       type = ConfigDef.Type.STRING,
-      defaultValue="",
-      label = "To Field",
-      description="The name of the field after renaming.",
+      defaultValue = "",
+      label = "Target Field Expression",
+      description = "New name for the field. You can use regular expressions to rename a set of fields.",
       displayPosition = 20
   )
-  public String toField;
+  public String toFieldExpression;
 }

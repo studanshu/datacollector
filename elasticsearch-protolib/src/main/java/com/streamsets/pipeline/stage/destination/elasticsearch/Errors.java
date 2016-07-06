@@ -34,11 +34,19 @@ public enum Errors implements ErrorCode {
   ELASTICSEARCH_07("At least one URI must be provided"),
   ELASTICSEARCH_08("Could not connect to the cluster: {}"),
   ELASTICSEARCH_09("Invalid URI, it must be <HOSTNAME>:<PORT>: '{}'"),
+  ELASTICSEARCH_10("Port value out of range: '{}'"),
+  ELASTICSEARCH_11("Could not connect to the cluster HTTP endpoint: {}"),
+  ELASTICSEARCH_12("Could not get the cluster version from HTTP response: {}"),
+  ELASTICSEARCH_13("Stage library version '{}' and cluster version '{}' are not compatible"),
 
-  ELASTICSEARCH_10("Could not write record '{}': {}"),
-  ELASTICSEARCH_11("Could not index record '{}': {}"),
-  ELASTICSEARCH_12("Could not index '{}' records: {}"),
+  ELASTICSEARCH_15("Could not write record '{}': {}"),
+  ELASTICSEARCH_16("Could not index record '{}': {}"),
+  ELASTICSEARCH_17("Could not index '{}' records: {}"),
 
+  ELASTICSEARCH_18("Could not evaluate the time driver expression: {}"),
+  ELASTICSEARCH_19("Document ID expression must be provided to use the upsert option"),
+
+  ELASTICSEARCH_20("Invalid Shield user, it must be <USERNAME>:<PASSWORD>: '{}'"),
   ;
   private final String msg;
 

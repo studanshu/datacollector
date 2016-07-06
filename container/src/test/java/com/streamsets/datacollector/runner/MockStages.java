@@ -23,6 +23,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.streamsets.datacollector.cluster.ClusterModeConstants;
 import com.streamsets.datacollector.config.ConfigDefinition;
+import com.streamsets.datacollector.config.DeliveryGuarantee;
 import com.streamsets.datacollector.config.ModelDefinition;
 import com.streamsets.datacollector.config.ModelType;
 import com.streamsets.datacollector.config.PipelineConfiguration;
@@ -40,19 +41,22 @@ import com.streamsets.datacollector.store.PipelineStoreTask;
 import com.streamsets.datacollector.util.ContainerError;
 import com.streamsets.pipeline.api.Batch;
 import com.streamsets.pipeline.api.BatchMaker;
-import com.streamsets.pipeline.api.impl.ClusterSource;
+import com.streamsets.pipeline.api.Config;
 import com.streamsets.pipeline.api.ConfigDef;
 import com.streamsets.pipeline.api.ErrorListener;
 import com.streamsets.pipeline.api.ExecutionMode;
+import com.streamsets.pipeline.api.OffsetCommitTrigger;
 import com.streamsets.pipeline.api.OffsetCommitter;
 import com.streamsets.pipeline.api.Processor;
 import com.streamsets.pipeline.api.RawSource;
 import com.streamsets.pipeline.api.RawSourcePreviewer;
 import com.streamsets.pipeline.api.Source;
+import com.streamsets.pipeline.api.Stage;
 import com.streamsets.pipeline.api.StageException;
 import com.streamsets.pipeline.api.StageUpgrader;
 import com.streamsets.pipeline.api.Target;
-import com.streamsets.pipeline.api.Config;
+import com.streamsets.pipeline.api.base.BaseTarget;
+import com.streamsets.pipeline.api.impl.ClusterSource;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -100,6 +104,10 @@ public class MockStages {
     sourceCapture = s;
   }
 
+  public static Source getSourceCapture() {
+    return sourceCapture;
+  }
+
   // it must be called after the pipeline is built
   public static void setProcessorCapture(Processor p) {
     processorCapture = p;
@@ -114,6 +122,7 @@ public class MockStages {
   public static void setErrorStageCapture(Target t) {
     errorCapture = t;
   }
+
 
   public static class MockRawSourcePreviewer implements RawSourcePreviewer {
 
@@ -359,6 +368,41 @@ public class MockStages {
     }
   }
 
+  public static class OffsetControllerTarget extends BaseTarget implements OffsetCommitTrigger {
+
+    private boolean commit = false;
+
+    @Override
+    public List<Stage.ConfigIssue> init(Info info, Target.Context context) {
+      if (targetCapture != null) {
+        return targetCapture.init(info, context);
+      } else {
+        return Collections.emptyList();
+      }
+    }
+
+    @Override
+    public void destroy() {
+      if (targetCapture != null) {
+        targetCapture.destroy();
+      }
+    }
+
+    @Override
+    public void write(Batch batch) throws StageException {
+      commit = false;
+      if (targetCapture != null) {
+        targetCapture.write(batch);
+      }
+      commit = true;
+    }
+
+    @Override
+    public boolean commit() {
+      return commit;
+    }
+  }
+
   public static class ETarget implements Target {
 
     //This field is required, even though its not used, to pass validation as it tries to inject value into a field
@@ -388,6 +432,33 @@ public class MockStages {
       }
     }
   }
+
+  public static class StatsTarget implements Target {
+
+    @Override
+    public List<ConfigIssue> init(Info info, Context context) {
+      if (errorCapture != null) {
+        return errorCapture.init(info, context);
+      } else {
+        return Collections.emptyList();
+      }
+    }
+
+    @Override
+    public void destroy() {
+      if (errorCapture != null) {
+        errorCapture.destroy();
+      }
+    }
+
+    @Override
+    public void write(Batch batch) throws StageException {
+      if (errorCapture != null) {
+        errorCapture.write(batch);
+      }
+    }
+  }
+
   public static StageLibraryTask createStageLibrary(ClassLoader cl) {
     return new MockStageLibraryTask.Builder(cl).build();
   }
@@ -509,24 +580,24 @@ public class MockStages {
                                                    false, MSource.class, "sourceName", 1, "sourceLabel",
           "sourceDesc", StageType.SOURCE, false,  true, true, Collections.<ConfigDefinition>emptyList(),
           rawSourceDefinition, "", null, false, 1, null,
-          Arrays.asList(ExecutionMode.CLUSTER_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
-          new StageUpgrader.Default(), Collections.<String>emptyList(), false);
+          Arrays.asList(ExecutionMode.CLUSTER_YARN_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
+          new StageUpgrader.Default(), Collections.<String>emptyList(), false, "", false, false);
 
         StageDefinition socDef = new StageDefinition(createLibraryDef(cl),
                                                      false, MSourceOffsetCommitter.class, "sourceOffsetCommitterName", 1, "sourceOffsetCommitterLabel",
           "sourceDesc", StageType.SOURCE, false, true, true, Collections.<ConfigDefinition>emptyList(),
           null/*raw source definition*/, "", null, false, 1, null,
-          Arrays.asList(ExecutionMode.CLUSTER_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
-          new StageUpgrader.Default(), Collections.<String>emptyList(), false
-        );
+          Arrays.asList(ExecutionMode.CLUSTER_YARN_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
+          new StageUpgrader.Default(), Collections.<String>emptyList(), false,
+            "", false, false);
 
         StageDefinition pDef = new StageDefinition(createLibraryDef(cl),
                                                    false, MProcessor.class, "processorName", 1, "sourcelabel",
           "sourceDescription", StageType.PROCESSOR, false, true, true, Collections.<ConfigDefinition>emptyList(),
           null/*raw source definition*/, "", null,
           false, 1, null,
-          Arrays.asList(ExecutionMode.CLUSTER_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
-          new StageUpgrader.Default(), Collections.<String>emptyList(), false);
+          Arrays.asList(ExecutionMode.CLUSTER_YARN_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
+          new StageUpgrader.Default(), Collections.<String>emptyList(), false, "", false, false);
 
         ModelDefinition m = new ModelDefinition(ModelType.FIELD_SELECTOR_MULTI_VALUE, null, Collections.<String>emptyList(),
           Collections.<String>emptyList(), null, null);
@@ -539,8 +610,9 @@ public class MockStages {
                                                    false, MTarget.class, "targetName", 1, "targetLabel",
           "targetDesc", StageType.TARGET, false, true, true, Arrays.asList(stageReqField),
           null/*raw source definition*/, "", null, false, 0, null,
-          Arrays.asList(ExecutionMode.CLUSTER_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
-          new StageUpgrader.Default(), Collections.<String>emptyList(), false);
+          Arrays.asList(ExecutionMode.CLUSTER_YARN_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH,
+            ExecutionMode.CLUSTER_MESOS_STREAMING), false,
+          new StageUpgrader.Default(), Collections.<String>emptyList(), false, "", false, false);
 
         ConfigDefinition reqField = new ConfigDefinition(
           "requiredFieldConfName", ConfigDef.Type.STRING, "requiredFieldLabel", "requiredFieldDesc", 10, true,
@@ -552,8 +624,8 @@ public class MockStages {
           false, MTarget.class, "targetWithReqField", 1, "targetWithReqField",
           "targetWithReqField", StageType.TARGET, false, true, true, Arrays.asList(reqField),
           null/*raw source definition*/, "", null, false, 0, null,
-          Arrays.asList(ExecutionMode.CLUSTER_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
-          new StageUpgrader.Default(), Collections.<String>emptyList(), false);
+          Arrays.asList(ExecutionMode.CLUSTER_YARN_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
+          new StageUpgrader.Default(), Collections.<String>emptyList(), false, "", false, false);
 
         //error target configurations
         ConfigDefinition errorTargetConf = new ConfigDefinition(
@@ -566,8 +638,17 @@ public class MockStages {
                                                    false, ETarget.class, "errorTarget", 1, "errorTarget",
           "Error Target", StageType.TARGET, true, false, true,
           Arrays.asList(errorTargetConf), null/*raw source definition*/, "", null, false, 0, null,
-          Arrays.asList(ExecutionMode.CLUSTER_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
-          new StageUpgrader.Default(), Collections.<String>emptyList(), false);
+          Arrays.asList(ExecutionMode.CLUSTER_YARN_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH,
+            ExecutionMode.CLUSTER_MESOS_STREAMING), false,
+          new StageUpgrader.Default(), Collections.<String>emptyList(), false, "", false, false);
+
+        StageDefinition statsDef = new StageDefinition(createLibraryDef(cl),
+          false, StatsTarget.class, "statsAggregator", 1, "statsAggregator",
+          "Stats Aggregator", StageType.TARGET, false, false, true,
+          Collections.<ConfigDefinition>emptyList(), null/*raw source definition*/, "", null, false, 0, null,
+          Arrays.asList(ExecutionMode.CLUSTER_YARN_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH,
+            ExecutionMode.CLUSTER_MESOS_STREAMING), false,
+          new StageUpgrader.Default(), Collections.<String>emptyList(), false, "", true, false);
 
         ConfigDefinition depConfDef = new ConfigDefinition(
           "dependencyConfName", ConfigDef.Type.NUMBER, "dependencyConfLabel", "dependencyConfDesc", 5, true,
@@ -585,29 +666,30 @@ public class MockStages {
                                                      false, MSource.class, "sourceWithConfigsName", 1, "sourceWithConfigsLabel",
           "sourceWithConfigsDesc", StageType.SOURCE, false, true, true,
           Lists.newArrayList(depConfDef, triggeredConfDef), null/*raw source definition*/, "", null, false, 1, null,
-          Arrays.asList(ExecutionMode.CLUSTER_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
-          new StageUpgrader.Default(), Collections.<String>emptyList(), false);
+          Arrays.asList(ExecutionMode.CLUSTER_YARN_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
+          new StageUpgrader.Default(), Collections.<String>emptyList(), false, "", false, false);
 
         StageDefinition clusterStageDef = new StageDefinition(createLibraryDef(cl),
                                                               false, ClusterMSource.class, "clusterSource", 1, "clusterSourceLabel",
             "clusterSourceDesc", StageType.SOURCE, false, true, true,
             Collections.<ConfigDefinition>emptyList(), null, "", null, false, 1, null,
-            Arrays.asList(ExecutionMode.CLUSTER_STREAMING, ExecutionMode.CLUSTER_BATCH), false,
-            new StageUpgrader.Default(), Collections.<String>emptyList(), false);
+            Arrays.asList(ExecutionMode.CLUSTER_YARN_STREAMING, ExecutionMode.CLUSTER_BATCH,
+              ExecutionMode.CLUSTER_MESOS_STREAMING), false, new StageUpgrader.Default(),
+            Collections.<String> emptyList(), false, "", false, false);
 
         StageDefinition clusterLibraryStageDef = new StageDefinition(createLibraryDef(cl),
                                                                      false, ClusterMSource.class, "clusterLibrarySource", 1, "clusterSourceLabel",
           "clusterSourceDesc", StageType.SOURCE, false, true, true,
           Collections.<ConfigDefinition>emptyList(), null, "", null, false, 1, null,
-          Arrays.asList(ExecutionMode.CLUSTER_STREAMING, ExecutionMode.CLUSTER_BATCH), false,
-          new StageUpgrader.Default(), Collections.<String>emptyList(), false);
+          Arrays.asList(ExecutionMode.CLUSTER_YARN_STREAMING, ExecutionMode.CLUSTER_BATCH), false,
+          new StageUpgrader.Default(), Collections.<String>emptyList(), false, "", false, false);
 
         StageDefinition commonLibraryTargetDef = new StageDefinition(createLibraryDef(cl),
                                                                      false, MTarget.class, "commonLibraryTarget", 1, "commonLibraryTargetLabel",
           "commonLibraryTargetDesc", StageType.TARGET, false, true, true,
           Collections.<ConfigDefinition>emptyList(), null, "", null, false, 1, null,
-          Arrays.asList(ExecutionMode.CLUSTER_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
-          new StageUpgrader.Default(), Collections.<String>emptyList(), false);
+          Arrays.asList(ExecutionMode.CLUSTER_YARN_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
+          new StageUpgrader.Default(), Collections.<String>emptyList(), false, "", false, false);
 
         ConfigDefinition regularConf = new ConfigDefinition(
           "regularConfName", ConfigDef.Type.NUMBER, "regularConfLabel", "regularConfDesc", 10, true,
@@ -630,12 +712,40 @@ public class MockStages {
                                                            false, ComplexSource.class, "complexStageName", 1, "complexStageLabel",
           "complexStageDesc", StageType.SOURCE, false, true, true,
           Lists.newArrayList(complexConf), null/*raw source definition*/, "", null, false, 1, null,
-          Arrays.asList(ExecutionMode.CLUSTER_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
-          new StageUpgrader.Default(), Collections.<String>emptyList(), false);
+          Arrays.asList(ExecutionMode.CLUSTER_YARN_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
+          new StageUpgrader.Default(), Collections.<String>emptyList(), false, "", false, false);
+
+        StageDefinition offsetControlTarget = new StageDefinition(createLibraryDef(cl),
+          false, OffsetControllerTarget.class, "offsetControlTarget", 1, "tLabel",
+          "tDesc", StageType.TARGET, false, true, true,
+          Collections.<ConfigDefinition>emptyList(), null/*raw source definition*/, "", null, false, 1, null,
+          Arrays.asList(ExecutionMode.CLUSTER_YARN_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
+          new StageUpgrader.Default(), Collections.<String>emptyList(), false, "", false, true);
+
+        StageDefinition multiLaneSource = new StageDefinition(createLibraryDef(cl),
+          false, OffsetControllerTarget.class, "multiLaneSource", 1, "multiLaneSourceLabel",
+          "multiLaneSourceDesc", StageType.SOURCE, false, true, true,
+          Collections.<ConfigDefinition>emptyList(), null/*raw source definition*/, "", null, false, 2, null,
+          Arrays.asList(ExecutionMode.CLUSTER_YARN_STREAMING, ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_BATCH), false,
+          new StageUpgrader.Default(), Collections.<String>emptyList(), false, "", false, false);
 
         StageDefinition[] stageDefs =
-          new StageDefinition[] { sDef, socDef, pDef, tDef, targetWithReqField, swcDef, eDef, clusterStageDef, complexStage,
-              clusterLibraryStageDef, commonLibraryTargetDef };
+          new StageDefinition[] {
+              sDef,
+              socDef,
+              pDef,
+              tDef,
+              targetWithReqField,
+              swcDef,
+              eDef,
+              statsDef,
+              clusterStageDef,
+              complexStage,
+              clusterLibraryStageDef,
+              commonLibraryTargetDef,
+              offsetControlTarget,
+              multiLaneSource
+          };
         stages = new HashMap<>();
         for (StageDefinition def : stageDefs) {
           if (stages.containsKey(def.getName())) {
@@ -662,8 +772,8 @@ public class MockStages {
             oldDef.hasOnRecordError(), oldDef.getConfigDefinitions(),
             oldDef.getRawSourceDefinition(), oldDef.getIcon(), oldDef.getConfigGroupDefinition(),
             oldDef.isVariableOutputStreams(), oldDef.getOutputStreams(), oldDef.getOutputStreamLabelProviderClass(),
-            Arrays.asList(ExecutionMode.CLUSTER_STREAMING, ExecutionMode.STANDALONE), false, new StageUpgrader.Default(),
-            Collections.<String>emptyList(), false);
+            Arrays.asList(ExecutionMode.CLUSTER_YARN_STREAMING, ExecutionMode.STANDALONE), false, new StageUpgrader.Default(),
+            Collections.<String>emptyList(), false, "", false, false);
           stages.put(name, newDef);
         } else {
           throw new IllegalStateException("Expected stage at " + name);
@@ -703,14 +813,26 @@ public class MockStages {
                                                  false, ETarget.class, "errorTarget", 1, "errorTarget",
         "Error Target", StageType.TARGET, true, false, true,
         Arrays.asList(errorTargetConf), null/*raw source definition*/, "", null, false, 0, null,
-        Arrays.asList(ExecutionMode.CLUSTER_STREAMING, ExecutionMode.CLUSTER_BATCH, ExecutionMode.STANDALONE), false,
-        new StageUpgrader.Default(), Collections.<String>emptyList(), false);
+        Arrays.asList(ExecutionMode.CLUSTER_YARN_STREAMING, ExecutionMode.CLUSTER_BATCH, ExecutionMode.STANDALONE), false,
+        new StageUpgrader.Default(), Collections.<String>emptyList(), false, "", false, false);
+      return errorTargetStageDef;
+    }
+
+    public static StageDefinition getStatsAggStageDefinition(ClassLoader cl) {
+
+      StageDefinition errorTargetStageDef = new StageDefinition(createLibraryDef(cl),
+        false, StatsTarget.class, "statsAggregator", 1, "statsAggregator",
+        "Stats Aggregator", StageType.TARGET, false, false, true,
+        Collections.<ConfigDefinition>emptyList(), null/*raw source definition*/, "", null, false, 0, null,
+        Arrays.asList(ExecutionMode.CLUSTER_YARN_STREAMING, ExecutionMode.CLUSTER_BATCH, ExecutionMode.STANDALONE), false,
+        new StageUpgrader.Default(), Collections.<String>emptyList(), false, "", true, false);
       return errorTargetStageDef;
     }
 
     public static class ClusterStreamingBuilder {
       private final StageDefinition clusterStageDef;
       private final StageDefinition errorTargetStageDef;
+      private final StageDefinition statsTargetStageDef;
 
       public ClusterStreamingBuilder() {
         this(Thread.currentThread().getContextClassLoader());
@@ -720,35 +842,63 @@ public class MockStages {
         clusterStageDef =
           new StageDefinition(createLibraryDef(cl), false, MSource.class, "sourceName", 1, "sourceLabel", "sourceDesc",
             StageType.SOURCE, false, true, true, Collections.<ConfigDefinition> emptyList(), getRawSourceDefinition(),
-            "", null, false, 1, null, Arrays.asList(ExecutionMode.CLUSTER_BATCH, ExecutionMode.CLUSTER_STREAMING, ExecutionMode.STANDALONE), false,
-            new StageUpgrader.Default(), Arrays.asList(ClusterModeConstants.SPARK_KAFKA_JAR_REGEX), false);
+            "", null, false, 1, null, Arrays.asList(ExecutionMode.CLUSTER_BATCH, ExecutionMode.CLUSTER_YARN_STREAMING,
+              ExecutionMode.STANDALONE, ExecutionMode.CLUSTER_MESOS_STREAMING), false, new StageUpgrader.Default(),
+            Arrays.asList(ClusterModeConstants.SPARK_KAFKA_JAR_REGEX), false, "", false, false);
         errorTargetStageDef = getErrorStageDefinition(cl);
+        statsTargetStageDef = getStatsAggStageDefinition(cl);
       }
 
+
       public StageLibraryTask build() {
-        return new MockStageLibraryTask(ImmutableList.of(clusterStageDef, errorTargetStageDef));
+        return new MockStageLibraryTask(ImmutableList.of(clusterStageDef, errorTargetStageDef, statsTargetStageDef));
       }
     }
 
     public static class ClusterBatchBuilder {
       private final StageDefinition clusterStageDef;
       private final StageDefinition errorTargetStageDef;
+      private final StageDefinition statsTargetStageDef;
 
       public ClusterBatchBuilder() {
         this(Thread.currentThread().getContextClassLoader());
       }
 
       public ClusterBatchBuilder(ClassLoader cl) {
-        clusterStageDef =
-          new StageDefinition(createLibraryDef(cl), false, MSource.class, "sourceName", 1, "sourceLabel", "sourceDesc",
-            StageType.SOURCE, false, true, true, Collections.<ConfigDefinition> emptyList(), getRawSourceDefinition(),
-            "", null, false, 1, null, Arrays.asList(ExecutionMode.CLUSTER_BATCH, ExecutionMode.STANDALONE), false,
-            new StageUpgrader.Default(), Arrays.asList(ClusterModeConstants.AVRO_JAR_REGEX, ClusterModeConstants.AVRO_MAPRED_JAR_REGEX), false);
+        clusterStageDef = new StageDefinition(
+            createLibraryDef(cl),
+            false,
+            MSource.class,
+            "sourceName",
+            1,
+            "sourceLabel",
+            "sourceDesc",
+            StageType.SOURCE,
+            false,
+            true,
+            true,
+            Collections.<ConfigDefinition> emptyList(),
+            getRawSourceDefinition(),
+            "",
+            null,
+            false,
+            1,
+            null,
+            Arrays.asList(ExecutionMode.CLUSTER_BATCH, ExecutionMode.STANDALONE),
+            false,
+            new StageUpgrader.Default(),
+            Arrays.asList(ClusterModeConstants.AVRO_JAR_REGEX, ClusterModeConstants.AVRO_MAPRED_JAR_REGEX),
+            false,
+            "",
+            false,
+            false
+        );
         errorTargetStageDef = getErrorStageDefinition(cl);
+        statsTargetStageDef = getStatsAggStageDefinition(cl);
       }
 
       public StageLibraryTask build() {
-        return new MockStageLibraryTask(ImmutableList.of(clusterStageDef, errorTargetStageDef));
+        return new MockStageLibraryTask(ImmutableList.of(clusterStageDef, errorTargetStageDef, statsTargetStageDef));
       }
     }
   }
@@ -787,6 +937,19 @@ public class MockStages {
       Collections.<String>emptyList());
   }
 
+  public static StageConfiguration getStatsAggregatorStageConfig() {
+    return new StageConfiguration(
+        "statsAggregator",
+        "default",
+        "statsAggregator",
+        1,
+        Collections.<Config>emptyList(),
+        null,
+        Collections.<String>emptyList(),
+        Collections.<String>emptyList()
+    );
+  }
+
   private static List<Config> createPipelineConfigs() {
     List<Config> pipelineConfig = new ArrayList<>();
     pipelineConfig.add(new Config("executionMode", ExecutionMode.STANDALONE.name()));
@@ -806,9 +969,22 @@ public class MockStages {
       Collections.<Config>emptyList(), null, ImmutableList.of("p"), Collections.<String>emptyList());
     stages.add(target);
 
-    return new PipelineConfiguration(schemaVersion, PipelineConfigBean.VERSION, UUID.randomUUID(), null,
-                                     createPipelineConfigs(), null, stages, getErrorStageConfig());
+    PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(schemaVersion,
+        PipelineConfigBean.VERSION,
+        UUID.randomUUID(),
+        null,
+        createPipelineConfigs(),
+        null,
+        stages,
+        getErrorStageConfig(),
+        getStatsAggregatorStageConfig()
+    );
+    Map<String, Object> metadata = new HashMap<>();
+    metadata.put("a", "A");
+    pipelineConfiguration.setMetadata(metadata);
+    return pipelineConfiguration;
   }
+
 
   @SuppressWarnings("unchecked")
   /**
@@ -854,7 +1030,7 @@ public class MockStages {
     stages.add(target);
 
     return new PipelineConfiguration(schemaVersion, PipelineConfigBean.VERSION, UUID.randomUUID(), null,
-                                     createPipelineConfigs(), null, stages, getErrorStageConfig());
+                                     createPipelineConfigs(), null, stages, getErrorStageConfig(), getStatsAggregatorStageConfig());
   }
 
   @SuppressWarnings("unchecked")
@@ -870,7 +1046,7 @@ public class MockStages {
       Collections.<Config>emptyList(), null, ImmutableList.of("p"), Collections.<String>emptyList());
     stages.add(target);
     return new PipelineConfiguration(PipelineStoreTask.SCHEMA_VERSION, PipelineConfigBean.VERSION, UUID.randomUUID(),
-                                     null, createPipelineConfigs(), null, stages, getErrorStageConfig());
+                                     null, createPipelineConfigs(), null, stages, getErrorStageConfig(), getStatsAggregatorStageConfig());
   }
 
   @SuppressWarnings("unchecked")
@@ -885,7 +1061,7 @@ public class MockStages {
       Collections.<Config>emptyList(), null, lanes, Collections.<String>emptyList());
     stages.add(target);
     return new PipelineConfiguration(PipelineStoreTask.SCHEMA_VERSION, PipelineConfigBean.VERSION, UUID.randomUUID(),
-                                     null, createPipelineConfigs(), null, stages, getErrorStageConfig());
+                                     null, createPipelineConfigs(), null, stages, getErrorStageConfig(), getStatsAggregatorStageConfig());
   }
 
   @SuppressWarnings("unchecked")
@@ -899,8 +1075,17 @@ public class MockStages {
     StageConfiguration target = new StageConfiguration("t", "default", "targetName", 1,
       new ArrayList<Config>(), null, lanes, new ArrayList<String>());
     stages.add(target);
-    return new PipelineConfiguration(PipelineStoreTask.SCHEMA_VERSION, PipelineConfigBean.VERSION, UUID.randomUUID(),
-                                     null, createPipelineConfigs(), null, stages, getErrorStageConfig());
+    return new PipelineConfiguration(
+        PipelineStoreTask.SCHEMA_VERSION,
+        PipelineConfigBean.VERSION,
+        UUID.randomUUID(),
+        null,
+        createPipelineConfigs(),
+        null,
+        stages,
+        getErrorStageConfig(),
+        getStatsAggregatorStageConfig()
+    );
   }
 
   @SuppressWarnings("unchecked")
@@ -915,7 +1100,7 @@ public class MockStages {
       new ArrayList<Config>(), null, lanes, new ArrayList<String>());
     stages.add(target);
     return new PipelineConfiguration(PipelineStoreTask.SCHEMA_VERSION, PipelineConfigBean.VERSION, UUID.randomUUID(),
-                                     null, createPipelineConfigs(), null, stages, getErrorStageConfig());
+                                     null, createPipelineConfigs(), null, stages, getErrorStageConfig(), getStatsAggregatorStageConfig());
   }
 
   @SuppressWarnings("unchecked")
@@ -930,7 +1115,7 @@ public class MockStages {
       new ArrayList<Config>(), null, lanes, new ArrayList<String>());
     stages.add(target);
     return new PipelineConfiguration(PipelineStoreTask.SCHEMA_VERSION, PipelineConfigBean.VERSION, UUID.randomUUID(),
-                                     null, createPipelineConfigs(), null, stages, getErrorStageConfig());
+                                     null, createPipelineConfigs(), null, stages, getErrorStageConfig(), getStatsAggregatorStageConfig());
   }
 
   public static PipelineConfiguration createPipelineConfigurationSourceTwoTargets() {
@@ -946,7 +1131,7 @@ public class MockStages {
       Collections.<Config>emptyList(), null, lanes, Collections.<String>emptyList());
     stages.add(target);
     return new PipelineConfiguration(PipelineStoreTask.SCHEMA_VERSION, PipelineConfigBean.VERSION, UUID.randomUUID(),
-                                     null, createPipelineConfigs(), null, stages, getErrorStageConfig());
+                                     null, createPipelineConfigs(), null, stages, getErrorStageConfig(), getStatsAggregatorStageConfig());
   }
 
   @SuppressWarnings("unchecked")
@@ -962,8 +1147,65 @@ public class MockStages {
     stages.add(target);
     return new PipelineConfiguration(PipelineStoreTask.SCHEMA_VERSION, PipelineConfigBean.VERSION, UUID.randomUUID(), null,
                                      Arrays.asList(new Config("executionMode",
-                                                                           executionMode.name())), null, stages,
-                                     getErrorStageConfig());
+                                                                           executionMode.name()), new Config("retryAttempts", 3)), null, stages,
+                                     getErrorStageConfig(), getStatsAggregatorStageConfig());
+  }
+
+  public static PipelineConfiguration createPipelineWith2OffsetCommitController(ExecutionMode executionMode) {
+    List<String> lanes = ImmutableList.of("a", "b");
+    List<StageConfiguration> stages = new ArrayList<>();
+    StageConfiguration source = new StageConfiguration("s", "default", "multiLaneSource", 1,
+      Collections.<Config>emptyList(), null, Collections.<String>emptyList(),
+      lanes);
+    stages.add(source);
+    StageConfiguration target1 = new StageConfiguration("t1", "default", "offsetControlTarget", 1,
+      Collections.<Config>emptyList(), null, ImmutableList.of("a"), Collections.<String>emptyList());
+    stages.add(target1);
+    StageConfiguration target2 = new StageConfiguration("t2", "default", "offsetControlTarget", 1,
+      Collections.<Config>emptyList(), null, ImmutableList.of("b"), Collections.<String>emptyList());
+    stages.add(target2);
+    return new PipelineConfiguration(
+        PipelineStoreTask.SCHEMA_VERSION,
+        PipelineConfigBean.VERSION,
+        UUID.randomUUID(),
+        null,
+        Arrays.asList(
+            new Config("executionMode",executionMode.name()),
+            new Config("retryAttempts", 3),
+            new Config("deliveryGuarantee", DeliveryGuarantee.AT_MOST_ONCE)
+        ),
+        null,
+        stages,
+        getErrorStageConfig(),
+        getStatsAggregatorStageConfig()
+    );
+  }
+
+  public static PipelineConfiguration createPipelineWithOffsetCommitController(ExecutionMode executionMode) {
+    List<String> lanes = ImmutableList.of("a");
+    List<StageConfiguration> stages = new ArrayList<>();
+    StageConfiguration source = new StageConfiguration("s", "default", "sourceName", 1,
+      Collections.<Config>emptyList(), null, Collections.<String>emptyList(),
+      lanes);
+    stages.add(source);
+    StageConfiguration target2 = new StageConfiguration("t2", "default", "offsetControlTarget", 1,
+      Collections.<Config>emptyList(), null, ImmutableList.of("a"), Collections.<String>emptyList());
+    stages.add(target2);
+    return new PipelineConfiguration(
+      PipelineStoreTask.SCHEMA_VERSION,
+      PipelineConfigBean.VERSION,
+      UUID.randomUUID(),
+      null,
+      Arrays.asList(
+        new Config("executionMode",executionMode.name()),
+        new Config("retryAttempts", 3),
+        new Config("deliveryGuarantee", DeliveryGuarantee.AT_MOST_ONCE)
+      ),
+      null,
+      stages,
+      getErrorStageConfig(),
+      getStatsAggregatorStageConfig()
+    );
   }
 
   @SuppressWarnings("unchecked")
@@ -982,7 +1224,7 @@ public class MockStages {
     stages.add(target);
     return new PipelineConfiguration(PipelineStoreTask.SCHEMA_VERSION, PipelineConfigBean.VERSION, UUID.randomUUID(), null,
       Arrays.asList(new Config("executionMode", executionMode.name())), null,
-      stages, getErrorStageConfig());
+      stages, getErrorStageConfig(), getStatsAggregatorStageConfig());
   }
 
   @SuppressWarnings("unchecked")
@@ -1001,7 +1243,7 @@ public class MockStages {
         Collections.<Config> emptyList(), null, lanes, Collections.<String> emptyList());
     stages.add(target);
     return new PipelineConfiguration(PipelineStoreTask.SCHEMA_VERSION, PipelineConfigBean.VERSION, UUID.randomUUID(),
-    null, Arrays.asList(new Config("executionMode", executionMode.name())), null, stages, getErrorStageConfig());
+    null, Arrays.asList(new Config("executionMode", executionMode.name())), null, stages, getErrorStageConfig(), getStatsAggregatorStageConfig());
   }
 
   @SuppressWarnings("unchecked")
@@ -1020,7 +1262,7 @@ public class MockStages {
         Arrays.asList(new Config("requiredFieldConfName", "")), null, lanes, Collections.<String> emptyList());
     stages.add(target);
     return new PipelineConfiguration(PipelineStoreTask.SCHEMA_VERSION, PipelineConfigBean.VERSION, UUID.randomUUID(),
-      null, Arrays.asList(new Config("executionMode", ExecutionMode.STANDALONE)), null, stages, getErrorStageConfig());
+      null, Arrays.asList(new Config("executionMode", ExecutionMode.STANDALONE)), null, stages, getErrorStageConfig(), getStatsAggregatorStageConfig());
   }
 
   public static PipelineConfiguration createPipelineConfigurationSourceTargetWithRequiredFields() {
@@ -1034,7 +1276,7 @@ public class MockStages {
       Arrays.asList(new Config("stageRequiredFields", Arrays.asList("dummy"))), null, lanes, new ArrayList<String>());
     stages.add(target);
     return new PipelineConfiguration(PipelineStoreTask.SCHEMA_VERSION, PipelineConfigBean.VERSION, UUID.randomUUID(),
-      null, createPipelineConfigs(), null, stages, getErrorStageConfig());
+      null, createPipelineConfigs(), null, stages, getErrorStageConfig(), getStatsAggregatorStageConfig());
   }
 
 }

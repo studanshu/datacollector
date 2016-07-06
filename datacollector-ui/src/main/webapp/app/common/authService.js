@@ -29,7 +29,7 @@ angular.module('dataCollectorApp.common')
     manager: 'manager',
     guest: 'guest'
   })
-  .service('authService', function($rootScope, $q, api) {
+  .service('authService', function($rootScope, $q, $cookies, api, configuration) {
     var self = this;
 
     this.initializeDefer = undefined;
@@ -88,5 +88,59 @@ angular.module('dataCollectorApp.common')
      */
     this.getUserRoles = function() {
       return self.userInfo ? self.userInfo.roles : [''];
+    };
+
+    /**
+     * Fetch Remote User Roles
+     */
+    this.fetchRemoteUserRoles = function() {
+      api.remote.getRemoteRoles(this.getRemoteBaseUrl(), this.getSSOToken())
+        .then(function(res) {
+          self.remoteUserInfo = res.data;
+        });
+    };
+
+    /**
+     * Return Remote Store Base URL
+     */
+    this.getRemoteBaseUrl = function() {
+      var remoteBaseUrl = configuration.getRemoteBaseUrl();
+      if (remoteBaseUrl && remoteBaseUrl[remoteBaseUrl.length] !== '/') {
+        remoteBaseUrl += '/';
+      }
+      return remoteBaseUrl;
+    };
+
+    /**
+     * Return SSO token by extracting it from Cookie
+     */
+    this.getSSOToken = function() {
+      var cookies = $cookies.getAll();
+      var ssoToken;
+      angular.forEach(cookies, function(value, cookieName) {
+        if (cookieName.indexOf('SS-SSO-') != -1) {
+          ssoToken = value;
+        }
+      });
+      return ssoToken;
+    };
+
+    /**
+     * Return Remote Organization ID
+     * @returns {*}
+     */
+    this.getRemoteOrgId = function() {
+      if (self.remoteUserInfo) {
+        return self.remoteUserInfo.organizationId;
+      }
+      return '';
+    };
+
+    /**
+     * Returns true if remote user contains org-admin role otherwise false
+     * @returns {*|string|boolean}
+     */
+    this.isRemoteUserOrgAdmin = function() {
+      return self.remoteUserInfo && self.remoteUserInfo.roles && self.remoteUserInfo.roles.indexOf('org-admin') !== -1;
     };
   });

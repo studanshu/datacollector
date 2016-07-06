@@ -30,6 +30,8 @@ import com.streamsets.datacollector.config.MemoryLimitConfiguration;
 import com.streamsets.datacollector.config.StageType;
 import com.streamsets.datacollector.el.ELEvaluator;
 import com.streamsets.datacollector.el.ELVariables;
+import com.streamsets.datacollector.email.EmailException;
+import com.streamsets.datacollector.email.EmailSender;
 import com.streamsets.datacollector.metrics.MetricsConfigurator;
 import com.streamsets.datacollector.record.RecordImpl;
 import com.streamsets.datacollector.record.io.RecordWriterReaderFactory;
@@ -53,6 +55,8 @@ import com.streamsets.pipeline.api.ext.RecordReader;
 import com.streamsets.pipeline.api.ext.RecordWriter;
 import com.streamsets.pipeline.api.impl.ErrorMessage;
 import com.streamsets.pipeline.api.impl.Utils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -65,6 +69,7 @@ import java.util.Map;
 
 public class StageContext implements Source.Context, Target.Context, Processor.Context, ContextExtensions {
 
+  private static final Logger LOG = LoggerFactory.getLogger(StageContext.class);
   private static final String CUSTOM_METRICS_PREFIX = "custom.";
 
   private final List<Stage.Info> pipelineInfo;
@@ -84,14 +89,42 @@ public class StageContext implements Source.Context, Target.Context, Processor.C
   private final String pipelineName;
   private final String rev;
   private volatile boolean stop;
+  private final EmailSender emailSender;
+
 
   //for SDK
-  public StageContext(String instanceName, StageType stageType, boolean isPreview,
-                      OnRecordError onRecordError, List<String> outputLanes, Map<String, Class<?>[]> configToElDefMap,
-                      Map<String, Object> constants, ExecutionMode executionMode, String resourcesDir) {
+  public StageContext(
+      String instanceName,
+      StageType stageType,
+      boolean isPreview,
+      OnRecordError onRecordError,
+      List<String> outputLanes,
+      Map<String, Class<?>[]> configToElDefMap,
+      Map<String, Object> constants,
+      ExecutionMode executionMode,
+      String resourcesDir,
+      EmailSender emailSender
+  ) {
     this.pipelineName = "myPipeline";
     this.rev = "0";
-    pipelineInfo = ImmutableList.of();
+    // create dummy info for Stage Runners. This is required for stages that expose custom metrics
+    Stage.Info info = new Stage.Info() {
+      @Override
+      public String getName() {
+        return "x";
+      }
+
+      @Override
+      public int getVersion() {
+        return 0;
+      }
+
+      @Override
+      public String getInstanceName() {
+        return "x";
+      }
+    };
+    pipelineInfo = ImmutableList.of(info);
     this.stageType = stageType;
     this.isPreview = isPreview;
     metrics = new MetricRegistry();
@@ -104,11 +137,22 @@ public class StageContext implements Source.Context, Target.Context, Processor.C
     this.pipelineMaxMemory = new MemoryLimitConfiguration().getMemoryLimit();
     this.executionMode = executionMode;
     this.resourcesDir = resourcesDir;
+    this.emailSender = emailSender;
   }
 
-  public StageContext(String pipelineName, String rev, List<Stage.Info> pipelineInfo, StageType stageType, boolean isPreview,
-                      MetricRegistry metrics, StageRuntime stageRuntime, long pipelineMaxMemory, ExecutionMode executionMode,
-                      String resourcesDir) {
+  public StageContext(
+      String pipelineName,
+      String rev,
+      List<Stage.Info> pipelineInfo,
+      StageType stageType,
+      boolean isPreview,
+      MetricRegistry metrics,
+      StageRuntime stageRuntime,
+      long pipelineMaxMemory,
+      ExecutionMode executionMode,
+      String resourcesDir,
+      EmailSender emailSender
+  ) {
     this.pipelineName = pipelineName;
     this.rev = rev;
     this.pipelineInfo = pipelineInfo;
@@ -123,6 +167,7 @@ public class StageContext implements Source.Context, Target.Context, Processor.C
     this.pipelineMaxMemory = pipelineMaxMemory;
     this.executionMode = executionMode;
     this.resourcesDir = resourcesDir;
+    this.emailSender = emailSender;
   }
 
   private Map<String, Class<?>[]> getConfigToElDefMap(StageRuntime stageRuntime) {
@@ -169,6 +214,16 @@ public class StageContext implements Source.Context, Target.Context, Processor.C
   @Override
   public RecordWriter createRecordWriter(OutputStream outputStream) throws IOException {
     return RecordWriterReaderFactory.createRecordWriter(this, outputStream);
+  }
+
+  @Override
+  public void notify(List<String> addresses, String subject, String body) throws StageException {
+    try {
+      emailSender.send(addresses, subject, body);
+    } catch (EmailException e) {
+      LOG.error(Utils.format(ContainerError.CONTAINER_01001.getMessage(), e.toString(), e));
+      throw new StageException(ContainerError.CONTAINER_01001, e.toString(), e);
+    }
   }
 
   @Override
@@ -261,7 +316,7 @@ public class StageContext implements Source.Context, Target.Context, Processor.C
     if (ex instanceof StageException) {
       toError(record, new ErrorMessage((StageException) ex));
     } else {
-      toError(record, new ErrorMessage(ContainerError.CONTAINER_0001, ex.toString()));
+      toError(record, new ErrorMessage(ContainerError.CONTAINER_0001, ex.toString(), ex));
     }
   }
 
@@ -276,13 +331,15 @@ public class StageContext implements Source.Context, Target.Context, Processor.C
   public void toError(Record record, ErrorCode errorCode, Object... args) {
     Preconditions.checkNotNull(record, "record cannot be null");
     Preconditions.checkNotNull(errorCode, "errorId cannot be null");
+    // the last args needs to be Exception in order to show stack trace
     toError(record, new ErrorMessage(errorCode, args));
   }
 
   private void toError(Record record, ErrorMessage errorMessage) {
     RecordImpl recordImpl = ((RecordImpl) record).clone();
-    if (stageType == StageType.SOURCE) {
+    if (recordImpl.isInitialRecord()) {
       recordImpl.getHeader().setSourceRecord(recordImpl);
+      recordImpl.setInitialRecord(false);
     }
     recordImpl.getHeader().setError(instanceName, errorMessage);
     errorSink.addRecord(instanceName, recordImpl);

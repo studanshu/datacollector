@@ -21,7 +21,7 @@ package com.streamsets.pipeline.config;
 
 import com.streamsets.pipeline.api.base.BaseEnumChooserValues;
 
-public class DataFormatChooserValues extends BaseEnumChooserValues {
+public class DataFormatChooserValues extends BaseEnumChooserValues<DataFormat> {
 
   public DataFormatChooserValues() {
     super(DataFormat.class);

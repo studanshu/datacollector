@@ -26,7 +26,7 @@ import com.streamsets.datacollector.execution.PipelineState;
 import com.streamsets.datacollector.execution.PipelineStatus;
 import com.streamsets.datacollector.execution.Runner;
 import com.streamsets.datacollector.json.ObjectMapperFactory;
-import com.streamsets.datacollector.main.BuildInfo;
+import com.streamsets.datacollector.main.DataCollectorBuildInfo;
 import com.streamsets.datacollector.main.RuntimeInfo;
 import com.streamsets.datacollector.store.PipelineStoreException;
 import com.streamsets.datacollector.util.Configuration;
@@ -92,8 +92,17 @@ public class UpdateChecker implements Runnable {
     if (pipelineConf != null) {
       List stages = new ArrayList();
 
-      // error stage
+      // Stats aggregator target stage
       Map stage = new LinkedHashMap();
+      if(pipelineConf.getStatsAggregatorStage() != null) {
+        stage.put("name", pipelineConf.getStatsAggregatorStage().getStageName());
+        stage.put("version", pipelineConf.getStatsAggregatorStage().getStageVersion());
+        stage.put("library", pipelineConf.getStatsAggregatorStage().getLibrary());
+        stages.add(stage);
+      }
+
+      // error stage
+      stage = new LinkedHashMap();
       stage.put("name", pipelineConf.getErrorStage().getStageName());
       stage.put("version", pipelineConf.getErrorStage().getStageVersion());
       stage.put("library", pipelineConf.getErrorStage().getLibrary());
@@ -110,7 +119,7 @@ public class UpdateChecker implements Runnable {
 
       uploadInfo = new LinkedHashMap();
       uploadInfo.put("sdc.sha256", getSha256(runner.getToken()));
-      uploadInfo.put("sdc.buildInfo", new BuildInfo());
+      uploadInfo.put("sdc.buildInfo", new DataCollectorBuildInfo());
       uploadInfo.put("sdc.stages", stages);
     }
 

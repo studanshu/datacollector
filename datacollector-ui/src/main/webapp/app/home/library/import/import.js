@@ -83,6 +83,7 @@ angular
                           var rulesObj = res.data;
                           rulesObj.metricsRuleDefinitions = jsonRulesObj.metricsRuleDefinitions;
                           rulesObj.dataRuleDefinitions = jsonRulesObj.dataRuleDefinitions;
+                          rulesObj.driftRuleDefinitions = jsonRulesObj.driftRuleDefinitions;
                           rulesObj.emailIds = jsonRulesObj.emailIds;
 
                           api.pipelineAgent.savePipelineRules(pipelineInfo.name, rulesObj).
@@ -116,9 +117,11 @@ angular
                     newPipelineObject = res.data;
                     newPipelineObject.configuration = jsonConfigObj.configuration;
                     newPipelineObject.errorStage = jsonConfigObj.errorStage;
+                    newPipelineObject.statsAggregatorStage = jsonConfigObj.statsAggregatorStage;
                     newPipelineObject.uiInfo = jsonConfigObj.uiInfo;
                     newPipelineObject.stages = jsonConfigObj.stages;
                     newPipelineObject.version = jsonConfigObj.version;
+                    newPipelineObject.metadata = jsonConfigObj.metadata;
                     return api.pipelineAgent.savePipelineConfig(name, newPipelineObject);
                   })
                   .then(function(res) {
@@ -128,6 +131,7 @@ angular
                           var rulesObj = res.data;
                           rulesObj.metricsRuleDefinitions = jsonRulesObj.metricsRuleDefinitions;
                           rulesObj.dataRuleDefinitions = jsonRulesObj.dataRuleDefinitions;
+                          rulesObj.driftRuleDefinitions = jsonRulesObj.driftRuleDefinitions;
                           rulesObj.emailIds = jsonRulesObj.emailIds;
 
                           api.pipelineAgent.savePipelineRules(name, rulesObj).

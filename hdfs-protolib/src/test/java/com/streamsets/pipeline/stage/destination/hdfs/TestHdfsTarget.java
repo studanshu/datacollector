@@ -22,35 +22,53 @@ package com.streamsets.pipeline.stage.destination.hdfs;
 import com.google.common.collect.ImmutableList;
 import com.streamsets.pipeline.api.ExecutionMode;
 import com.streamsets.pipeline.api.Field;
+import com.streamsets.pipeline.api.OnRecordError;
 import com.streamsets.pipeline.api.Record;
+import com.streamsets.pipeline.api.Stage;
 import com.streamsets.pipeline.api.StageException;
 import com.streamsets.pipeline.api.impl.Utils;
+import com.streamsets.pipeline.config.CsvHeader;
+import com.streamsets.pipeline.config.CsvMode;
 import com.streamsets.pipeline.config.DataFormat;
-import com.streamsets.pipeline.api.OnRecordError;
-import com.streamsets.pipeline.configurablestage.DStage;
+import com.streamsets.pipeline.config.JsonMode;
 import com.streamsets.pipeline.sdk.RecordCreator;
 import com.streamsets.pipeline.sdk.TargetRunner;
+import com.streamsets.pipeline.stage.destination.hdfs.util.HdfsTargetUtil;
 import com.streamsets.pipeline.stage.destination.hdfs.writer.ActiveRecordWriters;
-
+import com.streamsets.pipeline.stage.destination.lib.DataGeneratorFormatConfig;
+import org.apache.commons.io.FileUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.CommonConfigurationKeys;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.nio.charset.Charset;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 public class TestHdfsTarget {
-  private static String testDir;
+  private String testDir;
 
-  @BeforeClass
-  public static void setUpClass() {
-    File dir = new File("target", UUID.randomUUID().toString()).getAbsoluteFile();
+  @Rule
+  public TestName testName = new TestName();
+
+  @Before
+  public void setUp() {
+    File dir = new File("target/TestHdfsTarget", testName.getMethodName()).getAbsoluteFile();
     Assert.assertTrue(dir.mkdirs());
     testDir = dir.getAbsolutePath();
   }
@@ -61,31 +79,17 @@ public class TestHdfsTarget {
 
   @Test
   public void testTarget() throws Exception {
-    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class)
-        .setOnRecordError(OnRecordError.STOP_PIPELINE)
-        .addConfiguration("hdfsUri", "file:///")
-        .addConfiguration("hdfsUser", "foo")
-        .addConfiguration("hdfsKerberos", false)
-        .addConfiguration("hdfsConfDir", null)
-        .addConfiguration("hdfsConfigs", new HashMap<>())
-        .addConfiguration("uniquePrefix", "foo")
-        .addConfiguration("dirPathTemplate", getTestDir() + "/hdfs/${YYYY()}${MM()}${DD()}${hh()}${mm()}${record:value('/a')}")
-        .addConfiguration("timeZoneID", "UTC")
-        .addConfiguration("fileType", HdfsFileType.TEXT)
-        .addConfiguration("keyEl", "${uuid()}")
-        .addConfiguration("compression", CompressionMode.NONE)
-        .addConfiguration("seqFileCompressionType", HdfsSequenceFileCompressionType.BLOCK)
-        .addConfiguration("maxRecordsPerFile", 5)
-        .addConfiguration("maxFileSize", 0)
-        .addConfiguration("timeDriver", "${record:value('/time')}")
-        .addConfiguration("lateRecordsLimit", "${30 * MINUTES}")
-        .addConfiguration("lateRecordsAction", LateRecordsAction.SEND_TO_ERROR)
-        .addConfiguration("lateRecordsDirPathTemplate", "")
-        .addConfiguration("dataFormat", DataFormat.SDC_JSON)
-        .addConfiguration("csvFileFormat", null)
-        .addConfiguration("csvReplaceNewLines", false)
-        .addConfiguration("charset", "UTF-8")
-        .build();
+    HdfsTarget hdfsTarget = HdfsTargetUtil.newBuilder()
+      .dirPathTemplate(getTestDir() + "/hdfs/${YYYY()}${MM()}${DD()}${hh()}${mm()}${record:value('/a')}")
+      .timeDriver("${record:value('/time')}")
+      .lateRecordsLimit("${30 * MINUTES}")
+      .lateRecordsAction(LateRecordsAction.SEND_TO_LATE_RECORDS_FILE)
+      .build();
+
+    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class, hdfsTarget)
+      .setOnRecordError(OnRecordError.STOP_PIPELINE)
+      .build();
+
     runner.runInit();
     List<Record> records = new ArrayList<>();
     Record record = RecordCreator.create();
@@ -115,76 +119,76 @@ public class TestHdfsTarget {
     records.add(record);
 
     runner.runWrite(records);
+    runner.runDestroy();
+  }
+
+  @Test
+  public void testOnlyConfDirectory() throws Exception {
+    // Create custom core-site.xml
+    Configuration configuration = new Configuration();
+    configuration.clear();
+    configuration.set(CommonConfigurationKeys.FS_DEFAULT_NAME_KEY, "file:///");
+    FileOutputStream configOut = FileUtils.openOutputStream(new File(getTestDir() + "/conf-dir/core-site.xml"));
+    configuration.writeXml(configOut);
+    configOut.close();
+
+    HdfsTarget hdfsTarget = HdfsTargetUtil.newBuilder()
+      .hdfsUri("")
+      .hdfsConfDir(getTestDir() + "/conf-dir/")
+      .build();
+
+    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class, hdfsTarget)
+      .setOnRecordError(OnRecordError.STOP_PIPELINE)
+      .build();
+
+    runner.runInit();
+
+    // The configuration object should have the FS config from core-site.xml
+    Assert.assertEquals("file:///", hdfsTarget.getHdfsConfiguration().get(CommonConfigurationKeys.FS_DEFAULT_NAME_KEY));
 
     runner.runDestroy();
   }
 
   @Test
   public void testCutoffLimitUnitConversion() throws Exception {
-    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class)
-        .setOnRecordError(OnRecordError.STOP_PIPELINE)
-        .addConfiguration("hdfsUri", "file:///")
-        .addConfiguration("hdfsUser", "foo")
-        .addConfiguration("hdfsKerberos", false)
-        .addConfiguration("hdfsConfDir", null)
-        .addConfiguration("hdfsConfigs", new HashMap<>())
-        .addConfiguration("uniquePrefix", "foo")
-        .addConfiguration("dirPathTemplate", getTestDir() + "/hdfs/${YYYY()}${MM()}${DD()}${hh()}${mm()}${record:value('/a')}")
-        .addConfiguration("timeZoneID", "UTC")
-        .addConfiguration("fileType", HdfsFileType.TEXT)
-        .addConfiguration("keyEl", "${uuid()}")
-        .addConfiguration("compression", CompressionMode.NONE)
-        .addConfiguration("seqFileCompressionType", HdfsSequenceFileCompressionType.BLOCK)
-        .addConfiguration("maxRecordsPerFile", 1)
-        .addConfiguration("maxFileSize", 1)
-        .addConfiguration("timeDriver", "${record:value('/time')}")
-        .addConfiguration("lateRecordsLimit", "${30 * MINUTES}")
-        .addConfiguration("lateRecordsAction", LateRecordsAction.SEND_TO_LATE_RECORDS_FILE)
-        .addConfiguration("lateRecordsDirPathTemplate", getTestDir() + "/hdfs/${YYYY()}")
-        .addConfiguration("dataFormat", DataFormat.SDC_JSON)
-        .addConfiguration("csvFileFormat", null)
-        .addConfiguration("csvReplaceNewLines", false)
-        .addConfiguration("charset", "UTF-8")
-        .build();
+    HdfsTarget hdfsTarget = HdfsTargetUtil.newBuilder()
+      .maxFileSize(1)
+      .lateRecordsAction(LateRecordsAction.SEND_TO_LATE_RECORDS_FILE)
+      .dirPathTemplate(getTestDir() + "/hdfs/${YYYY()}${MM()}${DD()}${hh()}${mm()}${record:value('/a')}")
+      .lateRecordsDirPathTemplate(getTestDir() + "/hdfs/${YYYY()}")
+      .build();
+
+    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class, hdfsTarget)
+      .setOnRecordError(OnRecordError.STOP_PIPELINE)
+      .build();
+
     runner.runInit();
     try {
-      Assert.assertEquals(1024 * 1024, ((HdfsTarget)((DStage)runner.getStage()).getStage()).getCurrentWriters().getWriterManager().getCutOffSizeBytes());
-      Assert.assertEquals(1024 * 1024, ((HdfsTarget)((DStage)runner.getStage()).getStage()).getLateWriters().getWriterManager().getCutOffSizeBytes());
+      Assert.assertEquals(1024 * 1024,
+        ((HdfsTarget) runner.getStage()).getCurrentWriters().getWriterManager().getCutOffSizeBytes());
+      Assert.assertEquals(1024 * 1024,
+        ((HdfsTarget) runner.getStage()).getLateWriters().getWriterManager().getCutOffSizeBytes());
     } finally {
       runner.runDestroy();
     }
   }
 
+  @Ignore
   @Test
   public void testEmptyBatch() throws Exception {
-    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class)
-        .setOnRecordError(OnRecordError.STOP_PIPELINE)
-        .addConfiguration("hdfsUri", "file:///")
-        .addConfiguration("hdfsUser", "foo")
-        .addConfiguration("hdfsKerberos", false)
-        .addConfiguration("hdfsConfDir", null)
-        .addConfiguration("hdfsConfigs", new HashMap<>())
-        .addConfiguration("uniquePrefix", "foo")
-        .addConfiguration("dirPathTemplate", getTestDir() + "/hdfs/${YYYY()}${MM()}${DD()}${hh()}${mm()}${ss()}")
-        .addConfiguration("timeZoneID", "UTC")
-        .addConfiguration("fileType", HdfsFileType.TEXT)
-        .addConfiguration("keyEl", "${uuid()}")
-        .addConfiguration("compression", CompressionMode.NONE)
-        .addConfiguration("seqFileCompressionType", HdfsSequenceFileCompressionType.BLOCK)
-        .addConfiguration("maxRecordsPerFile", 1)
-        .addConfiguration("maxFileSize", 1)
-        .addConfiguration("timeDriver", "${time:now()}")
-        .addConfiguration("lateRecordsLimit", "${1 * SECONDS}")
-        .addConfiguration("lateRecordsAction", LateRecordsAction.SEND_TO_ERROR)
-        .addConfiguration("lateRecordsDirPathTemplate", "")
-        .addConfiguration("dataFormat", DataFormat.SDC_JSON)
-        .addConfiguration("csvFileFormat", null)
-        .addConfiguration("csvReplaceNewLines", false)
-        .addConfiguration("charset", "UTF-8")
-        .build();
+    HdfsTarget hdfsTarget = HdfsTargetUtil.newBuilder()
+      .maxFileSize(1)
+      .maxRecordsPerFile(1)
+      .dirPathTemplate(getTestDir() + "/hdfs/${YYYY()}${MM()}${DD()}${hh()}${mm()}")
+      .build();
+
+    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class, hdfsTarget)
+      .setOnRecordError(OnRecordError.STOP_PIPELINE)
+      .build();
+
     runner.runInit();
     try {
-      ActiveRecordWriters activeWriters = ((HdfsTarget)((DStage)runner.getStage()).getStage()).getCurrentWriters();
+      ActiveRecordWriters activeWriters = ((HdfsTarget)runner.getStage()).getCurrentWriters();
 
       Assert.assertEquals(0, activeWriters.getActiveWritersCount());
       runner.runWrite(ImmutableList.of(RecordCreator.create()));
@@ -197,64 +201,127 @@ public class TestHdfsTarget {
     }
   }
 
+  /**
+    If directory path is relative path, it raises an issue with error code HADOOPFS_40
+   */
   @Test
   public void testInvalidDirValidation() throws Exception {
-    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class)
+    HdfsTarget hdfsTarget = HdfsTargetUtil.newBuilder()
+      .dirPathTemplate("invalid-directory")
+      .build();
+
+    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class, hdfsTarget)
+      .setOnRecordError(OnRecordError.STOP_PIPELINE)
+      .build();
+
+    List<Stage.ConfigIssue> configIssues = runner.runValidateConfigs();
+    Assert.assertEquals(1, configIssues.size());
+    Assert.assertTrue(configIssues.get(0).toString().contains(Errors.HADOOPFS_40.name()));
+  }
+
+  /**
+    If late record directory is "SEND TO ERROR", we don't do validation on late record directory.
+    This test should't raise an config issue.
+  */
+  @Test
+  public void testNoLateRecordsDirValidation() throws Exception {
+    HdfsTarget hdfsTarget = HdfsTargetUtil.newBuilder()
+      .dirPathTemplate(getTestDir() + "/hdfs/${YYYY()}${MM()}${DD()}${hh()}${mm()}")
+      .lateRecordsAction(LateRecordsAction.SEND_TO_ERROR)
+      .lateRecordsDirPathTemplate("relative-and-thus-invalid")
+      .build();
+
+    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class, hdfsTarget)
         .setOnRecordError(OnRecordError.STOP_PIPELINE)
-        .addConfiguration("hdfsUri", "file:///")
-        .addConfiguration("hdfsUser", "foo")
-        .addConfiguration("hdfsKerberos", false)
-        .addConfiguration("hdfsConfDir", null)
-        .addConfiguration("hdfsConfigs", new HashMap<>())
-        .addConfiguration("uniquePrefix", "foo")
-        .addConfiguration("dirPathTemplate", "nonabsolutedir")
-        .addConfiguration("timeZoneID", "UTC")
-        .addConfiguration("fileType", HdfsFileType.TEXT)
-        .addConfiguration("keyEl", "${uuid()}")
-        .addConfiguration("compression", CompressionMode.NONE)
-        .addConfiguration("seqFileCompressionType", HdfsSequenceFileCompressionType.BLOCK)
-        .addConfiguration("maxRecordsPerFile", 1)
-        .addConfiguration("maxFileSize", 1)
-        .addConfiguration("timeDriver", "${time:now()}")
-        .addConfiguration("lateRecordsLimit", "${1 * SECONDS}")
-        .addConfiguration("lateRecordsAction", LateRecordsAction.SEND_TO_ERROR)
-        .addConfiguration("lateRecordsDirPathTemplate", "")
-        .addConfiguration("dataFormat", DataFormat.SDC_JSON)
-        .addConfiguration("csvFileFormat", null)
-        .addConfiguration("csvReplaceNewLines", false)
-        .addConfiguration("charset", "UTF-8")
         .build();
-    Assert.assertFalse(runner.runValidateConfigs().isEmpty());
+
+    Assert.assertTrue(runner.runValidateConfigs().isEmpty());
+  }
+
+  /**
+    If late record action is SEND_TO_LATE_RECORDS_FILE, we should do validation on the directory path.
+  */
+  @Test
+  public void testLateRecordsDirValidation() throws Exception {
+    HdfsTarget hdfsTarget = HdfsTargetUtil.newBuilder()
+      .dirPathTemplate(getTestDir() + "/hdfs/${YYYY()}${MM()}${DD()}${hh()}${mm()}")
+      .lateRecordsAction(LateRecordsAction.SEND_TO_LATE_RECORDS_FILE)
+      .lateRecordsDirPathTemplate(getTestDir() + "/late/${TEST}") // Unknown constant
+      .build();
+
+    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class, hdfsTarget)
+        .setOnRecordError(OnRecordError.STOP_PIPELINE)
+        .build();
+
+    List<Stage.ConfigIssue> configIssues = runner.runValidateConfigs();
+    Assert.assertEquals(1, configIssues.size());
+    // since ${TEST} cannot be resolved, this test should raise ELException
+    Assert.assertTrue(configIssues.get(0).toString().contains(Errors.HADOOPFS_20.name()));
+  }
+
+  /**
+    Test validation on both output and late record directory. Testing ELs and relative path, and
+    both should fail.
+  */
+  @Test
+  public void testDirValidationFailure() throws Exception {
+    HdfsTarget hdfsTarget = HdfsTargetUtil.newBuilder()
+      .dirPathTemplate(getTestDir() + "${TEST}")
+      .lateRecordsAction(LateRecordsAction.SEND_TO_LATE_RECORDS_FILE)
+      .lateRecordsDirPathTemplate("relative-and-thus-invalid")
+      .build();
+
+    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class, hdfsTarget)
+        .setOnRecordError(OnRecordError.STOP_PIPELINE)
+        .build();
+
+    List<Stage.ConfigIssue> configIssues = runner.runValidateConfigs();
+    Assert.assertEquals(2, configIssues.size());
+    // output directory should cause HADOOPFS_20 since we didn't set constant value for ${TEST}
+    Assert.assertTrue(configIssues.get(0).toString().contains(Errors.HADOOPFS_20.name()));
+    // late record directory should cause HADOOPFS_40 since it is relative path
+    Assert.assertTrue(configIssues.get(1).toString().contains(Errors.HADOOPFS_40.name()));
+  }
+
+  /**
+    If dirPathTemplate(output directory) and late record directory contain Els,
+    we first convert Els to constant values, and do the path validation.
+  */
+  @Test
+  public void testDirWithELsValidation() throws Exception {
+    HdfsTarget hdfsTarget = HdfsTargetUtil.newBuilder()
+      .dirPathTemplate(getTestDir() + "/hdfs/${YYYY()}-${MM()}/out")
+      .lateRecordsAction(LateRecordsAction.SEND_TO_LATE_RECORDS_FILE)
+      .lateRecordsDirPathTemplate(getTestDir() + "/late_record/${YYYY()}-${MM()}") // lateRecordsDirPathTemplate contains Els
+      .build();
+
+    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class, hdfsTarget)
+        .setOnRecordError(OnRecordError.STOP_PIPELINE)
+        .build();
+
+    Assert.assertTrue(runner.runValidateConfigs().isEmpty());
+    // Check if output dir and late record dir are created with the right path
+    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM");
+    String date_format = dateFormat.format(new Date());
+    File outDir = new File(testDir + "/hdfs/" + date_format + "/out");
+    File lateRecordDir = new File(testDir + "/late_record/" + date_format);
+    // Check if the output dir is created
+    Assert.assertTrue(outDir.exists());
+    // Check if the late record dir is created
+    Assert.assertTrue(lateRecordDir.exists());
   }
 
   @Test
   public void testClusterModeHadoopConfDirAbsPath() {
-    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class)
+    HdfsTarget hdfsTarget = HdfsTargetUtil.newBuilder()
+      .hdfsConfDir(testDir)
+      .build();
+
+    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class, hdfsTarget)
       .setOnRecordError(OnRecordError.STOP_PIPELINE)
-      .addConfiguration("hdfsUri", "file:///")
-      .addConfiguration("hdfsUser", "foo")
-      .addConfiguration("hdfsKerberos", false)
-      .addConfiguration("hdfsConfDir", testDir)
-      .addConfiguration("hdfsConfigs", new HashMap<>())
-      .addConfiguration("uniquePrefix", "foo")
-      .addConfiguration("dirPathTemplate", getTestDir() + "/hdfs/${YYYY()}${MM()}${DD()}${hh()}${mm()}${record:value('/a')}")
-      .addConfiguration("timeZoneID", "UTC")
-      .addConfiguration("fileType", HdfsFileType.TEXT)
-      .addConfiguration("keyEl", "${uuid()}")
-      .addConfiguration("compression", CompressionMode.NONE)
-      .addConfiguration("seqFileCompressionType", HdfsSequenceFileCompressionType.BLOCK)
-      .addConfiguration("maxRecordsPerFile", 5)
-      .addConfiguration("maxFileSize", 0)
-      .addConfiguration("timeDriver", "${record:value('/time')}")
-      .addConfiguration("lateRecordsLimit", "${30 * MINUTES}")
-      .addConfiguration("lateRecordsAction", LateRecordsAction.SEND_TO_ERROR)
-      .addConfiguration("lateRecordsDirPathTemplate", "")
-      .addConfiguration("dataFormat", DataFormat.SDC_JSON)
-      .addConfiguration("csvFileFormat", null)
-      .addConfiguration("csvReplaceNewLines", false)
-      .addConfiguration("charset", "UTF-8")
       .setExecutionMode(ExecutionMode.CLUSTER_BATCH)
       .build();
+
     try {
       runner.runInit();
       Assert.fail(Utils.format("Expected StageException as absolute hdfsConfDir path '{}' is specified in cluster mode",
@@ -263,4 +330,229 @@ public class TestHdfsTarget {
       Assert.assertTrue(e.getMessage().contains("HADOOPFS_45"));
     }
   }
+
+  @Test
+  public void testIdleTimeout() throws Exception {
+    HdfsTarget hdfsTarget = HdfsTargetUtil.newBuilder()
+      .dirPathTemplate(getTestDir() + "/hdfs/${YYYY()}${MM()}${DD()}")
+      .idleTimeout("1")
+      .build();
+
+    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class, hdfsTarget)
+        .setOnRecordError(OnRecordError.STOP_PIPELINE)
+        .build();
+
+    runner.runInit();
+    List<Record> records = new ArrayList<>();
+    Record record = RecordCreator.create();
+    Map<String, Field> map = new HashMap<>();
+    map.put("time", Field.createDatetime(new Date()));
+    map.put("a", Field.create("x"));
+    record.set(Field.create(map));
+    records.add(record);
+    runner.runWrite(ImmutableList.copyOf(new Record[]{record}));
+
+    // Idle for 1500 milliseconds - should create a new file.
+    Thread.sleep(1500);
+    record = RecordCreator.create();
+    map.put("a", Field.create("y"));
+    record.set(Field.create(map));
+    records.add(record);
+    runner.runWrite(ImmutableList.copyOf(new Record[]{record}));
+
+    // Idle for 500 milliseconds - no new file
+    Thread.sleep(500);
+    record = RecordCreator.create();
+    map = new HashMap<>();
+    map.put("time", Field.createDatetime(new Date(System.currentTimeMillis() - 1 * 60 * 1000)));
+    map.put("a", Field.create("x"));
+    record.set(Field.create(map));
+    records.add(record);
+    runner.runWrite(ImmutableList.copyOf(new Record[]{record}));
+
+    // Idle for 1500 milliseconds - one more file.
+    Thread.sleep(1500);
+    record = RecordCreator.create();
+    map = new HashMap<>();
+    map.put("time", Field.createDatetime(new Date(System.currentTimeMillis() - 2 * 60 * 1000)));
+    map.put("a", Field.create("x"));
+    record.set(Field.create(map));
+    records.add(record);
+    runner.runWrite(ImmutableList.copyOf(new Record[]{record}));
+
+    runner.runDestroy();
+
+    File[] list = (new File(getTestDir() + "/hdfs/").listFiles())[0].listFiles();
+    for (File f: list) {
+      System.out.print(f.getName());
+    }
+    Assert.assertEquals(3, list.length);
+  }
+
+  /**
+   * Verifies normal behavior when target directory is in the header.
+   */
+  @Test
+  public void testDirectoryTemplateInHeader() throws Exception {
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+    dataGeneratorFormatConfig.jsonMode = JsonMode.MULTIPLE_OBJECTS;
+
+    HdfsTarget hdfsTarget = HdfsTargetUtil.newBuilder()
+      .dataGeneratorFormatConfig(dataGeneratorFormatConfig)
+      .dirPathTemplateInHeader(true)
+      .dirPathTemplate(null)
+      .dataForamt(DataFormat.JSON)
+      .build();
+
+    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class, hdfsTarget)
+        .setOnRecordError(OnRecordError.STOP_PIPELINE)
+        .build();
+    runner.runInit();
+
+    Record record = RecordCreator.create();
+    record.getHeader().setAttribute(HdfsTarget.TARGET_DIRECTORY_HEADER, getTestDir() + "/hdfs/");
+    Map<String, Field> map = new HashMap<>();
+    map.put("a", Field.create("x"));
+    record.set(Field.create(map));
+
+    runner.runWrite(ImmutableList.copyOf(new Record[]{record}));
+
+    runner.runDestroy();
+
+    File[] list = new File(getTestDir() + "/hdfs/").listFiles();
+    Assert.assertEquals(1, list.length);
+    Assert.assertEquals("{\"a\":\"x\"}\n", FileUtils.readFileToString(list[0], Charset.defaultCharset()));
+  }
+
+  /**
+   * Verifies normal behavior when target directory is in the header.
+   */
+  @Test
+  public void testHdfsDelimitedDataFormat() throws Exception {
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+    dataGeneratorFormatConfig.csvFileFormat = CsvMode.CSV;
+    dataGeneratorFormatConfig.csvReplaceNewLines = true;
+    dataGeneratorFormatConfig.csvReplaceNewLinesString = " ";
+    dataGeneratorFormatConfig.csvHeader = CsvHeader.NO_HEADER;
+
+    HdfsTarget hdfsTarget = HdfsTargetUtil.newBuilder()
+      .dataGeneratorFormatConfig(dataGeneratorFormatConfig)
+      .dirPathTemplateInHeader(true)
+      .dataForamt(DataFormat.DELIMITED)
+      .build();
+
+    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class, hdfsTarget)
+        .setOnRecordError(OnRecordError.STOP_PIPELINE)
+        .build();
+    runner.runInit();
+
+    Record record = RecordCreator.create();
+    record.getHeader().setAttribute(HdfsTarget.TARGET_DIRECTORY_HEADER, getTestDir() + "/hdfs/");
+    LinkedHashMap<String, Field> list = new LinkedHashMap<>();
+    list.put("x", Field.create("x\nz"));
+    list.put("y", Field.create("y"));
+    record.set(Field.createListMap(list));
+
+    runner.runWrite(ImmutableList.copyOf(new Record[]{record}));
+
+    runner.runDestroy();
+
+    File[] fileList = new File(getTestDir() + "/hdfs/").listFiles();
+    Assert.assertEquals(1, fileList.length);
+    Assert.assertEquals("x z,y\r\n", FileUtils.readFileToString(fileList[0], Charset.defaultCharset()));
+  }
+
+  /**
+   * Records without expected header needs to be propagated to error output.
+   */
+  @Test
+  public void testDirectoryTemplateInHeaderMissingHeader() throws Exception {
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+    dataGeneratorFormatConfig.jsonMode = JsonMode.MULTIPLE_OBJECTS;
+
+    HdfsTarget hdfsTarget = HdfsTargetUtil.newBuilder()
+      .dataGeneratorFormatConfig(dataGeneratorFormatConfig)
+      .dirPathTemplateInHeader(true)
+      .dirPathTemplate(null)
+      .dataForamt(DataFormat.JSON)
+      .build();
+
+    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class, hdfsTarget)
+        .setOnRecordError(OnRecordError.STOP_PIPELINE)
+        .build();
+    runner.runInit();
+
+    Record record = RecordCreator.create();
+    Map<String, Field> map = new HashMap<>();
+    map.put("a", Field.create("x"));
+    record.set(Field.create(map));
+
+    runner.runWrite(ImmutableList.copyOf(new Record[]{record}));
+    runner.runDestroy();
+
+    List<Record> errorRecords = runner.getErrorRecords();
+    Assert.assertNotNull(errorRecords);
+    Assert.assertEquals(1, errorRecords.size());
+  }
+
+  @Test
+  public void testForcedRollOutByHeaderWithInvalidHeaderConfiguration() throws Exception {
+    for(String headerValue : Arrays.asList("", null)) {
+      HdfsTarget hdfsTarget = HdfsTargetUtil.newBuilder()
+        .rollIfHeader(true)
+        .rollHeaderName(headerValue)
+        .build();
+
+      TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class, hdfsTarget)
+        .setOnRecordError(OnRecordError.STOP_PIPELINE)
+        .build();
+
+      List<Stage.ConfigIssue> configIssues = runner.runValidateConfigs();
+      Assert.assertEquals(1, configIssues.size());
+      Assert.assertTrue(configIssues.get(0).toString().contains(Errors.HADOOPFS_51.name()));
+    }
+  }
+
+  @Test
+  public void testForcedRollOutByHeader() throws Exception {
+    DataGeneratorFormatConfig dataGeneratorFormatConfig = new DataGeneratorFormatConfig();
+    dataGeneratorFormatConfig.jsonMode = JsonMode.MULTIPLE_OBJECTS;
+
+    HdfsTarget hdfsTarget = HdfsTargetUtil.newBuilder()
+      .dirPathTemplate(getTestDir() + "/hdfs/")
+      .dataGeneratorFormatConfig(dataGeneratorFormatConfig)
+      .dataForamt(DataFormat.JSON)
+      .rollIfHeader(true)
+      .rollHeaderName("roll")
+      .build();
+
+    TargetRunner runner = new TargetRunner.Builder(HdfsDTarget.class, hdfsTarget)
+      .setOnRecordError(OnRecordError.STOP_PIPELINE)
+      .build();
+
+    runner.runInit();
+
+    Record record = RecordCreator.create();
+    Map<String, Field> map = new HashMap<>();
+    map.put("a", Field.create("x"));
+    record.set(Field.create(map));
+
+    // First write should open a new file
+    runner.runWrite(ImmutableList.copyOf(new Record[]{record}));
+
+    // Second write should also open a new file (forcibly)
+    record.getHeader().setAttribute("roll", "true");
+    runner.runWrite(ImmutableList.copyOf(new Record[]{record}));
+
+    runner.runDestroy();
+
+    File[] list = new File(getTestDir() + "/hdfs/").listFiles();
+    Assert.assertEquals(2, list.length);
+
+    for(File file : list) {
+      Assert.assertFalse("The file wasn't renamed after close: " + file.getName(), file.getName().contains("_tmp_"));
+      Assert.assertEquals("{\"a\":\"x\"}\n", FileUtils.readFileToString(file, Charset.defaultCharset()));
+    }
+  }
+
 }

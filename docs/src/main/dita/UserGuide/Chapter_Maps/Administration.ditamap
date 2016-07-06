@@ -41,16 +41,22 @@
     <shortdesc/>
    </topicmeta>
   </topicref>
+  <topicref href="../Administration/Restarting.dita"/>
   <topicref href="../Administration/RESTResponse.dita" chunk="to-content">
    <topicmeta>
     <shortdesc/>
    </topicmeta>
+   <topicref href="../Administration/RESTResponse-Viewing.dita"/>
+   <topicref href="../Administration/RESTResponse-Disabling.dita"/>
   </topicref>
   <topicref href="../Administration/CLI-Overview.dita" chunk="to-content">
   <topicmeta>
    <shortdesc/>
   </topicmeta>
    <topicref href="../Administration/CLI-Launching.dita"/>
+   <topicref href="../Administration/CLI-Help.dita"/>
+   <topicref href="../Administration/CLI-Manager.dita"/>
+   <topicref href="../Administration/CLI-Store.dita"/>
  </topicref>
  </topicref>
 </map>

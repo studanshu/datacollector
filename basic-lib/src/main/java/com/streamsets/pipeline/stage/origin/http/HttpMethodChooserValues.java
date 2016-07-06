@@ -20,12 +20,13 @@
 package com.streamsets.pipeline.stage.origin.http;
 
 import com.streamsets.pipeline.api.base.BaseEnumChooserValues;
+import com.streamsets.pipeline.lib.http.HttpMethod;
 
 /**
  * Chooser values for HTTP method configuration
  */
-public class HttpMethodChooserValues extends BaseEnumChooserValues<HttpClientMode> {
+public class HttpMethodChooserValues extends BaseEnumChooserValues<HttpMethod> {
   public HttpMethodChooserValues() {
-    super(HttpMethod.class);
+    super(HttpMethod.GET, HttpMethod.POST, HttpMethod.PUT, HttpMethod.DELETE, HttpMethod.HEAD);
   }
 }

@@ -30,9 +30,9 @@ import com.streamsets.datacollector.restapi.bean.MetricRegistryJson;
 import com.streamsets.datacollector.runner.production.DataRulesEvaluationRequest;
 import com.streamsets.datacollector.runner.production.PipelineErrorNotificationRequest;
 import com.streamsets.datacollector.runner.production.RulesConfigurationChangeRequest;
+import com.streamsets.datacollector.util.AggregatorUtil;
 import com.streamsets.datacollector.util.Configuration;
 import com.streamsets.pipeline.api.Record;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +40,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class DataObserverRunner {
@@ -55,6 +56,8 @@ public class DataObserverRunner {
   private final String name;
   private final String rev;
   private MetricRegistryJson metricRegistryJson;
+  private final Map<String, Object> pipelineELContext;
+  private BlockingQueue<Record> startsAggregatorQueue;
 
   public DataObserverRunner(String name, String rev, MetricRegistry metrics, AlertManager alertManager,
                             Configuration configuration) {
@@ -64,6 +67,11 @@ public class DataObserverRunner {
     this.alertManager = alertManager;
     this.name = name;
     this.rev = rev;
+    this.pipelineELContext = new HashMap<>();
+  }
+
+  public void setStatsQueue(BlockingQueue<Record> startsAggregatorQueue) {
+    this.startsAggregatorQueue = startsAggregatorQueue;
   }
 
   public void handleDataRulesEvaluationRequest(DataRulesEvaluationRequest dataRulesEvaluationRequest) {
@@ -81,8 +89,18 @@ public class DataObserverRunner {
           List<Record> sampledRecords = ruleIdToSampledRecords.get(dataRuleDefinition.getId());
           if(dataRuleDefinition.isEnabled()  && sampledRecords != null && sampledRecords.size() > 0) {
             //evaluate rule only if it is enabled and there are sampled records.
-            DataRuleEvaluator dataRuleEvaluator = new DataRuleEvaluator(name, rev, metrics, alertManager,
-              rulesConfigurationChangeRequest.getRuleDefinitions().getEmailIds(), dataRuleDefinition, configuration, metricRegistryJson);
+            DataRuleEvaluator dataRuleEvaluator = new DataRuleEvaluator(
+                name,
+                rev,
+                metrics,
+                alertManager,
+                rulesConfigurationChangeRequest.getRuleDefinitions().getEmailIds(),
+                pipelineELContext,
+                dataRuleDefinition,
+                configuration,
+                metricRegistryJson,
+                startsAggregatorQueue
+            );
             dataRuleEvaluator.evaluateRule(sampledRecords, lane, ruleToSampledRecordsMap);
           } else if (!dataRuleDefinition.isEnabled()) {
             //If data rule is disabled, clear the sampled records for that rule
@@ -101,13 +119,22 @@ public class DataObserverRunner {
     this.rulesConfigurationChangeRequest = rulesConfigurationChangeRequest;
 
     //remove metrics for changed / deleted rules
-    for(String ruleId : rulesConfigurationChangeRequest.getRulesToRemove()) {
+    for(String ruleId : rulesConfigurationChangeRequest.getRulesToRemove().keySet()) {
       MetricsConfigurator.removeMeter(metrics, USER_PREFIX + ruleId, name, rev);
       MetricsConfigurator.removeCounter(metrics, USER_PREFIX + ruleId, name, rev);
       EvictingQueue<SampledRecord> records = ruleToSampledRecordsMap.get(ruleId);
       if(records != null) {
         records.clear();
       }
+    }
+
+    // send RulesConfigurationChangeRequest to stats aggregator
+    if (startsAggregatorQueue != null) {
+      startsAggregatorQueue.offer(
+          AggregatorUtil.createConfigChangeRequestRecord(
+              rulesConfigurationChangeRequest
+          )
+      );
     }
 
     //resize evicting queue which retains sampled records

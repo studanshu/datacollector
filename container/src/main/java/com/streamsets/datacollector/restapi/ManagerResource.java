@@ -44,9 +44,11 @@ import com.streamsets.datacollector.util.PipelineException;
 import com.streamsets.pipeline.api.ExecutionMode;
 import com.streamsets.pipeline.api.StageException;
 import com.streamsets.pipeline.api.impl.Utils;
+
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.Authorization;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,8 +65,11 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.SecurityContext;
+
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -126,13 +131,21 @@ public class ManagerResource {
   @ApiOperation(value = "Start Pipeline", response = PipelineStateJson.class,
     authorizations = @Authorization(value = "basic"))
   @Produces(MediaType.APPLICATION_JSON)
-  @RolesAllowed({ AuthzRole.MANAGER, AuthzRole.ADMIN })
+  @RolesAllowed({
+      AuthzRole.MANAGER,
+      AuthzRole.ADMIN,
+      AuthzRole.MANAGER_REMOTE,
+      AuthzRole.ADMIN_REMOTE
+  })
   public Response startPipeline(
       @PathParam("pipelineName") String pipelineName,
       @QueryParam("rev") @DefaultValue("0") String rev)
-    throws PipelineStoreException, PipelineRuntimeException, StageException, PipelineRunnerException, PipelineManagerException {
+    throws StageException, PipelineException {
     if(pipelineName != null) {
       RestAPIUtils.injectPipelineInMDC(pipelineName);
+      if (manager.isRemotePipeline(pipelineName, rev)) {
+        throw new PipelineException(ContainerError.CONTAINER_01101, "START_PIPELINE", pipelineName);
+      }
       try {
         Runner runner = manager.getRunner(user, pipelineName, rev);
         Utils.checkState(runner.getState().getExecutionMode() != ExecutionMode.SLAVE,
@@ -157,11 +170,22 @@ public class ManagerResource {
   @ApiOperation(value = "Stop Pipeline", response = PipelineStateJson.class,
     authorizations = @Authorization(value = "basic"))
   @Produces(MediaType.APPLICATION_JSON)
-  @RolesAllowed({ AuthzRole.MANAGER, AuthzRole.ADMIN })
+  @RolesAllowed({
+      AuthzRole.MANAGER,
+      AuthzRole.ADMIN,
+      AuthzRole.MANAGER_REMOTE,
+      AuthzRole.ADMIN_REMOTE
+  })
   public Response stopPipeline(
     @PathParam("pipelineName") String pipelineName,
-    @QueryParam("rev") @DefaultValue("0") String rev) throws PipelineException {
+    @QueryParam("rev") @DefaultValue("0") String rev,
+    @Context SecurityContext context) throws PipelineException {
     RestAPIUtils.injectPipelineInMDC(pipelineName);
+    if (manager.isRemotePipeline(pipelineName, rev)) {
+      if (!context.isUserInRole(AuthzRole.ADMIN) && !context.isUserInRole(AuthzRole.ADMIN_REMOTE)) {
+        throw new PipelineException(ContainerError.CONTAINER_01101, "STOP_PIPELINE", pipelineName);
+      }
+    }
     Runner runner = manager.getRunner(user, pipelineName, rev);
     Utils.checkState(runner.getState().getExecutionMode() != ExecutionMode.SLAVE,
       "This operation is not supported in SLAVE mode");
@@ -173,12 +197,19 @@ public class ManagerResource {
   @POST
   @ApiOperation(value = "Reset Origin Offset", authorizations = @Authorization(value = "basic"))
   @Produces(MediaType.APPLICATION_JSON)
-  @RolesAllowed({ AuthzRole.MANAGER, AuthzRole.ADMIN })
+  @RolesAllowed({
+      AuthzRole.MANAGER,
+      AuthzRole.ADMIN,
+      AuthzRole.MANAGER_REMOTE,
+      AuthzRole.ADMIN_REMOTE
+  })
   public Response resetOffset(
       @PathParam("pipelineName") String name,
-      @QueryParam("rev") @DefaultValue("0") String rev) throws PipelineStoreException,
-    PipelineRunnerException, PipelineRunnerException, PipelineManagerException {
+      @QueryParam("rev") @DefaultValue("0") String rev) throws PipelineException {
     RestAPIUtils.injectPipelineInMDC(name);
+    if (manager.isRemotePipeline(name, rev)) {
+      throw new PipelineException(ContainerError.CONTAINER_01101, "RESET_OFFSET", name);
+    }
     Runner runner = manager.getRunner(user, name, rev);
     runner.resetOffset();
     return Response.ok().build();
@@ -199,9 +230,9 @@ public class ManagerResource {
         return Response.ok().type(MediaType.APPLICATION_JSON).entity(runner.getMetrics()).build();
       }
       if (runner != null) {
-        LOG.info("Status is " + runner.getState().getStatus());
+        LOG.debug("Status is " + runner.getState().getStatus());
       } else {
-        LOG.info("Runner is null");
+        LOG.debug("Runner is null");
       }
 
     }
@@ -212,10 +243,11 @@ public class ManagerResource {
   @Path("/pipeline/{pipelineName}/snapshot/{snapshotName}")
   @PUT
   @ApiOperation(value = "Capture Snapshot", authorizations = @Authorization(value = "basic"))
-  @RolesAllowed({ AuthzRole.MANAGER, AuthzRole.ADMIN })
+  @RolesAllowed({ AuthzRole.MANAGER, AuthzRole.ADMIN, AuthzRole.MANAGER_REMOTE, AuthzRole.ADMIN_REMOTE })
   public Response captureSnapshot(
       @PathParam("pipelineName") String pipelineName,
       @PathParam("snapshotName") String snapshotName,
+      @QueryParam("snapshotLabel") String snapshotLabel,
       @QueryParam("rev") @DefaultValue("0") String rev,
       @QueryParam("batches") @DefaultValue("1") int batches,
       @QueryParam("batchSize") int batchSize) throws PipelineException {
@@ -225,7 +257,23 @@ public class ManagerResource {
     Utils.checkState(runner != null && runner.getState().getStatus() == PipelineStatus.RUNNING,
       "Pipeline doesn't exist or it is not running currently");
 
-    runner.captureSnapshot(snapshotName, batches, batchSize);
+    runner.captureSnapshot(snapshotName, snapshotLabel, batches, batchSize);
+    return Response.ok().build();
+  }
+
+
+  @Path("/pipeline/{pipelineName}/snapshot/{snapshotName}")
+  @POST
+  @ApiOperation(value = "Capture Snapshot", authorizations = @Authorization(value = "basic"))
+  @RolesAllowed({ AuthzRole.MANAGER, AuthzRole.ADMIN, AuthzRole.MANAGER_REMOTE, AuthzRole.ADMIN_REMOTE })
+  public Response updateSnapshotLabel(
+      @PathParam("pipelineName") String pipelineName,
+      @PathParam("snapshotName") String snapshotName,
+      @QueryParam("snapshotLabel") String snapshotLabel,
+      @QueryParam("rev") @DefaultValue("0") String rev) throws PipelineException {
+    RestAPIUtils.injectPipelineInMDC(pipelineName);
+    Runner runner = manager.getRunner(user, pipelineName, rev);
+    runner.updateSnapshotLabel(snapshotName, snapshotLabel);
     return Response.ok().build();
   }
 
@@ -233,7 +281,14 @@ public class ManagerResource {
   @GET
   @ApiOperation(value = "Returns all Snapshot Info", response = SnapshotInfoJson.class, responseContainer = "List",
     authorizations = @Authorization(value = "basic"))
-  @RolesAllowed({ AuthzRole.MANAGER, AuthzRole.CREATOR, AuthzRole.ADMIN })
+  @RolesAllowed({
+      AuthzRole.MANAGER,
+      AuthzRole.CREATOR,
+      AuthzRole.ADMIN,
+      AuthzRole.MANAGER_REMOTE,
+      AuthzRole.CREATOR_REMOTE,
+      AuthzRole.ADMIN_REMOTE
+  })
   public Response getAllSnapshotsInfo()
     throws PipelineException {
     RestAPIUtils.injectPipelineInMDC("*");
@@ -252,7 +307,14 @@ public class ManagerResource {
   @GET
   @ApiOperation(value = "Returns Snapshot Info for the given pipeline", response = SnapshotInfoJson.class,
     responseContainer = "List", authorizations = @Authorization(value = "basic"))
-  @RolesAllowed({ AuthzRole.MANAGER, AuthzRole.CREATOR, AuthzRole.ADMIN })
+  @RolesAllowed({
+      AuthzRole.MANAGER,
+      AuthzRole.CREATOR,
+      AuthzRole.ADMIN,
+      AuthzRole.MANAGER_REMOTE,
+      AuthzRole.CREATOR_REMOTE,
+      AuthzRole.ADMIN_REMOTE
+  })
   public Response getSnapshotsInfo(@PathParam("pipelineName") String pipelineName,
                                    @QueryParam("rev") @DefaultValue("0") String rev)
     throws PipelineException {
@@ -270,7 +332,12 @@ public class ManagerResource {
   @ApiOperation(value = "Return Snapshot status", response = SnapshotInfoJson.class,
     authorizations = @Authorization(value = "basic"))
   @Produces(MediaType.APPLICATION_JSON)
-  @RolesAllowed({ AuthzRole.MANAGER, AuthzRole.ADMIN })
+  @RolesAllowed({
+      AuthzRole.MANAGER,
+      AuthzRole.ADMIN,
+      AuthzRole.MANAGER_REMOTE,
+      AuthzRole.ADMIN_REMOTE
+  })
   public Response getSnapshotStatus(
     @PathParam("pipelineName") String pipelineName,
     @PathParam("snapshotName") String snapshotName,
@@ -289,7 +356,14 @@ public class ManagerResource {
   @ApiOperation(value = "Return Snapshot data", response = SnapshotDataJson.class,
     authorizations = @Authorization(value = "basic"))
   @Produces(MediaType.APPLICATION_JSON)
-  @RolesAllowed({ AuthzRole.MANAGER, AuthzRole.CREATOR, AuthzRole.ADMIN })
+  @RolesAllowed({
+      AuthzRole.MANAGER,
+      AuthzRole.CREATOR,
+      AuthzRole.ADMIN,
+      AuthzRole.MANAGER_REMOTE,
+      AuthzRole.CREATOR_REMOTE,
+      AuthzRole.ADMIN_REMOTE
+  })
   public Response getSnapshot(
       @PathParam("pipelineName") String pipelineName,
       @PathParam("snapshotName") String snapshotName,
@@ -306,7 +380,12 @@ public class ManagerResource {
   @DELETE
   @ApiOperation(value = "Delete Snapshot data", authorizations = @Authorization(value = "basic"))
   @Produces(MediaType.APPLICATION_JSON)
-  @RolesAllowed({ AuthzRole.MANAGER, AuthzRole.ADMIN })
+  @RolesAllowed({
+      AuthzRole.MANAGER,
+      AuthzRole.ADMIN,
+      AuthzRole.MANAGER_REMOTE,
+      AuthzRole.ADMIN_REMOTE
+  })
   public Response deleteSnapshot(
       @PathParam("pipelineName") String pipelineName,
       @PathParam("snapshotName") String snapshotName,
@@ -323,11 +402,19 @@ public class ManagerResource {
   @DELETE
   @ApiOperation(value = "Delete history by pipeline name", authorizations = @Authorization(value = "basic"))
   @Produces(MediaType.APPLICATION_JSON)
-  @RolesAllowed({ AuthzRole.MANAGER, AuthzRole.ADMIN })
+  @RolesAllowed({
+      AuthzRole.MANAGER,
+      AuthzRole.ADMIN,
+      AuthzRole.MANAGER_REMOTE,
+      AuthzRole.ADMIN_REMOTE
+  })
   public Response deleteHistory(
     @PathParam("pipelineName") String pipelineName,
     @QueryParam("rev") @DefaultValue("0") String rev) throws PipelineException {
     RestAPIUtils.injectPipelineInMDC(pipelineName);
+    if (manager.isRemotePipeline(pipelineName, rev)) {
+      throw new PipelineException(ContainerError.CONTAINER_01101, "DELETE_HISTORY", pipelineName);
+    }
     Runner runner = manager.getRunner(user, pipelineName, rev);
     if(runner != null) {
       runner.deleteHistory();
@@ -341,7 +428,12 @@ public class ManagerResource {
     responseContainer = "List", authorizations = @Authorization(value = "basic"))
   @Produces(MediaType.APPLICATION_JSON)
   @PermitAll
-  @RolesAllowed({ AuthzRole.MANAGER, AuthzRole.ADMIN })
+  @RolesAllowed({
+      AuthzRole.MANAGER,
+      AuthzRole.ADMIN,
+      AuthzRole.MANAGER_REMOTE,
+      AuthzRole.ADMIN_REMOTE
+  })
   public Response getErrorRecords(
       @PathParam("pipelineName") String pipelineName,
       @QueryParam("rev") @DefaultValue("0") String rev,
@@ -362,7 +454,12 @@ public class ManagerResource {
   @ApiOperation(value = "Returns error messages by stage instance name and size", response = ErrorMessageJson.class,
    responseContainer = "List", authorizations = @Authorization(value = "basic"))
   @Produces(MediaType.APPLICATION_JSON)
-  @RolesAllowed({ AuthzRole.MANAGER, AuthzRole.ADMIN })
+  @RolesAllowed({
+      AuthzRole.MANAGER,
+      AuthzRole.ADMIN,
+      AuthzRole.MANAGER_REMOTE,
+      AuthzRole.ADMIN_REMOTE
+  })
   public Response getErrorMessages(
       @PathParam("pipelineName") String pipelineName,
       @QueryParam("rev") @DefaultValue("0") String rev,
@@ -388,7 +485,7 @@ public class ManagerResource {
   public Response getHistory(
     @PathParam("pipelineName") String name,
     @QueryParam("rev") @DefaultValue("0") String rev,
-    @QueryParam("fromBeginning") @DefaultValue("false") boolean fromBeginning) throws PipelineStoreException, PipelineManagerException {
+    @QueryParam("fromBeginning") @DefaultValue("false") boolean fromBeginning) throws PipelineException {
     RestAPIUtils.injectPipelineInMDC(name);
     Runner runner = manager.getRunner(user, name, rev);
     if(runner != null) {
@@ -403,7 +500,12 @@ public class ManagerResource {
   @ApiOperation(value = "Returns Sampled records by sample ID and size", response = SampledRecordJson.class,
     responseContainer = "List", authorizations = @Authorization(value = "basic"))
   @Produces(MediaType.APPLICATION_JSON)
-  @RolesAllowed({ AuthzRole.MANAGER, AuthzRole.ADMIN })
+  @RolesAllowed({
+      AuthzRole.MANAGER,
+      AuthzRole.ADMIN,
+      AuthzRole.MANAGER_REMOTE,
+      AuthzRole.ADMIN_REMOTE
+  })
   public Response getSampledRecords(
     @PathParam("pipelineName") String pipelineName,
     @QueryParam("rev") @DefaultValue("0") String rev,
@@ -445,12 +547,16 @@ public class ManagerResource {
   @ApiOperation(value = "Delete alert by Pipeline name, revision and Alert ID", response = Boolean.class,
     authorizations = @Authorization(value = "basic"))
   @Produces(MediaType.APPLICATION_JSON)
-  @RolesAllowed({ AuthzRole.MANAGER, AuthzRole.ADMIN })
+  @RolesAllowed({
+      AuthzRole.MANAGER,
+      AuthzRole.ADMIN,
+      AuthzRole.MANAGER_REMOTE,
+      AuthzRole.ADMIN_REMOTE
+  })
   public Response deleteAlert(
     @PathParam("pipelineName") String pipelineName,
     @QueryParam("rev") @DefaultValue("0") String rev,
-    @QueryParam("alertId") String alertId) throws PipelineStoreException,
-    PipelineRunnerException, PipelineManagerException {
+    @QueryParam("alertId") String alertId) throws PipelineException {
     RestAPIUtils.injectPipelineInMDC(pipelineName);
     return Response.ok().type(MediaType.APPLICATION_JSON).entity(
       manager.getRunner(user, pipelineName, rev).deleteAlert(alertId)).build();

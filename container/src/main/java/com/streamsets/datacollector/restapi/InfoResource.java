@@ -20,6 +20,7 @@
 package com.streamsets.datacollector.restapi;
 
 import com.streamsets.datacollector.main.BuildInfo;
+import com.streamsets.datacollector.main.RuntimeInfo;
 import com.streamsets.datacollector.util.AuthzRole;
 import com.streamsets.datacollector.util.PipelineException;
 
@@ -51,10 +52,12 @@ import java.util.Map;
 public class InfoResource {
 
   private final BuildInfo buildInfo;
+  private final RuntimeInfo runtimeInfo;
 
   @Inject
-  public InfoResource(BuildInfo buildInfo) {
+  public InfoResource(BuildInfo buildInfo, RuntimeInfo runtimeInfo) {
     this.buildInfo = buildInfo;
+    this.runtimeInfo = runtimeInfo;
   }
 
   @GET
@@ -79,16 +82,16 @@ public class InfoResource {
 
     if(principal != null) {
       user = principal.getName();
-      if (context.isUserInRole(AuthzRole.GUEST)) {
+      if (context.isUserInRole(AuthzRole.GUEST) || context.isUserInRole(AuthzRole.GUEST_REMOTE)) {
         roles.add(AuthzRole.GUEST);
       }
-      if (context.isUserInRole(AuthzRole.MANAGER)) {
+      if (context.isUserInRole(AuthzRole.MANAGER) || context.isUserInRole(AuthzRole.MANAGER_REMOTE)) {
         roles.add(AuthzRole.MANAGER);
       }
-      if (context.isUserInRole(AuthzRole.CREATOR)) {
+      if (context.isUserInRole(AuthzRole.CREATOR) || context.isUserInRole(AuthzRole.CREATOR_REMOTE)) {
         roles.add(AuthzRole.CREATOR);
       }
-      if (context.isUserInRole(AuthzRole.ADMIN)) {
+      if (context.isUserInRole(AuthzRole.ADMIN) || context.isUserInRole(AuthzRole.ADMIN_REMOTE)) {
         roles.add(AuthzRole.ADMIN);
       }
     } else {
@@ -113,5 +116,16 @@ public class InfoResource {
     return Response.status(Response.Status.OK).entity(map).build();
   }
 
+  @GET
+  @Path("/info/remote")
+  @ApiOperation(value = "Returns Remote Server Info", response = Map.class,
+      authorizations = @Authorization(value = "basic"))
+  @Produces(MediaType.APPLICATION_JSON)
+  @PermitAll
+  public Response getRemoteInfo(@Context SecurityContext context) throws PipelineException, IOException {
+    Map<String, Object> map = new HashMap<>();
+    map.put("registrationStatus", runtimeInfo.isRemoteRegistrationSuccessful());
+    return Response.status(Response.Status.OK).entity(map).build();
+  }
 
 }

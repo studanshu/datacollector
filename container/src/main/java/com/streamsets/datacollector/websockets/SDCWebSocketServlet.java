@@ -40,7 +40,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.security.Principal;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
@@ -107,7 +106,6 @@ public class SDCWebSocketServlet extends WebSocketServlet implements WebSocketCr
     HttpServletRequest httpRequest = req.getHttpServletRequest();
     String webSocketType = httpRequest.getParameter("type");
     final String pipelineName = httpRequest.getParameter("pipelineName");
-    String rev = httpRequest.getParameter("rev");
     if(webSocketType != null) {
       switch (webSocketType) {
         case LogMessageWebSocket.TYPE:
@@ -175,7 +173,10 @@ public class SDCWebSocketServlet extends WebSocketServlet implements WebSocketCr
         case LogMessageWebSocket.TYPE:
           if (request.isUserInRole(AuthzRole.ADMIN) ||
             request.isUserInRole(AuthzRole.MANAGER) ||
-            request.isUserInRole(AuthzRole.CREATOR)) {
+            request.isUserInRole(AuthzRole.CREATOR) ||
+            request.isUserInRole(AuthzRole.ADMIN_REMOTE) ||
+            request.isUserInRole(AuthzRole.MANAGER_REMOTE) ||
+            request.isUserInRole(AuthzRole.CREATOR_REMOTE)) {
             super.service(request, response);
           } else {
             response.sendError(HttpServletResponse.SC_FORBIDDEN);

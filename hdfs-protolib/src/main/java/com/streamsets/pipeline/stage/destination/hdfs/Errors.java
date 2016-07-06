@@ -75,11 +75,19 @@ public enum Errors implements ErrorCode {
   HADOOPFS_41("Base directory path could not be created"),
   HADOOPFS_42("Base directory path could not be created: '{}'"),
   HADOOPFS_43("Could not create a file/directory under base directory: '{}'"),
-  HADOOPFS_44("Could verify the base directory: '{}'"),
+  HADOOPFS_44("Could not verify the base directory: '{}'"),
   HADOOPFS_45("Hadoop configuration directory '{}' must be relative to SDC resources directory in cluster mode"),
 
   HADOOPFS_46("The compression codec '{}' requires native libraries to be installed: {}"),
+  HADOOPFS_47("Time basis expression '{}' evaluated to NULL for this record"),
+  HADOOPFS_48("Failed to instantiate compression codec due to error: {}"),
+
+  HADOOPFS_49("HDFS URI is not set and is also not available through 'fs.defaultFS' config"),
+  HADOOPFS_50("Directory template header '" + HdfsTarget.TARGET_DIRECTORY_HEADER + "' missing"),
+  HADOOPFS_51("Missing roll header name"),
+  HADOOPFS_52("Invalid setting for idle timeout")
   ;
+
   private final String msg;
 
   Errors(String msg) {

@@ -20,14 +20,27 @@
   <parent>
     <groupId>com.streamsets</groupId>
     <artifactId>streamsets-cloudera-integration</artifactId>
-    <version>1.2.0-SNAPSHOT</version>
+    <version>1.6.0.0-SNAPSHOT</version>
   </parent>
 
   <groupId>com.streamsets</groupId>
-  <artifactId>STREAMSETS</artifactId>
-  <version>1.2.0-SNAPSHOT</version>
+  <artifactId>streamsets-csd</artifactId>
+  <version>1.6.0.0-SNAPSHOT</version>
   <name>The StreamSets CSD for Cloudera Manager</name>
   <packaging>pom</packaging>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.streamsets</groupId>
+      <artifactId>streamsets-datacollector-dist</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.cloudera.enterprise</groupId>
+      <artifactId>schema-validator</artifactId>
+      <version>5.5.0</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 
   <build>
     <plugins>
@@ -37,7 +50,7 @@
         <configuration>
           <appendAssemblyId>false</appendAssemblyId>
           <descriptors>
-            <descriptor>assembly.xml</descriptor>
+            <descriptor>src/main/assemblies/csd-assembly.xml</descriptor>
           </descriptors>
           <finalName>STREAMSETS-${project.version}</finalName>
         </configuration>
@@ -51,6 +64,32 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.4.0</version>
+        <executions>
+          <execution>
+            <id>run-validator</id>
+            <phase>test</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>java</executable>
+              <keeyAlive>true</keeyAlive>
+              <classpathScope>test</classpathScope>
+              <arguments>
+                <argument>-cp</argument>
+                <classpath/>
+                <argument>com.cloudera.cli.validator.Main</argument>
+                <argument>-s</argument>
+                <argument>${basedir}/src/main/descriptor/service.sdl</argument>
+              </arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
-   </build>
+  </build>
 </project>

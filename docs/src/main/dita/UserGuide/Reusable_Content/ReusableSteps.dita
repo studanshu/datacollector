@@ -35,15 +35,15 @@
             <step id="CreatePipeline1">
                 <cmd>From the <wintitle>Home</wintitle> page or <wintitle>Getting Started</wintitle>
                     page, click <uicontrol>Create New Pipeline</uicontrol>. </cmd>
-                <info>If you are working on another pipeline in the <ph
-                        conref="ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/> console, use
-                    the <uicontrol>Toggle Library Pane</uicontrol> icon to display the pipeline
-                    library, and click the <uicontrol>Create New Pipeline</uicontrol> icon.</info>
+                <info>
+                    <note type="tip">To get to the <wintitle>Home</wintitle> page, click the Home
+                        icon.</note>
+                </info>
             </step>
             <step id="CreatePipeline2">
                 <cmd>In the <wintitle>New Pipeline</wintitle> window, enter a pipeline name and
                     optional description, and click <uicontrol>Save</uicontrol>.</cmd>
-                <stepresult>The pipeline canvas displays pipeline name and an error icon. The error
+                <stepresult>The pipeline canvas displays the pipeline name and an error icon. The error
                     icon indicates that you need to configure error handling for the pipeline. The
                     Properties panel displays the pipeline properties. </stepresult>
             </step>
@@ -207,7 +207,10 @@
                                     <entry>Optional description.</entry>
                                 </row>
                                 <row>
-                                    <entry>On Record Error</entry>
+                                    <entry>On Record Error <xref
+                                            href="../Pipeline_Design/ErrorHandling-Stage.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_z4j_byn_lw"/></xref></entry>
                                     <entry>Error record handling for the stage: <ul
                                             id="ul_mmh_bgh_hr">
                                             <li>Discard - Discards the record.</li>
@@ -256,7 +259,10 @@
                                     <entry>Library version that you want to use. </entry>
                                 </row>
                                 <row>
-                                    <entry>On Record Error</entry>
+                                    <entry>On Record Error <xref
+                                            href="../Pipeline_Design/ErrorHandling-Stage.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_gyg_4yn_lw"/></xref></entry>
                                     <entry>Error record handling for the stage: <ul
                                             id="ul_mp4_lsn_xs">
                                             <li>Discard - Discards the record.</li>
@@ -275,16 +281,16 @@
                 <cmd>
                     <draft-comment author="Loretta"
                             ><uicontrol>1stStep-StageLib-EHandling</uicontrol> - Use this step for
-                        origins with stage libraries.</draft-comment>
+                        non-cluster origins with stage libraries. </draft-comment>
                 </cmd>
             </step>
-            <step>
+            <step id="1stStep-StageLib-EHandling">
                 <cmd>In the Properties panel, on the <wintitle>General</wintitle> tab, configure the
                     following properties:</cmd>
                 <info>
                     <table frame="all" rowsep="1" colsep="1" id="table_rv1_q3d_3t">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
@@ -306,7 +312,10 @@
                                     <entry>Library version that you want to use. </entry>
                                 </row>
                                 <row>
-                                    <entry>On Record Error</entry>
+                                    <entry>On Record Error <xref
+                                            href="../Pipeline_Design/ErrorHandling-Stage.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_ur4_4yn_lw"/></xref></entry>
                                     <entry>Error record handling for the stage: <ul
                                             id="ul_kw1_q3d_3t">
                                             <li>Discard - Discards the record.</li>
@@ -323,9 +332,9 @@
             </step>
             <step>
                 <cmd>
-                    <draft-comment author="Loretta"><uicontrol>O-AVROFILE</uicontrol>  - The
-                        following step is used by Directory, Hadoop FS - origins that read avro from
-                        files.</draft-comment>
+                    <draft-comment author="Loretta"><uicontrol>O-AVROFILE</uicontrol> - The
+                        following step is used by Directory, other file-based origins that read avro
+                        from files.</draft-comment>
                 </cmd>
             </step>
             <step id="O-AVRO-FILE">
@@ -334,7 +343,7 @@
                 <info>
                     <table frame="all" rowsep="1" colsep="1" id="table_igl_bq2_2t">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1.0*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
@@ -360,9 +369,42 @@
             </step>
             <step>
                 <cmd>
-                    <draft-comment author="Loretta"><uicontrol>O-AVRO-Mess</uicontrol>  - The
-                        following step is used by JMS, Kafka - origins that read Avro data from
-                        messages.</draft-comment>
+                    <draft-comment author="Loretta"><uicontrol>O-AVROHadoopFS</uicontrol> - The
+                        following step is used by HadoopFS origin only.</draft-comment>
+                </cmd>
+            </step>
+            <step id="O-AVROHadoopFS">
+                <cmd>For Avro data, on the <wintitle>Avro</wintitle> tab, optionally configure the
+                    following property:</cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_nyl_sbf_55">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Avro Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Avro Schema</entry>
+                                    <entry>Avro schema definition to use when processing data.<p>You
+                                            can optionally use the runtime:loadResource function to
+                                            use a schema definition stored in a runtime resource
+                                            file. </p></entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step>
+                <cmd>
+                    <draft-comment author="Loretta"><uicontrol>O-AVRO-Mess</uicontrol> - The
+                        following step is used by JMS, Kafka, Kinesis - origins that read Avro data
+                        from messages.</draft-comment>
                 </cmd>
             </step>
             <step id="O-AVRO-Mess">
@@ -402,8 +444,40 @@
             </step>
             <step>
                 <cmd>
+                    <draft-comment author="Loretta"><uicontrol>O-Binary </uicontrol>. Used by Kafka
+                        and Kinesis Consumer</draft-comment>
+                </cmd>
+            </step>
+            <step id="O-Binary">
+                <cmd>For binary data, click the <wintitle>Binary</wintitle> tab and configure the
+                    following property:</cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_dpx_kdm_35">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Binary Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Max Data Size</entry>
+                                    <entry>Maximum number of bytes in the message. Larger messages
+                                        cannot be processed or written to error. </entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step>
+                <cmd>
                     <draft-comment author="Loretta"><uicontrol>DELIMITED data</uicontrol> -
-                        Directory, Hadoop FS, JMS Consumer, Kafka Consumer.</draft-comment>
+                        Directory, Hadoop FS, JMS Consumer, Kafka Consumer, Kinesis
+                        Consumer</draft-comment>
                 </cmd>
             </step>
             <step id="DelimFILE">
@@ -412,7 +486,7 @@
                 <info>
                     <table frame="all" rowsep="1" colsep="1" id="table_DelimitedData">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
@@ -441,11 +515,31 @@
                                         are not read. </entry>
                                 </row>
                                 <row>
-                                    <entry>Record Type <xref
-                                            href="../Pipeline_Design/DelimitedDataRecordTypes.dita">
+                                    <entry>Delimiter Character</entry>
+                                    <entry>Delimiter character for a custom delimiter format. Select
+                                        one of the available options or use Other to enter a custom
+                                            character.<p>You can enter a Unicode control character
+                                            using the format \u<i>NNNN</i>, where ​<i>N</i> is a
+                                            hexadecimal digit from the numbers 0-9 or the letters
+                                            A-F. For example, enter \u0000 to use the null character
+                                            as the delimiter or \u2028 to use a line separator as
+                                            the delimiter.</p><p>Default is the pipe character ( |
+                                            ).</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Escape Character</entry>
+                                    <entry>Escape character for a custom file type.</entry>
+                                </row>
+                                <row>
+                                    <entry>Quote Character</entry>
+                                    <entry>Quote character for a custom file type.</entry>
+                                </row>
+                                <row>
+                                    <entry>Root Field Type <xref
+                                            href="../Pipeline_Design/DelimitedDataRootFieldTypes.dita">
                                             <image href="../Graphics/icon_moreInfo.png" scale="10"
                                                 id="image_exx_41q_ft"/></xref></entry>
-                                    <entry>Record type to produce:<ul id="ul_izr_p1q_ft">
+                                    <entry>Root field type to use:<ul id="ul_izr_p1q_ft">
                                             <li>List-Map - Generates an indexed list of data.
                                                 Enables you to use standard functions to process
                                                 data. Use for new pipelines.</li>
@@ -456,16 +550,8 @@
                                         </ul></entry>
                                 </row>
                                 <row>
-                                    <entry>Delimiter Character</entry>
-                                    <entry>Delimiter character for a custom file type.</entry>
-                                </row>
-                                <row>
-                                    <entry>Escape Character</entry>
-                                    <entry>Escape character for a custom file type.</entry>
-                                </row>
-                                <row>
-                                    <entry>Quote Character</entry>
-                                    <entry>Quote character for a custom file type.</entry>
+                                    <entry>Lines to Skip</entry>
+                                    <entry>Lines to skip before reading data. </entry>
                                 </row>
                             </tbody>
                         </tgroup>
@@ -474,8 +560,9 @@
             </step>
             <step>
                 <cmd>
-                    <draft-comment author="Loretta">JSON data - Kafka Consumer, JMS Consumer, Hadoop
-                        FS takes</draft-comment>
+                    <draft-comment author="Loretta"><b>JSON-2props </b> - Kafka Consumer, JMS
+                        Consumer, Hadoop FS, Kinesis all use them. HTTP Client, and probably others
+                        use the 2nd row. </draft-comment>
                 </cmd>
             </step>
             <step id="JSON-2props">
@@ -484,7 +571,7 @@
                 <info>
                     <table frame="all" rowsep="1" colsep="1" id="table_JSONdata">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
@@ -493,7 +580,7 @@
                                 </row>
                             </thead>
                             <tbody>
-                                <row>
+                                <row id="ROW-JSONContent">
                                     <entry>JSON Content</entry>
                                     <entry>Type of JSON content. Use one of the following options: <p>
                                             <ul id="ul_atw_krl_5q">
@@ -523,18 +610,18 @@
             </step>
             <step>
                 <cmd>
-                    <draft-comment author="Loretta">For any changes to the bullets below this first
-                        table, update Log Parser as well. Everything except the Log4j table/bullet
-                        point is copied from here. </draft-comment>
+                    <draft-comment author="Loretta">Also - For any changes to the bullets below this
+                        first table, update Log Parser as well. Everything except the Log4j
+                        table/bullet point is copied from here. </draft-comment>
                 </cmd>
             </step>
             <step id="LogData_Log4j">
-                <cmd>For log data, click the <wintitle>Log</wintitle> tab and configure the
-                    following properties:</cmd>
+                <cmd>For log data, on the <wintitle>Log</wintitle> tab, configure the following
+                    properties:</cmd>
                 <info>
                     <table frame="all" rowsep="1" colsep="1" id="table_ihc_3fs_sr">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
@@ -578,11 +665,15 @@
                         <li>When you select <uicontrol>Regular Expression</uicontrol>, enter the
                             regular expression that describes the log format, and then map the
                             fields that you want to include to each regular expression group.</li>
-                        <li>When you select <uicontrol>Grok Pattern</uicontrol>, you can define any
-                            custom grok patterns that you want to use in the <uicontrol>Grok Pattern
-                                Definition</uicontrol> field, and then enter the grok pattern log
-                            file description in the <uicontrol>Grok Pattern</uicontrol> field.<p>For
-                                more information about supported grok patterns, see <xref
+                        <li>When you select <uicontrol>Grok Pattern</uicontrol>, you can use the
+                                <uicontrol>Grok Pattern Definition</uicontrol> field to define
+                            custom grok patterns. You can define a pattern on each line. <p>In the
+                                    <uicontrol>Grok Pattern</uicontrol> field, enter the pattern to
+                                use to parse the log. You can use a predefined grok patterns or
+                                create a custom grok pattern using patterns defined in
+                                    <uicontrol>Grok Pattern Definition</uicontrol>.</p><p>For more
+                                information about defining grok patterns and supported grok
+                                patterns, see <xref
                                     href="../Apx-GrokPatterns/GrokPatterns.dita#concept_vdk_xjb_wr"
                                 />.</p></li>
                         <li>When you select <uicontrol>Log4j</uicontrol>, define the following properties:<p>
@@ -631,17 +722,119 @@
             </step>
             <step>
                 <cmd>
-                    <draft-comment author="Loretta"><uicontrol>TEXT data</uicontrol> - Directory,
-                        Kafka Consumer, JMS Consumer, Hadoop FS</draft-comment>
+                    <draft-comment author="Loretta"><uicontrol>O-PROTO-Mess</uicontrol>. Step used
+                        by message-reading stages except for Kafka. Kafka conrefs the first two rows
+                        of table. <p>NOTE: When making changes, make sure to update the file version
+                            and destination versions, as necessary.</p></draft-comment>
                 </cmd>
             </step>
-            <step id="Text">
-                <cmd>For text data, on the <uicontrol>Text</uicontrol> tab, configure the following
-                    properties:</cmd>
+            <step id="O-PROTO-Mess">
+                <cmd>For protobuf data, on the <wintitle>Protobuf</wintitle> tab, configure the
+                    following properties:</cmd>
                 <info>
-                    <table frame="all" rowsep="1" colsep="1" id="table_LogData">
+                    <table frame="all" rowsep="1" colsep="1" id="table_s3c_mz4_45">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Protobuf Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row id="row-DescFile">
+                                    <entry>Protobuf Descriptor File </entry>
+                                    <entry>Descriptor file (.desc) to use. The descriptor file must
+                                        be in the <ph
+                                            conref="ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                        /> resources directory, <codeph>$SDC_RESOURCES</codeph>.<p>For information
+                                            about generating the descriptor file, see <xref
+                                                href="../Pipeline_Design/Protobuf-Prerequisites.dita"
+                                            />. For more information about environment variables, see <xref
+                                                href="../Install_Config/DCEnvironmentConfig.dita#concept_rng_qym_qr"/>.</p></entry>
+                                </row>
+                                <row id="row-MessageType">
+                                    <entry>Message Type</entry>
+                                    <entry>The fully-qualified name for the message type to use when
+                                        reading data.<p>Use the following format:
+                                                <codeph>&lt;package name>.&lt;message
+                                            type></codeph>. </p>Use a message type defined in the
+                                        descriptor file.</entry>
+                                </row>
+                                <row>
+                                    <entry>Delimited Messages</entry>
+                                    <entry>Indicates if a message might include more than one
+                                        protobuf message.</entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step>
+                <cmd>
+                    <draft-comment author="Loretta"><uicontrol>O-Proto-File</uicontrol>. Step used
+                        by file-based proto. <p>NOTE: When making changes, make sure to update the
+                            message version and destination versions, as
+                        necessary.</p></draft-comment>
+                </cmd>
+            </step>
+            <step id="O-PROTO-File">
+                <cmd>For protobuf data, on the <wintitle>Protobuf</wintitle> tab, configure the
+                    following properties:</cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_f4r_4cp_45">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Protobuf Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Protobuf Descriptor File </entry>
+                                    <entry>Descriptor file (.desc) to use. The descriptor file must
+                                        be in the <ph
+                                            conref="ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                        /> resources directory, <codeph>$SDC_RESOURCES</codeph>. <p>For more information about environment variables, see <xref
+                                            href="../Install_Config/DCEnvironmentConfig.dita#concept_rng_qym_qr"/>. For information
+                                            about generating the descriptor file, see <xref
+                                                href="../Pipeline_Design/Protobuf-Prerequisites.dita"
+                                            />.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Message Type</entry>
+                                    <entry>The fully-qualified name for the message type to use when
+                                        reading data.<p>Use the following format:
+                                                <codeph>&lt;package name>.&lt;message
+                                            type></codeph>. </p>Use a message type defined in the
+                                        descriptor file.</entry>
+                                </row>
+                                <row>
+                                    <entry>Delimited Messages</entry>
+                                    <entry>Indicates if a file might include more than one protobuf
+                                        message.</entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step > <cmd>                     
+                <draft-comment author="Loretta"><uicontrol>TEXT data</uicontrol> - Directory,
+                    Kafka Consumer, JMS Consumer, Hadoop FS, Kinesis Consumer</draft-comment>
+            </cmd>
+            </step>        
+                <step id="Text">
+                    <cmd>For text data, on the <uicontrol>Text</uicontrol> tab, configure the following properties:</cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_ngy_vcc_fv">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
@@ -661,47 +854,503 @@
                         </tgroup>
                     </table>
                 </info>
+               
             </step>
-            <step>
-                <cmd>
-                    <draft-comment author="Loretta"><uicontrol>XML data </uicontrol>- step used by
-                        JMS Consumer, Kafka Consumer, Hadoop FS</draft-comment>
-                </cmd>
-            </step>
+            
+            
+            <step><cmd>
+                <draft-comment author="Loretta"><uicontrol>XML data </uicontrol>- step used by
+                    message and file based origins: JMS Consumer, Kafka Consumer, Hadoop FS,
+                    Kinesis Consumer, Directory, S3, HTTP Client, maybe more.</draft-comment>
+                    </cmd></step>
+            
             <step id="XMLprops">
                 <cmd>For XML data, on the <wintitle>XML</wintitle> tab, configure the following
-                    properties:</cmd>
+                    properties:</cmd>      
+            <info>
+                <table frame="all" rowsep="1" colsep="1" id="table_pmz_mcj_45">
+                    <tgroup cols="2">
+                        <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                        <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                        <thead> <row>                         
+                            <entry>XML Property</entry>
+                            <entry>Description</entry></row>  
+                        </thead>
+       <tbody>                
+            <row>
+                <entry>Delimiter Element</entry>
+                <entry>
+                    <p>XML element that acts as a delimiter. Omit a delimiter to
+                        treat the entire XML document as one record.</p>
+                </entry>
+            </row>
+            <row>
+                <entry>Max Record Length (chars)</entry>
+                <entry>
+                    <p>The maximum number of characters in a record. Longer
+                        records are diverted to the pipeline for error handling.
+                    </p>
+                </entry>         
+            </row> 
+            </tbody>
+            </tgroup>
+                </table>
+            </info></step>
+                
+                
+           <step>     
+                <cmd>
+                    <draft-comment author="Loretta"><uicontrol>HTTPClient-Credentials</uicontrol> -
+                        The following steps are used in HTTP Client origin and processor Configuring
+                        topics:</draft-comment>
+                </cmd>
+            </step>
+            <step id="HTTPClient-Credentials">
+                <cmd>When using authentication, on the <wintitle>Credentials</wintitle> tab,
+                    configure the following properties:</cmd>
                 <info>
-                    <table frame="all" rowsep="1" colsep="1" id="table_nxh_bc2_2t">
+                    <table frame="all" rowsep="1" colsep="1" id="table_qfx_54h_jw">
                         <tgroup cols="2">
                             <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
-                                    <entry>XML Property</entry>
+                                    <entry>Credentials Property</entry>
                                     <entry>Description</entry>
                                 </row>
                             </thead>
                             <tbody>
                                 <row>
-                                    <entry>Delimiter Element</entry>
-                                    <entry>
-                                        <p>XML element that acts as a delimiter. Omit a delimiter to
-                                            treat the entire XML document as one record.</p>
+                                    <entry>Username</entry>
+                                    <entry>User name for basic, digest, or universal authentication.
                                     </entry>
                                 </row>
                                 <row>
-                                    <entry>Max Record Length (chars)</entry>
-                                    <entry>
-                                        <p>The maximum number of characters in a record. Longer
-                                            records are diverted to the pipeline for error handling.
-                                        </p>
+                                    <entry>Password</entry>
+                                    <entry>Password for basic, digest, or universal authentication.
                                     </entry>
+                                </row>
+                                <row>
+                                    <entry>Consumer Key</entry>
+                                    <entry>Consumer key for OAuth authentication.</entry>
+                                </row>
+                                <row>
+                                    <entry>Consumer Secret</entry>
+                                    <entry>Consumer secret for OAuth authentication.</entry>
+                                </row>
+                                <row>
+                                    <entry>Token</entry>
+                                    <entry>Consumer token for OAuth authentication.</entry>
+                                </row>
+                                <row>
+                                    <entry>Token Secret</entry>
+                                    <entry>Token secret for OAuth authentication.</entry>
                                 </row>
                             </tbody>
                         </tgroup>
                     </table>
                 </info>
+            </step>
+            <step>
+                <cmd>
+                    <draft-comment author="Loretta"><uicontrol>HTTPClient-Proxy</uicontrol> -  - The
+                        following steps are used in HTTP Client origin and processor Configuring
+                        topics:</draft-comment>
+                </cmd>
+            </step>
+            <step id="HTTPClient-Proxy">
+                <cmd>To use an HTTP proxy, on the <wintitle>Proxy</wintitle> tab, configure the
+                    following properties:</cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_qbv_qz2_2v">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>HTTP Proxy Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Proxy URI</entry>
+                                    <entry>Proxy URI.</entry>
+                                </row>
+                                <row>
+                                    <entry>Username</entry>
+                                    <entry>Proxy user name.</entry>
+                                </row>
+                                <row>
+                                    <entry>Password</entry>
+                                    <entry>Proxy password.</entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step>
+                <cmd>
+                    <draft-comment author="Loretta"><uicontrol>HTTPClient-SSLTLS</uicontrol> - same
+                        as above</draft-comment>
+                </cmd>
+            </step>
+            <step id="HTTPClient-SSLTLS">
+                <cmd>Optionally, on the <uicontrol>SSL/TLS</uicontrol> tab, configure truststore and
+                    keystore details:</cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_cpn_3rh_jw">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>SSL/TLS Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Path to Truststore</entry>
+                                    <entry>Absolute path to the truststore. </entry>
+                                </row>
+                                <row>
+                                    <entry>Password</entry>
+                                    <entry>Truststore password.</entry>
+                                </row>
+                                <row>
+                                    <entry>Path to Keystore</entry>
+                                    <entry>Absolute path to the keystore. </entry>
+                                </row>
+                                <row>
+                                    <entry>Password</entry>
+                                    <entry>Keystore password.</entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step>
+                <cmd>
+                    <draft-comment author="Loretta">The following steps are used in JDBC Consumer
+                        &amp; Producer config topics.</draft-comment>
+                </cmd>
+            </step>
+            <step id="JDBC-Credentials">
+                <cmd>When using JDBC credentials, on the <uicontrol>Credentials</uicontrol> tab,
+                    configure the following properties:</cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_ybf_v1w_ht">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Credentials Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Username</entry>
+                                    <entry>User name for the JDBC connection.</entry>
+                                </row>
+                                <row>
+                                    <entry>Password</entry>
+                                    <entry>Password for the JDBC account</entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            
+            <step id="JDBC-Legacy">
+                <cmd>When using JDBC versions older than 4.0, on the <uicontrol>Legacy
+                        Drivers</uicontrol> tab, optionally configure the following
+                    properties:</cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_LogData">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Legacy Driver Property</entry>                                                               <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>JDBC Class Driver Name</entry>
+                                    <entry>Class name for the JDBC driver. Required for JDBC
+                                        versions older than version 4.0.</entry>
+                                </row>
+                                <row>
+                                    <entry>Connection Health Test Query</entry>
+                                    <entry>Optional query to test the health of a connection.
+                                        Recommended only when the JDBC version is older than 4.0.
+                                    </entry>
+                                    
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step>
+                <cmd>
+                    <draft-comment author="Loretta"><uicontrol>RabbitMQ</uicontrol> - Entire step
+                        used by Consumer, rows used by Producer</draft-comment>
+                </cmd>
+            </step>
+            <step id="RabbitMQ">
+                <cmd>On the <wintitle>RabbitMQ</wintitle> tab, configure the following
+                    properties:</cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_sdq_nzn_2v">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>RabbitMQ Property</entry>
+                                    <entry>Description</entry>
+                                </row></thead>
+                            <tbody>
+                              <row id="Rabbit-URI">
+                                    <entry>URI</entry>
+                                    <entry>RabbitMQ URI. <p>Typically uses the following format:
+                                                <codeph>amqp:&lt;host>:&lt;port>/&lt;virtualhost></codeph>.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Consumer Tag</entry>
+                                    <entry>RabbitMQ consumer tag. Leave empty to use an
+                                        automatically generated consumer tag. </entry>
+                                </row>
+                                <row>
+                                    <entry>One Record per Message</entry>
+                                    <entry>Generates a single record for each RabbitMQ message.
+                                            <p>When not selected, the origin generates a record for
+                                            each object in the message. </p></entry>
+                                </row>
+                                <row id="Rabbit-AddConfig">
+                                    <entry>Additional Client Configuration</entry>
+                                    <entry>Additional RabbitMQ client configuration properties to
+                                        use. To add properties, click <uicontrol>Add</uicontrol> and
+                                        define the RabbitMQ client property name and value. <p>Use
+                                            the property names and values as expected by RabbitMQ.
+                                        </p></entry>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/MessagesCharset">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/IgnoreControlChars-row">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/MaxBatchSize">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/BatchWaitTime">
+                                    <entry/>
+                                </row>
+                                <row id="Rabbit-UseCreds">
+                                    <entry>Use Credentials</entry>
+                                    <entry>Enables the use of RabbitMQ credentials.</entry>
+                                </row>
+                                <row>
+                                    <entry>Data Format</entry>
+                                    <entry>Type of data to be read. Use one of the following data
+                                            formats:<ul id="ul_epm_gg4_q5">
+                                            <li>Avro</li>
+                                            <li>Binary</li>
+                                            <li>Delimited</li>
+                                            <li>JSON</li>
+                                            <li>Log</li>
+                                            <li>Protobuf</li>
+                                            <li>SDC Record <xref
+                                                  href="../Pipeline_Design/SDCRecordFormat.dita#concept_qkk_mwk_br">
+                                                  <image href="../Graphics/icon_moreInfo.png"
+                                                  scale="11" id="image_wjh_ycl_br"/></xref></li>
+                                            <li>Text</li>
+                                            <li>XML</li>
+                                        </ul></entry>
+ 
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step id="Rabbit-CredentialsStep">
+                <cmd>On the <wintitle>Credentials</wintitle> tab, enter the RabbitMQ credentials to
+                    use if you enabled credentials.</cmd>
+            </step>
+            <step id="Rabbit-QueueStep">
+                <cmd>On the <wintitle>Queue</wintitle> tab, configure the following queue
+                    properties:</cmd>
+                <info>These properties directly correspond to RabbitMQ properties. For more
+                    information, see the RabbitMQ documentation. <table frame="all" rowsep="1"
+                        colsep="1" id="table_sxy_wg4_q5">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Queue Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Name</entry>
+                                    <entry>Name of the queue to use or create.</entry>
+                                </row>
+                                <row>
+                                    <entry>Durable</entry>
+                                    <entry>Creates a durable queue when selected. <p>The stage
+                                            creates a durable queue by default.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Exclusive</entry>
+                                    <entry>Creates an exclusive queue when selected. When exclusive,
+                                        the queue allows only the <ph
+                                            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                        /> to use it.<p>The stage creates an exclusive queue by
+                                            default.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Auto-Delete</entry>
+                                    <entry>Automatically deletes a queue after all consumers
+                                        unsubscribe. <p>When used with an exclusive queue, the queue
+                                            is automatically deleted when you stop the pipeline.
+                                        </p></entry>
+                                </row>
+                                <row>
+                                    <entry>Declaration Properties</entry>
+                                    <entry>Additional queue declaration properties to use. </entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table></info>
+            </step>
+            <step id="Rabbit-ExchangeStep">
+                <cmd>On the <wintitle>Exchange</wintitle> tab, optionally configure the following
+                    binding properties for the bindings that you want to use. When no bindings are
+                    configured, the default exchange is used.</cmd>
+                <info>These properties directly correspond to RabbitMQ properties. For more
+                    information, see the RabbitMQ documentation. <table frame="all" rowsep="1"
+                        colsep="1" id="table_ufb_p34_q5">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Exchange Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Name</entry>
+                                    <entry>Binding name.</entry>
+                                </row>
+                                <row>
+                                    <entry>Type</entry>
+                                    <entry>Binding type.</entry>
+                                </row>
+                                <row>
+                                    <entry>Durable</entry>
+                                    <entry>Creates a durable exchange.</entry>
+                                </row>
+                                <row>
+                                    <entry>Auto-Delete</entry>
+                                    <entry>Automatically deletes an exchange when all queues are
+                                        finished using it.</entry>
+                                </row>
+                                <row>
+                                    <entry>Routing Key</entry>
+                                    <entry>Routing key. <p>Leave empty to default to the queue
+                                            name.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Declaration Properties</entry>
+                                    <entry>Additional exchange properties to use.</entry>
+                                </row>
+                                <row>
+                                    <entry>Binding Properties</entry>
+                                    <entry>Additional binding properties to use. </entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table></info>
+            </step>
+            <step id="Rabbit-AdvancedStep">
+                <cmd>Optionally configure advanced options on the <wintitle>Advanced</wintitle>
+                    tab.</cmd>
+                <info>These properties directly correspond to RabbitMQ properties. For more
+                    information, see the RabbitMQ documentation. </info>
+                <info>Generally, you should use the defaults for these properties:<table frame="all"
+                        rowsep="1" colsep="1" id="table_ebg_144_q5">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Advanced Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Automatic Recovery Enabled</entry>
+                                    <entry>Determines whether to attempt to reestablish a
+                                        connection.</entry>
+                                </row>
+                                <row>
+                                    <entry>Network Recovery Interval</entry>
+                                    <entry>Milliseconds to wait before attempting to reestablish a
+                                        network connection. <p>Default is 5000.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Connection Timeout (ms)</entry>
+                                    <entry>Milliseconds for the connection to establish. Use 0 to
+                                        opt out of a connection timeout. <p>Default is
+                                        0.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Handshake Timeout (ms)</entry>
+                                    <entry>Milliseconds for the handshake to complete.</entry>
+                                </row>
+                                <row>
+                                    <entry>Shutdown Timeout (ms)</entry>
+                                    <entry>Milliseconds for the shutdown to complete. </entry>
+                                </row>
+                                <row>
+                                    <entry>Heartbeat Timeout (secs)</entry>
+                                    <entry>Seconds to wait for a heartbeat to verify that RabbitMQ
+                                        is up and the connection still available.<p>Use 0 to avoid
+                                            requesting heartbeats. Default is 0.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Maximum Frame Size (bytes)</entry>
+                                    <entry>Maximum frame size in bytes. Use for performance tuning.
+                                            <p>Setting a larger value can improve throughput.
+                                            Setting a smaller value can improve latency.</p><p>Use 0
+                                            for no limit. Default is 0.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Maximum Channel Number</entry>
+                                    <entry>Maximum number of channels allowed. </entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table></info>
             </step>
             <step id="PROCESSORS">
                 <cmd>
@@ -721,7 +1370,7 @@
                 <info>
                     <table frame="all" rowsep="1" colsep="1" id="table_blh_n2h_hr">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
@@ -758,7 +1407,10 @@
                                         preconditions. </entry>
                                 </row>
                                 <row>
-                                    <entry>On Record Error</entry>
+                                    <entry>On Record Error <xref
+                                            href="../Pipeline_Design/ErrorHandling-Stage.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_w55_4yn_lw"/></xref></entry>
                                     <entry>Error record handling for the stage: <ul
                                             id="ul_swp_lfh_hr">
                                             <li>Discard - Discards the record.</li>
@@ -785,7 +1437,7 @@
                 <info>
                     <table frame="all" rowsep="1" colsep="1" id="table_wjk_pfh_hr">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
@@ -826,72 +1478,6 @@
                     </table>
                 </info>
             </step>
-            <step>
-                <cmd>
-                    <draft-comment author="Loretta">Both of the following steps are used in JDBC
-                        Consumer &amp; Producer config topics.</draft-comment>
-                </cmd>
-            </step>
-            <step id="JDBC-Credentials">
-                <cmd>When using JDBC credentials, on the <uicontrol>Credentials</uicontrol> tab,
-                    configure the following properties:</cmd>
-                <info>
-                    <table frame="all" rowsep="1" colsep="1" id="table_ybf_v1w_ht">
-                        <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
-                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
-                            <thead>
-                                <row>
-                                    <entry>Credentials Property</entry>
-                                    <entry>Description</entry>
-                                </row>
-                            </thead>
-                            <tbody>
-                                <row>
-                                    <entry>Username</entry>
-                                    <entry>User name for the JDBC connection.</entry>
-                                </row>
-                                <row>
-                                    <entry>Password</entry>
-                                    <entry>Password for the JDBC account</entry>
-                                </row>
-                            </tbody>
-                        </tgroup>
-                    </table>
-                </info>
-            </step>
-            <step id="JDBC-Legacy">
-                <cmd>When using JDBC versions older than 4.0, on the <uicontrol>Legacy
-                        Drivers</uicontrol> tab, optionally configure the following
-                    properties:</cmd>
-                <info>
-                    <table frame="all" rowsep="1" colsep="1" id="table_ojq_d4s_bs">
-                        <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
-                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
-                            <thead>
-                                <row>
-                                    <entry>Legacy Driver Property</entry>
-                                    <entry>Description</entry>
-                                </row>
-                            </thead>
-                            <tbody>
-                                <row>
-                                    <entry>JDBC Class Driver Name</entry>
-                                    <entry>Class name for the JDBC driver. Required for JDBC
-                                        versions older than version 4.0.</entry>
-                                </row>
-                                <row>
-                                    <entry>Connection Health Test Query</entry>
-                                    <entry>Optional query to test the health of a connection.
-                                        Recommended only when the JDBC version is older than 4.0.
-                                    </entry>
-                                </row>
-                            </tbody>
-                        </tgroup>
-                    </table>
-                </info>
-            </step>
             <step id="DEST_INFO">
                 <cmd>
                     <draft-comment author="Loretta"><uicontrol>DESTINATION -
@@ -900,19 +1486,17 @@
             </step>
             <step>
                 <cmd>
-                    <draft-comment author="Loretta" id="1stStageLib-ReqField-ErrorH"
-                            ><uicontrol>1stStep-StageLib-ReqField-EHandling</uicontrol> - Use this
-                        step for destinations with stage library, req fields, and error
-                        handling.</draft-comment>
+                    <draft-comment author="Loretta"><uicontrol>1stStep-NoStageLib</uicontrol> - Use
+                        for destinations without stage libs, e.g. Local FS. </draft-comment>
                 </cmd>
             </step>
-            <step id="1stStep-StageLib-ReqField-EHandling">
+            <step id="1stStep-NoStageLib">
                 <cmd>In the Properties panel, on the <wintitle>General</wintitle> tab, configure the
                     following properties:</cmd>
                 <info>
-                    <table frame="all" rowsep="1" colsep="1" id="table_tvy_43h_hr">
+                    <table frame="all" rowsep="1" colsep="1" id="table_fvw_4kg_j5">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
@@ -930,6 +1514,74 @@
                                     <entry>Optional description.</entry>
                                 </row>
                                 <row>
+                                    <entry>Required Fields <xref
+                                            href="../Pipeline_Design/RequiredFields.dita#concept_dnj_bkm_vq">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_lww_4kg_j5"/></xref></entry>
+                                    <entry>Fields that must include data to be passed into the
+                                        stage. <note outputclass="" type="tip">You might include
+                                            fields that the stage uses.</note></entry>
+                                </row>
+                                <row>
+                                    <entry>Preconditions <xref
+                                            href="../Pipeline_Design/Preconditions.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_sww_4kg_j5"/></xref></entry>
+                                    <entry>Conditions that must evaluate to TRUE to allow a record
+                                        to enter the stage for processing. Click
+                                            <uicontrol>Add</uicontrol> to create additional
+                                        preconditions. </entry>
+                                </row>
+                                <row>
+                                    <entry>On Record Error <xref
+                                            href="../Pipeline_Design/ErrorHandling-Stage.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_dpb_pyn_lw"/></xref></entry>
+                                    <entry>Error record handling for the stage: <ul
+                                            id="ul_fxw_4kg_j5">
+                                            <li>Discard - Discards the record.</li>
+                                            <li>Send to Error - Sends the record to the pipeline for
+                                                error handling.</li>
+                                            <li>Stop Pipeline - Stops the pipeline.</li>
+                                        </ul></entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step>
+                <cmd>
+                    <draft-comment author="Loretta" id="1stStageLib-ReqField-ErrorH"
+                            ><uicontrol>1stStep-StageLib-ReqField-EHandling</uicontrol> - Use this
+                        step for destinations with stage library, req fields, and error handling. –
+                        Some rows are used by Hive Metastore.</draft-comment>
+                </cmd>
+            </step>
+            <step id="1stStep-StageLib-ReqField-EHandling">
+                <cmd>In the Properties panel, on the <wintitle>General</wintitle> tab, configure the
+                    following properties:</cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_tvy_43h_hr">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>General Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row id="row-Name">
+                                    <entry>Name</entry>
+                                    <entry>Stage name.</entry>
+                                </row>
+                                <row id="row-Desc">
+                                    <entry>Description</entry>
+                                    <entry>Optional description.</entry>
+                                </row>
+                                <row id="row-StageLib">
                                     <entry>Stage Library</entry>
                                     <entry>Library version that you want to use. </entry>
                                 </row>
@@ -952,8 +1604,11 @@
                                             <uicontrol>Add</uicontrol> to create additional
                                         preconditions. </entry>
                                 </row>
-                                <row>
-                                    <entry>On Record Error</entry>
+                                <row id="row-RecordError">
+                                    <entry>On Record Error <xref
+                                            href="../Pipeline_Design/ErrorHandling-Stage.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_lqj_pyn_lw"/></xref></entry>
                                     <entry>Error record handling for the stage: <ul
                                             id="ul_fqw_4fy_kt">
                                             <li>Discard - Discards the record.</li>
@@ -974,12 +1629,12 @@
                 </cmd>
             </step>
             <step id="D-Binary">
-                <cmd>For binary data, click the <wintitle>Binary</wintitle> tab and configure the
+                <cmd>For binary data, on the <wintitle>Binary</wintitle> tab, configure the
                     following property:</cmd>
                 <info>
                     <table frame="all" rowsep="1" colsep="1" id="table_xct_mbm_gt">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1.0*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
@@ -1000,16 +1655,17 @@
             <step>
                 <cmd>
                     <draft-comment author="Loretta"><uicontrol>D-AVRO-Event</uicontrol> - Used in
-                        Flume.</draft-comment>
+                        Flume. Flume doesn't have other compression types, so it's not getting that
+                        note. </draft-comment>
                 </cmd>
             </step>
             <step id="D-AVRO-Event">
-                <cmd>For Avro data, click the <wintitle>Avro</wintitle> tab and configure the
-                    following properties:</cmd>
+                <cmd>For Avro data, on the <wintitle>Avro</wintitle> tab, configure the following
+                    properties:</cmd>
                 <info>
                     <table frame="all" rowsep="1" colsep="1" id="table_igm_vtd_3t">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
@@ -1018,6 +1674,13 @@
                                 </row>
                             </thead>
                             <tbody>
+                                <row>
+                                    <entry>Load Schema from Header</entry>
+                                    <entry>Indicates that the Avro schema is embedded in the
+                                        avroSchema record header attribute. <p>Use only when the
+                                            avroSchema attribute is defined for all
+                                        records.</p></entry>
+                                </row>
                                 <row>
                                     <entry>Avro Schema</entry>
                                     <entry>Schema definition to use when writing data. </entry>
@@ -1029,6 +1692,12 @@
                                             the appropriate schema management to avoid losing track
                                             of the schema associated with the data.</note></entry>
                                 </row>
+                                <row>
+                                    <entry>Avro Compression Codec</entry>
+                                    <entry>The Avro compression type to use. <p>When using Avro
+                                            compression, do not enable other compression for the
+                                            destination. </p></entry>
+                                </row>
                             </tbody>
                         </tgroup>
                     </table>
@@ -1037,16 +1706,16 @@
             <step>
                 <cmd>
                     <draft-comment author="Loretta"><uicontrol>D-AVRO-File</uicontrol> - used in
-                        Hadoop FS and Amazon S3.</draft-comment>
+                        Amazon S3 and other file-based destinations that write avro.</draft-comment>
                 </cmd>
             </step>
             <step id="D-AVRO-File">
-                <cmd>For Avro data, click the <wintitle>Avro</wintitle> tab and configure the
-                    following properties:</cmd>
+                <cmd>For Avro data, on the <wintitle>Avro</wintitle> tab, configure the following
+                    properties:</cmd>
                 <info>
                     <table frame="all" rowsep="1" colsep="1" id="table_fpg_rx3_ks">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
@@ -1056,10 +1725,24 @@
                             </thead>
                             <tbody>
                                 <row>
+                                    <entry>Load Schema from Header </entry>
+                                    <entry>Indicates that the Avro schema is embedded in the
+                                        avroSchema record header attribute. The destination includes
+                                        the schema definition in each generated file. <p>Use only
+                                            when the avroSchema attribute is defined for all
+                                            records.</p></entry>
+                                </row>
+                                <row>
                                     <entry>Avro Schema</entry>
                                     <entry>Schema definition to use when writing data. The
                                         destination includes the schema definition in each generated
                                         file. </entry>
+                                </row>
+                                <row>
+                                    <entry>Avro Compression Codec</entry>
+                                    <entry>The Avro-supported compression type to use. <p>When you
+                                            enable Avro compression, do not enable other compression
+                                            available in the destination. </p></entry>
                                 </row>
                             </tbody>
                         </tgroup>
@@ -1069,16 +1752,16 @@
             <step>
                 <cmd>
                     <draft-comment author="Loretta"><uicontrol>D-AVRO-Mess</uicontrol> - Used in
-                        KProducer.</draft-comment>
+                        KProducer and KinFirehose.</draft-comment>
                 </cmd>
             </step>
             <step id="D-AVRO-Mess">
-                <cmd>For Avro data, click the <wintitle>Avro</wintitle> tab and configure the
-                    following properties:</cmd>
+                <cmd>For Avro data, on the <wintitle>Avro</wintitle> tab, configure the following
+                    properties:</cmd>
                 <info>
                     <table frame="all" rowsep="1" colsep="1" id="table_o2j_4nd_3t">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
@@ -1087,6 +1770,13 @@
                                 </row>
                             </thead>
                             <tbody>
+                                <row>
+                                    <entry>Load Schema from Header</entry>
+                                    <entry>Indicates that the Avro schema is embedded in the
+                                        avroSchema record header attribute. <p>Use only when the
+                                            avroSchema attribute is defined for all
+                                        records.</p></entry>
+                                </row>
                                 <row>
                                     <entry>Avro Schema</entry>
                                     <entry>Schema definition to use when writing data. </entry>
@@ -1098,6 +1788,12 @@
                                             the appropriate schema management to avoid losing track
                                             of the schema associated with the data.</note></entry>
                                 </row>
+                                <row>
+                                    <entry>Avro Compression Codec</entry>
+                                    <entry>The Avro compression type to use. <p>When using Avro
+                                            compression, do not enable other compression available
+                                            in the destination. </p></entry>
+                                </row>
                             </tbody>
                         </tgroup>
                     </table>
@@ -1106,17 +1802,17 @@
             <step>
                 <cmd>
                     <draft-comment author="Loretta"><uicontrol>DelimProps:</uicontrol> Use for the
-                        appropriate delimited destinations - currently Flume, Hadoop FS and Kafka
-                        Producer:</draft-comment>
+                        appropriate delimited destinations - currently Amazon S3, Flume, Hadoop FS,
+                        Kafka Producer, and Kinesis Firehose:</draft-comment>
                 </cmd>
             </step>
             <step id="DelimProps">
-                <cmd>For delimited data, click the <wintitle>Delimited</wintitle> tab and configure
-                    the following properties:</cmd>
+                <cmd>For delimited data, on the <wintitle>Delimited</wintitle> tab, configure the
+                    following properties:</cmd>
                 <info>
                     <table frame="all" rowsep="1" colsep="1" id="table_wb3_2kg_br">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
@@ -1138,10 +1834,43 @@
                                     <entry>Indicates whether to create a header line.</entry>
                                 </row>
                                 <row>
-                                    <entry>Remove New Line Characters</entry>
-                                    <entry>Removes new line characters from within a record.
-                                            <p>Recommended when writing data as a single line of
-                                            text.</p></entry>
+                                    <entry>Replace New Line Characters</entry>
+                                    <entry>Replaces new line characters with the configured
+                                            string.<p>Recommended when writing data as a single line
+                                            of text.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>New Line Character Replacement</entry>
+                                    <entry>String to replace each new line character. For example,
+                                        enter a space to replace each new line character with a
+                                        space. <p>Leave empty to remove the new line
+                                        characters.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Delimiter Character</entry>
+                                    <entry>Delimiter character for a custom delimiter format. Select
+                                        one of the available options or use Other to enter a custom
+                                        character. <p>You can enter a Unicode control character
+                                            using the format \u<i>NNNN</i>, where ​<i>N</i> is a
+                                            hexadecimal digit from the numbers 0-9 or the letters
+                                            A-F. For example, enter \u0000 to use the null character
+                                            as the delimiter or \u2028 to use a line separator as
+                                            the delimiter.</p><p>Default is the pipe character ( |
+                                            ).</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Escape Character </entry>
+                                    <entry>Escape character for a custom delimiter format. Select
+                                        one of the available options or use Other to enter a custom
+                                        character. <p>Default is the backslash character ( \
+                                        ).</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Quote Character</entry>
+                                    <entry>Quote character for a custom delimiter format. Select one
+                                        of the available options or use Other to enter a custom
+                                        character. <p>Default is the quotation mark character ( "
+                                            ).</p></entry>
                                 </row>
                             </tbody>
                         </tgroup>
@@ -1151,16 +1880,17 @@
             <step>
                 <cmd>
                     <draft-comment author="Loretta"><uicontrol>JSONProps</uicontrol> - Used for
-                        Hadoop FS, Kafka Producer, and Amazon S3.</draft-comment>
+                        Hadoop FS, Kafka Producer, Amazon S3, Kinesis Producer, and Kinesis
+                        Firehose.</draft-comment>
                 </cmd>
             </step>
             <step id="JSONProps">
-                <cmd>For JSON data, click the <uicontrol>JSON</uicontrol> tab and configure the
-                    following property:</cmd>
+                <cmd>For JSON data, on the <uicontrol>JSON</uicontrol> tab, configure the following
+                    property:</cmd>
                 <info>
                     <table frame="all" rowsep="1" colsep="1" id="table_lgq_53c_wr">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
@@ -1193,12 +1923,12 @@
                 </cmd>
             </step>
             <step id="TextProps">
-                <cmd>For text data, click the <uicontrol>Text</uicontrol> tab and configure the
-                    following properties:</cmd>
+                <cmd>For text data, on the <uicontrol>Text</uicontrol> tab, configure the following
+                    properties:</cmd>
                 <info>
                     <table frame="all" rowsep="1" colsep="1" id="table_egv_3df_jr">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
@@ -1226,15 +1956,477 @@
             </step>
             <step>
                 <cmd>
+                    <draft-comment author="Loretta"><b>D-PROTO-props</b> - used by all protobuf
+                            destinations<p>NOTE: when making changes, make sure to make any related
+                            ones to BOTH origin tables.</p></draft-comment>
+                </cmd>
+            </step>
+            <step id="D-PROTO-props">
+                <cmd>For protobuf data, on the <wintitle>Protobuf</wintitle> tab, configure the
+                    following properties:</cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_vmt_tdp_45">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Protobuf Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Protobuf Descriptor File </entry>
+                                    <entry>Descriptor file (.desc) to use. The descriptor file must
+                                        be in the <ph
+                                            conref="ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                        /> resources directory, <codeph>$SDC_RESOURCES</codeph>. <p>For more information about environment variables, see <xref
+                                            href="../Install_Config/DCEnvironmentConfig.dita#concept_rng_qym_qr"/>. For information
+                                            about generating the descriptor file, see <xref
+                                                href="../Pipeline_Design/Protobuf-Prerequisites.dita"
+                                            />.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Message Type</entry>
+                                    <entry>The fully-qualified name for the message type to use when
+                                        reading data.<p>Use the following format:
+                                                <codeph>&lt;package name>.&lt;message
+                                            type></codeph>. </p>Use a message type defined in the
+                                        descriptor file.</entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step>
+                <cmd>
                     <draft-comment author="Loretta"><uicontrol>DESTINATION -
                         Specific</uicontrol></draft-comment>
                 </cmd>
             </step>
             <step>
                 <cmd>
+                    <draft-comment author="Loretta"><uicontrol>FS-OutputFiles</uicontrol> - Local FS
+                        and MapR FS conref the entire table. Hadoop FS conrefs each
+                        row</draft-comment>
+                </cmd>
+            </step>
+            <step id="FS-OutputFiles">
+                <cmd>On the <wintitle>Output Files</wintitle> tab, configure the following
+                    options:</cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_lpp_dd1_s5">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Output Files Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Idle Timeout (secs)</entry>
+                                    <entry id="entry-IdleTimeout">Maximum time that an output file
+                                        can remain idle. After no records are written to a file for
+                                        this amount of time, the destination closes the file. Enter
+                                        a time in seconds or use the <codeph>MINUTES</codeph> or
+                                            <codeph>HOURS</codeph> constant in an expression to
+                                        define the time increment.<p>Use -1 to set no limit. Default
+                                            is 1 hour, defined as follows: <codeph>${1 *
+                                                HOURS}</codeph>.</p></entry>
+                                </row>
+                                <row id="row-FileType">
+                                    <entry>File Type</entry>
+                                    <entry>Output file type:<ul id="ul_pzp_dd1_s5">
+                                            <li>Text files</li>
+                                            <li>Sequence files</li>
+                                        </ul></entry>
+                                </row>
+                                <row id="row-DataFormat">
+                                    <entry>Data Format</entry>
+                                    <entry>Format of data to be written. Use one of the following
+                                            options:<ul id="ul_vzp_dd1_s5">
+                                            <li>Avro</li>
+                                            <li>Delimited</li>
+                                            <li>JSON</li>
+                                            <li>Protobuf</li>
+                                            <li>Text</li>
+                                        </ul></entry>
+                                </row>
+                                <row id="row-FilePrefix">
+                                    <entry>File Prefix</entry>
+                                    <entry>Prefix to use for output files. Use when writing to a
+                                        directory that receives files from other sources.<p>Uses the
+                                            prefix sdc-${sdc:id()} by default. The prefix evaluates
+                                            to sdc-&lt;Data Collector ID>. </p><p>The Data Collector
+                                            ID is stored in the following file:
+                                                <filepath>$SDC_DATA/sdc.id</filepath>. For more information about environment variables, see <xref
+                                                    href="../Install_Config/DCEnvironmentConfig.dita#concept_rng_qym_qr"/>.</p></entry>
+                                </row>
+                                <row id="row-DirectoryTemplate">
+                                    <entry>Directory Template <xref
+                                            href="../Destinations/HadoopFS-DirectoryTemplates.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_c1q_dd1_s5"/></xref></entry>
+                                    <entry id="entry-DirectoryTemplate">Template for creating output directories. You can use
+                                        constants, field values, and datetime variables. <p>Output
+                                            directories are created based on the smallest datetime
+                                            variable in the template.</p></entry>
+                                </row>
+                                <row id="row-DataTimeZone">
+                                    <entry>Data Time Zone</entry>
+                                    <entry>Time zone for the destination system. Used to resolve
+                                        datetimes in the directory template and evaluate where
+                                        records are written.</entry>
+                                </row>
+                                <row id="row-TimeBasis">
+                                    <entry>Time Basis <xref
+                                            href="../Destinations/HadoopFS-TimeBasis.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_f1q_dd1_s5"/></xref></entry>
+                                    <entry id="entry-TimeBasis">Time basis to use for creating output directories and
+                                        writing records to the directories. Use one of the following
+                                            expressions:<ul id="ul_h1q_dd1_s5">
+                                            <li>${time:now()} - Uses the processing time as the time
+                                                basis. </li>
+                                            <li>${record:value("/&lt;date field>")} - Uses the time
+                                                associated with the record as the time basis.</li>
+                                        </ul></entry>
+                                </row>
+                                <row id="row-MaxRecords">
+                                    <entry>Max Records in a File</entry>
+                                    <entry>Maximum number of records to be written to an output
+                                        file. Additional records are written to a new file. <p>Use 0
+                                            to opt out of this property.</p></entry>
+                                </row>
+                                <row id="row-MaxFileSize">
+                                    <entry>Max File Size (MB)</entry>
+                                    <entry>Maximum size of an output file. Additional records are
+                                        written to a new file. <p>Use 0 to opt out of this
+                                            property.</p></entry>
+                                </row>
+                                <row id="row-CCodec">
+                                    <entry>Compression Codec</entry>
+                                    <entry>Compression type for output files:<ul id="ul_o1q_dd1_s5">
+                                            <li>None </li>
+                                            <li>gzip</li>
+                                            <li>bzip2</li>
+                                            <li>Snappy</li>
+                                            <li>LZ4</li>
+                                            <li>Other</li>
+                                        </ul></entry>
+                                </row>
+                                <row id="row-CCodecClass">
+                                    <entry>Compression Codec Class</entry>
+                                    <entry>Full class name of the other compression codec that you
+                                        want to use. </entry>
+                                </row>
+                                <row id="row-SequenceFileKey">
+                                    <entry>Sequence File Key</entry>
+                                    <entry>Record key for creating sequence files. Use one of the
+                                        following options:<ul id="ul_v1q_dd1_s5">
+                                            <li>${record:value("/&lt;field name>")}</li>
+                                            <li>${uuid()}</li>
+                                        </ul></entry>
+                                </row>
+                                <row id="row-CompressionType">
+                                    <entry>Compression Type</entry>
+                                    <entry>Compression type for sequence files when using a
+                                        compression codec:<ul id="ul_bbq_dd1_s5">
+                                            <li>Block Compression</li>
+                                            <li>Record Compression</li>
+                                        </ul></entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step>
+                <cmd>
+                    <draft-comment author="Loretta">Elasticsearch properties - used by Elasticsearch
+                        destination and Configuring a Pipeline > Error handling.</draft-comment>
+                </cmd>
+            </step>
+            <step id="ELASTICprops-Step">
+                <cmd>On the <wintitle>Elasticsearch</wintitle> tab, configure the following
+                    properties:</cmd>
+                <info id="ElasticProps-Info">
+                    <table frame="all" rowsep="1" colsep="1" id="table_ht4_x5v_4r">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Elasticsearch Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Cluster Name</entry>
+                                    <entry>Elasticsearch cluster name.</entry>
+                                </row>
+                                <row>
+                                    <entry>Cluster URIs</entry>
+                                    <entry>URI of one or more nodes in the cluster. Use the
+                                        following format:
+                                            <codeblock>&lt;host>:&lt;port></codeblock><p>To ensure a
+                                            connection, enter a comma-separated list of
+                                        URIs.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Cluster HTTP URI</entry>
+                                    <entry>Use when the cluster uses a custom HTTP URI. Use the
+                                        following format:
+                                            <codeblock>&lt;host>:&lt;port></codeblock><p>Unless
+                                            configured, the destination uses the default HTTP URI to
+                                            verify that the cluster version is compatible with the
+                                            destination libraries.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Use Shield</entry>
+                                    <entry>Enables access to a Shield-protected cluster.</entry>
+                                </row>
+                                <row>
+                                    <entry>Elastic Found Cluster</entry>
+                                    <entry>Enables access to a Found cluster. <p>Selecting this
+                                            property is the equivalent to setting the
+                                            action.bulk.compress Elasticsearch property to false,
+                                            and the request.headers.X-Found-Cluster to the cluster
+                                            name. </p><p>Found requires Shield. When enabling Found,
+                                            enable Shield and configure the additional Shield
+                                            properties. </p></entry>
+                                </row>
+                                <row>
+                                    <entry>Detect Additional Nodes in Cluster</entry>
+                                    <entry><p>Detects additional nodes in the cluster based on the
+                                            configured Cluster URI. </p>Selecting this property is
+                                        the equivalent to setting the client.transport.sniff
+                                        Elasticsearch property to true.<p>Use only when the <ph
+                                                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                            /> shares the same network as the Elasticsearch cluster.
+                                            Do not use for Found or Docker clusters.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Additional Configuration</entry>
+                                    <entry>Additional Elasticsearch properties that you want to use.
+                                        Enter the exact property name and value expected by
+                                        Elasticsearch.</entry>
+                                </row>
+                                <row>
+                                    <entry>Time Basis <xref href="../Destinations/Elastic-TimeBasis.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_w4w_q3p_ht"/>
+                                        </xref></entry>
+                                    <entry>
+                                        <p>Time basis to use for writing to time-based indexes. Use
+                                            one of the following expressions:<ul id="ul_wbn_qdt_r5">
+                                                <li><codeph>${time:now()}</codeph> - Uses the
+                                                  processing time as the time basis. The processing
+                                                  time is the time associated with the <ph
+                                                  conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                                  /> running the pipeline. </li>
+                                                <li>An expression that calls a field and resolves to
+                                                  a datetime value, such as
+                                                  <codeph>${record:value('/&lt;date
+                                                  field>')}</codeph>. Uses the datetime result as
+                                                  the time basis. </li>
+                                            </ul></p>
+                                        <p>When the Index definition does not include datetime
+                                            variables, you can ignore this property. </p>
+                                        <p>Default is <codeph>${time:now()}</codeph>.</p>
+                                    </entry>
+                                </row>
+                                <row>
+                                    <entry>Data Time Zone</entry>
+                                    <entry>Time zone for the destination system. Used to resolve
+                                        datetimes in time-based indexes. </entry>
+                                </row>
+                                <row>
+                                    <entry>Index</entry>
+                                    <entry>Index information for the generated documents. You can
+                                        use a constant, datetime variables, a field that includes
+                                        the index information, or any valid combination. <p>When
+                                            using datetime variables, make sure to configure the
+                                            time basis appropriately. For details about datetime
+                                            variables, see <xref
+                                                href="../Expression_Language/DateTimeVariables.dita#concept_gh4_qd2_sv"
+                                            />.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Mapping</entry>
+                                    <entry>Mapping information for the generated documents. You can
+                                        use a constant or a field that includes the mapping
+                                        information. </entry>
+                                </row>
+                                <row>
+                                    <entry>Document ID</entry>
+                                    <entry>ID for the record. Use to specify the ID for the
+                                        generated documents. When you do not specify an ID,
+                                        Elasticsearch creates an ID for each document.<p>By default,
+                                            the destination allows Elasticsearch to create the
+                                            ID.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Data Charset</entry>
+                                    <entry>
+                                        <p>Character encoding of the data to be processed. </p>
+                                    </entry>
+                                </row>
+                                <row>
+                                    <entry>Enable Upsert <xref href="../Destinations/Elastic-DocIDandUpserts.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_r1f_ggg_z5"/>
+                                        </xref></entry>
+                                    <entry>Enables upserts to the cluster. When enabled, configure
+                                        the Document ID property.</entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step id="ElasticSHIELD-step">
+                <cmd>When writing to a Shield-protected cluster, on the <wintitle>Shield</wintitle>
+                    tab, configure the following properties:</cmd>
+                <info id="ElasticSHIELD-Info">
+                    <table frame="all" rowsep="1" colsep="1" id="table_jsk_fhg_z5">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Shield Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Shield Username/Password</entry>
+                                    <entry>Shield username and password. <p>Configuring this
+                                            property is the equivalent to configuring the
+                                            shield.user Elasticsearch property.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Enable SSL</entry>
+                                    <entry>Enables SSL between the <ph
+                                            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                        /> and the Elasticsearch cluster.<p>Selecting this property
+                                            is the equivalent to setting the shield.transport.ssl
+                                            Elasticsearch property to true.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>SSL Keystore Path</entry>
+                                    <entry>Location of the keystore file. <p>Configuring this
+                                            property is the equivalent to configuring the
+                                            shield.ssl.keystore.path Elasticsearch
+                                            property.</p><p>Not necessary for Found clusters.
+                                        </p></entry>
+                                </row>
+                                <row>
+                                    <entry>SSL Keystore Password</entry>
+                                    <entry>Password for the keystore file.<p>Configuring this
+                                            property is the equivalent to configuring the
+                                            shield.ssl.keystore.password Elasticsearch
+                                            property.</p><p>Not necessary for Found
+                                        clusters.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>SSL Truststore Path</entry>
+                                    <entry>Location of the truststore file. <p>Configuring this
+                                            property is the equivalent to configuring the
+                                            shield.ssl.truststore.path Elasticsearch
+                                            property.</p><p>Not necessary for Found clusters.
+                                        </p></entry>
+                                </row>
+                                <row>
+                                    <entry>SSL Truststore Password</entry>
+                                    <entry>Password for the truststore file.<p>Configuring this
+                                            property is the equivalent to configuring the
+                                            shield.ssl.truststore.password Elasticsearch
+                                            property.</p><p>Not necessary for Found
+                                        clusters.</p></entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step>
+                <cmd>
+                    <draft-comment author="Loretta"><uicontrol>FS-LateRecords</uicontrol> - for
+                        Hadoop FS and Local FS</draft-comment>
+                </cmd>
+            </step>
+            <step id="FS-LateRecords">
+                <cmd>On the <wintitle>Late Records</wintitle> tab, configure the following
+                    properties:</cmd>
+                <info>
+                    <note type="tip">These properties are relevant for a time basis based on the
+                        time of a record. If you use processing time as the time basis, set the late
+                        record time limit to one second.</note>
+                    <table frame="all" rowsep="1" colsep="1" id="table_wv3_xzd_br">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Late Records Property <xref
+                                            href="../Destinations/HadoopFS-LateRecordHandling.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_skv_3kw_45"/>
+                                        </xref>
+                                    </entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry>Late Record Time Limit (secs)</entry>
+                                    <entry>Time limit for output directories to accept data. <p>You
+                                            can enter a time in seconds, or use the expression to
+                                            enter a time in hours. You can also use MINUTES in the
+                                            default expression to define the time in minutes.
+                                        </p></entry>
+                                </row>
+                                <row>
+                                    <entry>Late Record Handling</entry>
+                                    <entry>Determines how to handle late records:<ul
+                                            id="ul_gx4_c12_br">
+                                            <li>Send to error - Sends the record to the stage for
+                                                error handling. </li>
+                                            <li>Send to late records file - Sends the record to a
+                                                late records file.</li>
+                                        </ul></entry>
+                                </row>
+                                <row>
+                                    <entry>Late Record Directory Template <xref
+                                            href="../Destinations/HadoopFS-DirectoryTemplates.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_blv_3kw_45"/></xref></entry>
+                                    <entry>Template for creating late record directories. You can
+                                        use constants, field values, and datetime variables.
+                                            <p>Output directories are created based on the smallest
+                                            datetime variable in the template.</p></entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step>
+                <cmd>
                     <draft-comment author="Loretta"><uicontrol>KafkaConfig</uicontrol> - used for
                         the Kafka Producer - Kafka tab properties. Rows in the table are used for
-                        Configuring a Pipeline, error handling > Write to Kafka.</draft-comment>
+                        Configuring a Pipeline, error handling > Write to Kafka. -- Message per
+                        Batch also used by RabbitMQ Producer. Some rows also used
+                        by MapR Streams Producer.</draft-comment>
+                   
                 </cmd>
             </step>
             <step id="KafkaConfig">
@@ -1244,8 +2436,8 @@
                     <p>
                         <table frame="all" rowsep="1" colsep="1" id="KafkaTableProperties">
                             <tgroup cols="2">
-                                <colspec colname="c1" colnum="1" colwidth="1.25*"/>
-                                <colspec colname="c2" colnum="2" colwidth="3.25*"/>
+                                <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                                <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                                 <thead>
                                     <row>
                                         <entry>Kafka Properties</entry>
@@ -1272,8 +2464,8 @@
                                     </row>
                                     <row id="KPTopic">
                                         <entry>Topic</entry>
-                                        <entry>Kafka topic to use. <p>Not available when using
-                                                runtime topic resolution.</p></entry>
+                                        <entry>Topic to use. <p>Not available when using runtime
+                                                topic resolution.</p></entry>
                                     </row>
                                     <row id="KPTopicEx">
                                         <entry>Topic Expression</entry>
@@ -1286,9 +2478,9 @@
                                         <entry>List of valid topic names to write to when using
                                             runtime topic resolution. Use to avoid writing to
                                             invalid topics. Records that resolve to invalid topic
-                                            names are passed the stage for error handling. <p>Use an
-                                                asterisk (*) to allow writing to any topic name. By
-                                                default, all topic names are valid.</p></entry>
+                                            names are passed to the stage for error handling. <p>Use
+                                                an asterisk (*) to allow writing to any topic name.
+                                                By default, all topic names are valid.</p></entry>
                                     </row>
                                     <row id="KPPartStrategy">
                                         <entry>Partition Strategy </entry>
@@ -1313,26 +2505,6 @@
                                                 conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/EEditor"
                                             /></entry>
                                     </row>
-                                    <row>
-                                        <entry>Data Format</entry>
-                                        <entry>Data format for output messages:<ul
-                                                id="ul_wlj_353_br">
-                                                <li>Text</li>
-                                                <li>JSON</li>
-                                                <li>Delimited</li>
-                                                <li>SDC Record <xref
-                                                  href="../Pipeline_Design/SDCRecordFormat.dita#concept_qkk_mwk_br">
-                                                  <image href="../Graphics/icon_moreInfo.png"
-                                                  scale="10" id="image_ucp_chr_br"/></xref></li>
-                                                <li>Avro</li>
-                                                <li>Binary</li>
-                                            </ul></entry>
-                                    </row>
-                                    <row>
-                                        <entry>Messages Charset</entry>
-                                        <entry>Character encoding to use when writing data. <p>Not
-                                                used for the SDC Record data format.</p></entry>
-                                    </row>
                                     <row id="KPOneMessPBatch">
                                         <entry>One Message per Batch</entry>
                                         <entry>For each batch, writes the records to each partition
@@ -1346,12 +2518,110 @@
                                                 values as expected by Kafka. Do not use the
                                                 broker.list property.</p><p>Several properties are
                                                 defined by default. You can edit or delete the
-                                                properties. </p></entry>
+                                                properties. </p><p>For information about enabling
+                                                secure connections to Kafka, see <xref
+                                                  href="../Destinations/KProducer-EnablingSecurity.dita"
+                                                />.</p></entry>
+                                    </row>
+                                    <row id="KP-DataFormats">
+                                        <entry>Data Format</entry>
+                                        <entry>Data format for messages:<ul id="ul_wlj_353_br">
+                                                <li>Avro</li>
+                                                <li>Binary</li>
+                                                <li>Delimited</li>
+                                                <li>JSON</li>
+                                                <li>Protobuf</li>
+                                                <li>SDC Record <xref
+                                                  href="../Pipeline_Design/SDCRecordFormat.dita#concept_qkk_mwk_br">
+                                                  <image href="../Graphics/icon_moreInfo.png"
+                                                  scale="10" id="image_ucp_chr_br"/></xref></li>
+                                                <li>Text</li>
+                                            </ul></entry>
+                                    </row>
+                                    <row
+                                        conref="ReusableTables.dita#concept_wfr_rnw_yq/D-CHARSET-other">
+                                        <entry/>
                                     </row>
                                 </tbody>
                             </tgroup>
                         </table>
                     </p>
+                </info>
+            </step>
+            <step>
+                <cmd>
+                    <draft-comment author="Loretta">MapRStreams-props - used by MapR Streams
+                        Producer and Info tag used by Configuring a Pipeline > Write to MapR
+                        Streams. </draft-comment>
+                </cmd>
+            </step>
+            <step id="MAPRStreams-Step">
+                <cmd>On the <wintitle>MapR Streams Producer</wintitle> tab, configure the following
+                    properties:</cmd>
+                <info id="MapRStreams-Info">
+                    <table frame="all" rowsep="1" colsep="1" id="table_izf_lxn_2v">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>MapR Streams Producer Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPRuntimeTopic">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPTopic">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPTopicEx">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPTopicWList">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPPartStrategy">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPPartExpr">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KPOneMessPBatch">
+                                    <entry/>
+                                </row>
+                                <row>
+                                    <entry>MapR Streams Configuration <xref
+                                            href="../Destinations/MapRStreamsProd-AddProps.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_dgb_pns_2v"/></xref>
+                                    </entry>
+                                    <entry>Additional configuration properties to use. To add
+                                        properties, click <uicontrol>Add</uicontrol> and define the
+                                        property name and value. <p>Use the property names and
+                                            values as expected by MapR.</p><p>You can use MapR
+                                            Streams properties and set of Kafka properties supported
+                                            by MapR Streams. </p></entry>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/KP-DataFormats">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/D-CHARSET-other">
+                                    <entry/>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
                 </info>
             </step>
             <step>
@@ -1395,21 +2665,23 @@
                                         process data from the destination.</entry>
                                 </row>
                                 <row id="row-SSLenabled">
-                                    <entry>SSL Enabled <xref href="../RPC_Pipelines/EnableSSL.dita">
+                                    <entry>TLS Enabled <xref
+                                            href="../RPC_Pipelines/EnablingEncryption.dita">
                                             <image href="../Graphics/icon_moreInfo.png" scale="10"
                                                 placement="inline" id="image_a5x_jzn_vs"
                                         /></xref></entry>
-                                    <entry>Enables the secure transfer of data using SSL. <p>To use
-                                            SSL, both the SDC RPC origin and SDC RPC destination
-                                            must be enabled for SSL.</p></entry>
+                                    <entry>Enables the secure transfer of data using TLS. <p>To use
+                                            encryption, both the SDC RPC origin and SDC RPC
+                                            destination must be enabled for TLS.</p></entry>
                                 </row>
                                 <row id="row-TrustStore">
                                     <entry>Truststore File</entry>
-                                    <entry>Truststore file for SSL. Required if the keystore file is
+                                    <entry>Truststore file for TLS. Required if the keystore file is
                                         a self-signed certificate.<p>Must be stored in the <ph
                                                 conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                            /> resources directory:
-                                                <filepath>&lt;SDCinstalldir>/resources</filepath>.</p></entry>
+                                            /> resources directory,
+                                            <filepath>$SDC_RESOURCES</filepath>. For more information about environment variables, see <xref
+                                                href="../Install_Config/DCEnvironmentConfig.dita#concept_rng_qym_qr"/>.</p></entry>
                                 </row>
                                 <row id="row-TSpass">
                                     <entry>Truststore Password</entry>
@@ -1437,7 +2709,7 @@
                 <info>
                     <table frame="all" rowsep="1" colsep="1" id="table_mhd_nd1_ft">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1.0*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
                             <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
@@ -1468,13 +2740,86 @@
                                             milliseconds.</p></entry>
                                 </row>
                                 <row id="row-UseCompression">
-                                    <entry>Use Compression</entry>
+                                    <entry>Use Compression  <xref
+                                            href="../Destinations/RPC-Compression.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                placement="inline"
+                                        /></xref></entry>
                                     <entry>Enables the destination to use compression to pass data
                                         to the SDC RPC origin. Enabled by default. </entry>
                                 </row>
                             </tbody>
                         </tgroup>
                     </table>
+                </info>
+            </step>
+            <step>
+                <cmd>
+                    <draft-comment author="alisontaylor">The following steps are used in "Step 1.
+                        Install the StreamSets Custom Service Descriptor" in the Installation
+                        chapter and the Upgrade chapter.</draft-comment>
+                </cmd>
+            </step>
+            <step id="CSDInstallDownload">
+                <cmd>Use the following URL to download the CSD from the StreamSets website: <xref
+                        href="https://streamsets.com/opensource" format="html" scope="external"
+                    />.</cmd>
+            </step>
+            <step id="CSDInstallPath">
+                <cmd>Copy the <ph
+                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                    /> CSD file to the<uicontrol> Local Descriptor Repository Path</uicontrol>. By
+                    default, the path is <codeph>/opt/cloudera/csd</codeph>.</cmd>
+                <info>To verify the path to use, in Cloudera Manager, click <menucascade>
+                        <uicontrol>Administration</uicontrol>
+                        <uicontrol>Settings</uicontrol>
+                    </menucascade>. In the navigation panel, select the <uicontrol>Custom Service
+                        Descriptors</uicontrol> category. Place the CSD file in the path configured
+                    for <uicontrol>Local Descriptor Repository Path</uicontrol>. </info>
+            </step>
+            <step id="CSDInstallFileOwnership">
+                <cmd>Set the file ownership to <codeph>cloudera-scm:cloudera-scm</codeph> with
+                    permission <uicontrol>644</uicontrol>. </cmd>
+                <info>For example:
+                    <codeblock>chown cloudera-scm:cloudera-scm /opt/cloudera/csd/STREAMSETS*.jar
+chmod 644 /opt/cloudera/csd/STREAMSETS*.jar</codeblock></info>
+            </step>
+            <step id="CSDInstallRestart">
+                <cmd>Use one of the following commands to restart Cloudera Manager Server:</cmd>
+                <info><p>For Ubuntu and CentOS 6:
+                        <codeblock>service cloudera-scm-server restart</codeblock></p>For CentOS 7:
+                    <codeblock>systemctl restart cloudera-scm-server</codeblock></info>
+            </step>
+            <step id="CSDInstallRestartService">
+                <cmd>In Cloudera Manager, to restart the Cloudera Management Service, click <menucascade>
+                        <uicontrol>Home</uicontrol>
+                        <uicontrol>Status</uicontrol>
+                    </menucascade>. To the right of Cloudera Management Service, click the
+                        <uicontrol>Menu</uicontrol> icon and select
+                    <uicontrol>Restart</uicontrol>.</cmd>
+            </step>
+            <step>
+                <cmd>
+                    <draft-comment author="alisontaylor">The following steps are used in "Step 2.
+                        Manually Install the Parcel and Checksum Files (Optional)" used in the
+                        Installation and Upgrade chapters.</draft-comment>
+                </cmd>
+            </step><step id="ParcelDownload">
+                <cmd>Download the StreamSets parcel and related checksum file for the Cloudera
+                    Manager Server operating system from the following location:</cmd>
+                <info><xref href="https://archives.streamsets.com/index.html" format="html"
+                        scope="external"/></info>
+            </step>
+            <step id="ParcelRepoPath">
+                <cmd>Copy the StreamSets parcel and checksum files to the <uicontrol>Cloudera
+                        Manager Local Parcel Repository Path</uicontrol>. </cmd>
+                <info>By default, the path is <codeph>/opt/cloudera/parcel-repo</codeph>.</info>
+                <info>To verify the path to use, click <menucascade>
+                        <uicontrol>Administration</uicontrol>
+                        <uicontrol>Settings</uicontrol>
+                    </menucascade>. In the navigation panel, select the
+                        <uicontrol>Parcels</uicontrol> category. Place the StreamSets parcel file in
+                    the path configured for <uicontrol>Local Parcel Repository Path</uicontrol>.
                 </info>
             </step>
         </steps>

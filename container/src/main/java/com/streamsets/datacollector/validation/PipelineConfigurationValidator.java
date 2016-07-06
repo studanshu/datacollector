@@ -26,6 +26,7 @@ import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import com.streamsets.datacollector.config.ConfigDefinition;
+import com.streamsets.datacollector.config.DeliveryGuarantee;
 import com.streamsets.datacollector.config.PipelineConfiguration;
 import com.streamsets.datacollector.config.PipelineGroups;
 import com.streamsets.datacollector.config.StageConfiguration;
@@ -135,12 +136,14 @@ public class PipelineConfigurationValidator {
       canPreview &= addMissingConfigs();
       canPreview &= sortStages();
       canPreview &= checkIfPipelineIsEmpty();
-      canPreview &= loadPipelineConfig();
+      canPreview &= loadAndValidatePipelineConfig();
       canPreview &= validatePipelineMemoryConfiguration();
-      canPreview &= validatePipelineConfiguration();
+      canPreview &= validateStageConfiguration();
       canPreview &= validatePipelineLanes();
       canPreview &= validateErrorStage();
+      canPreview &= validateStatsAggregatorStage();
       canPreview &= validateStagesExecutionMode(pipelineConfiguration);
+      canPreview &= validateCommitTriggerStage(pipelineConfiguration);
 
       if (LOG.isTraceEnabled() && issues.hasIssues()) {
         for (Issue issue : issues.getPipelineIssues()) {
@@ -198,15 +201,15 @@ public class PipelineConfigurationValidator {
   }
 
   boolean resolveLibraryAliases() {
-    StageConfiguration errorStageConf = pipelineConfiguration.getErrorStage();
-    if (errorStageConf != null) {
-      String name = errorStageConf.getLibrary();
-      if (isLibraryAlias(name)) {
-        errorStageConf.setLibrary(resolveLibraryAlias(name));
-      }
-      resolveStageAlias(errorStageConf);
+    List<StageConfiguration> stageConfigurations = new ArrayList<>();
+    if(pipelineConfiguration.getStatsAggregatorStage() != null) {
+      stageConfigurations.add(pipelineConfiguration.getStatsAggregatorStage());
     }
-    for (StageConfiguration stageConf : pipelineConfiguration.getStages()) {
+    if(pipelineConfiguration.getErrorStage() != null) {
+      stageConfigurations.add(pipelineConfiguration.getErrorStage());
+    }
+    stageConfigurations.addAll(pipelineConfiguration.getStages());
+    for (StageConfiguration stageConf : stageConfigurations) {
       String name = stageConf.getLibrary();
       if (isLibraryAlias(name)) {
         stageConf.setLibrary(resolveLibraryAlias(name));
@@ -247,26 +250,33 @@ public class PipelineConfigurationValidator {
       }
     }
     for (StageConfiguration stageConf : pipelineConfiguration.getStages()) {
-      StageDefinition stageDef = stageLibrary.getStage(stageConf.getLibrary(), stageConf.getStageName(), false);
-      if (stageDef != null) {
-        for (ConfigDefinition configDef : stageDef.getConfigDefinitions()) {
-          String configName = configDef.getName();
-          Config config = stageConf.getConfig(configName);
-          if (config == null) {
-            Object defaultValue = configDef.getDefaultValue();
-            LOG.warn(
-                "Stage '{}' missing configuration '{}', adding with '{}' as default",
-                stageConf.getInstanceName(),
-                configName,
-                defaultValue
-            );
-            config = new Config(configName, defaultValue);
-            stageConf.addConfig(config);
-          }
+      addMissingConfigsToStage(stageConf);
+    }
+    if(pipelineConfiguration.getErrorStage() != null) {
+      addMissingConfigsToStage(pipelineConfiguration.getErrorStage());
+    }
+    return true;
+  }
+
+  private void addMissingConfigsToStage(StageConfiguration stageConf) {
+    StageDefinition stageDef = stageLibrary.getStage(stageConf.getLibrary(), stageConf.getStageName(), false);
+    if (stageDef != null) {
+      for (ConfigDefinition configDef : stageDef.getConfigDefinitions()) {
+        String configName = configDef.getName();
+        Config config = stageConf.getConfig(configName);
+        if (config == null) {
+          Object defaultValue = configDef.getDefaultValue();
+          LOG.warn(
+              "Stage '{}' missing configuration '{}', adding with '{}' as default",
+              stageConf.getInstanceName(),
+              configName,
+              defaultValue
+          );
+          config = new Config(configName, defaultValue);
+          stageConf.addConfig(config);
         }
       }
     }
-    return true;
   }
 
   private boolean validateStageExecutionMode(
@@ -336,9 +346,22 @@ public class PipelineConfigurationValidator {
     return canPreview;
   }
 
-  private boolean loadPipelineConfig() {
+  private boolean loadAndValidatePipelineConfig() {
     List<Issue> errors = new ArrayList<>();
     pipelineBean = PipelineBeanCreator.get().create(false, stageLibrary, pipelineConfiguration, errors);
+    StageConfiguration pipelineConfs = PipelineBeanCreator.getPipelineConfAsStageConf(pipelineConfiguration);
+    IssueCreator issueCreator = IssueCreator.getPipeline();
+    for (ConfigDefinition confDef : PipelineBeanCreator.PIPELINE_DEFINITION.getConfigDefinitions()) {
+      Config config = pipelineConfs.getConfig(confDef.getName());
+      // No need to validate bad records, its validated before in PipelineBeanCreator.create()
+      if (!confDef.getGroup().equals(PipelineGroups.BAD_RECORDS.name()) && confDef.isRequired()
+        && (config == null || isNullOrEmpty(confDef, config))) {
+        validateRequiredField(confDef, pipelineConfs, issueCreator);
+      }
+      if (confDef.getType() == ConfigDef.Type.NUMBER && !isNullOrEmpty(confDef, config)) {
+        validatedNumberConfig(config, confDef, issueCreator);
+      }
+    }
     issues.addAll(errors);
     return errors.isEmpty();
   }
@@ -412,6 +435,7 @@ public class PipelineConfigurationValidator {
       boolean shouldBeSource,
       StageConfiguration stageConf,
       boolean errorStage,
+      boolean statsAggregatorStage,
       IssueCreator issueCreator
   ) {
     boolean preview = true;
@@ -523,7 +547,7 @@ public class PipelineConfigurationValidator {
                 issueCreator.create(
                     stageConf.getInstanceName(),
                     ValidationError.VALIDATION_0014,
-                    stageDef.getType()
+                    "Processor"
                 )
             );
             preview = false;
@@ -546,13 +570,13 @@ public class PipelineConfigurationValidator {
           }
           break;
         case TARGET:
-          if (!errorStage && stageConf.getInputLanes().isEmpty()) {
+          if (!errorStage && !statsAggregatorStage && stageConf.getInputLanes().isEmpty()) {
             // target stage must have at least one input lane
             issues.add(
                 issueCreator.create(
                     stageConf.getInstanceName(),
                     ValidationError.VALIDATION_0014,
-                    stageDef.getType()
+                    "Target"
                 )
             );
             preview = false;
@@ -570,17 +594,26 @@ public class PipelineConfigurationValidator {
             preview = false;
           }
           break;
+        default:
+          throw new IllegalStateException("Unexpected stage type " + stageDef.getType());
       }
       for (ConfigDefinition confDef : stageDef.getConfigDefinitions()) {
         Config config = stageConf.getConfig(confDef.getName());
         if (confDef.isRequired() && (config == null || isNullOrEmpty(confDef, config))) {
           preview &= validateRequiredField(confDef, stageConf, issueCreator);
         }
+
+        if(confDef.getType() == ConfigDef.Type.NUMBER && !isNullOrEmpty(confDef, config)) {
+          preview &= validatedNumberConfig(config, confDef, issueCreator);
+        }
+
       }
       for (Config conf : stageConf.getConfiguration()) {
         ConfigDefinition confDef = stageDef.getConfigDefinition(conf.getName());
-        preview &= validateConfigDefinition(confDef, conf, stageConf, stageDef, null, issueCreator, true/*inject*/);
-        if (stageDef.hasPreconditions() && confDef.getName().equals(StageConfigBean.STAGE_PRECONDITIONS_CONFIG)) {
+        Set<String> hideConfigs = stageDef.getHideConfigs();
+        preview &= validateConfigDefinition(confDef, hideConfigs, conf, stageConf, stageDef, null, issueCreator, true/*inject*/);
+        if (confDef != null && stageDef.hasPreconditions() &&
+            confDef.getName().equals(StageConfigBean.STAGE_PRECONDITIONS_CONFIG)) {
           preview &= validatePreconditions(stageConf.getInstanceName(), confDef, conf, issues, issueCreator);
         }
       }
@@ -623,6 +656,40 @@ public class PipelineConfigurationValidator {
         (stageConf.getConfig(dependsOn) != null &&
             triggeredByContains(triggeredBy, stageConf.getConfig(dependsOn).getValue()))) {
       issues.add(issueCreator.create(confDef.getGroup(), confDef.getName(), ValidationError.VALIDATION_0007));
+      preview = false;
+    }
+    return preview;
+  }
+
+
+  private boolean validatedNumberConfig(
+      Config conf,
+      ConfigDefinition confDef,
+      IssueCreator issueCreator) {
+
+    boolean preview = true;
+
+    if (conf.getValue() instanceof String && ((String)conf.getValue()).startsWith("${")
+        && ((String)conf.getValue()).endsWith("}")) {
+      // If value is EL, ignore max and min validation
+      return true;
+    }
+
+    if (!(conf.getValue() instanceof Long || conf.getValue() instanceof Integer)) {
+      issues.add(issueCreator.create(confDef.getGroup(),
+          confDef.getName(), ValidationError.VALIDATION_0009,
+          confDef.getType()));
+      return false;
+    }
+    Long value = ((Number) conf.getValue()).longValue();
+    if(value > confDef.getMax()) {
+      issues.add(issueCreator.create(confDef.getGroup(),
+          confDef.getName(), ValidationError.VALIDATION_0034, confDef.getName(), confDef.getMax()));
+      preview = false;
+    }
+    if(value < confDef.getMin()) {
+      issues.add(issueCreator.create(confDef.getGroup(),
+          confDef.getName(), ValidationError.VALIDATION_0035, confDef.getName(), confDef.getMin()));
       preview = false;
     }
     return preview;
@@ -690,6 +757,7 @@ public class PipelineConfigurationValidator {
 
   private boolean validateConfigDefinition(
       ConfigDefinition confDef,
+      Set<String> hideConfigs,
       Config conf,
       StageConfiguration stageConf,
       StageDefinition stageDef,
@@ -699,7 +767,7 @@ public class PipelineConfigurationValidator {
   ) {
     //parentConf is applicable when validating complex fields.
     boolean preview = true;
-    if (confDef == null) {
+    if (confDef == null && !hideConfigs.contains(conf.getName())) {
       // stage configuration defines an invalid configuration
       issues.add(
           issueCreator.create(
@@ -710,35 +778,37 @@ public class PipelineConfigurationValidator {
       );
       return false;
     }
-    boolean validateConfig = true;
-    if (confDef.getDependsOn() != null &&
-        (confDef.getTriggeredByValues() != null && confDef.getTriggeredByValues().size() > 0)) {
-      String dependsOn = confDef.getDependsOn();
-      List<Object> triggeredBy = confDef.getTriggeredByValues();
-      Config dependsOnConfig = getConfig(stageConf.getConfiguration(), dependsOn);
-      if (dependsOnConfig == null) {
-        //complex field case?
-        //look at the configurations in model definition
-        if (parentConf != null && parentConf.containsKey(dependsOn)) {
-          dependsOnConfig = new Config(dependsOn, parentConf.get(dependsOn));
+    if (confDef != null) {
+      boolean validateConfig = true;
+      if (confDef.getDependsOn() != null &&
+          (confDef.getTriggeredByValues() != null && confDef.getTriggeredByValues().size() > 0)) {
+        String dependsOn = confDef.getDependsOn();
+        List<Object> triggeredBy = confDef.getTriggeredByValues();
+        Config dependsOnConfig = getConfig(stageConf.getConfiguration(), dependsOn);
+        if (dependsOnConfig == null) {
+          //complex field case?
+          //look at the configurations in model definition
+          if (parentConf != null && parentConf.containsKey(dependsOn)) {
+            dependsOnConfig = new Config(dependsOn, parentConf.get(dependsOn));
+          }
+        }
+        if (dependsOnConfig != null && dependsOnConfig.getValue() != null) {
+          validateConfig = false;
+          Object value = dependsOnConfig.getValue();
+          for (Object trigger : triggeredBy) {
+            validateConfig |= String.valueOf(value).equals(String.valueOf(trigger));
+          }
         }
       }
-      if (dependsOnConfig != null && dependsOnConfig.getValue() != null) {
-        validateConfig = false;
-        Object value = dependsOnConfig.getValue();
-        for (Object trigger : triggeredBy) {
-          validateConfig |= String.valueOf(value).equals(String.valueOf(trigger));
-        }
+      if (conf.getValue() != null && confDef.getModel() != null) {
+        preview &= validateModel(stageConf, stageDef, confDef, conf, issueCreator);
       }
-    }
-    if (conf.getValue() != null && confDef.getModel() != null) {
-      preview &= validateModel(stageConf, stageDef, confDef, conf, issueCreator);
     }
     return preview;
   }
 
   @VisibleForTesting
-  boolean validatePipelineConfiguration() {
+  boolean validateStageConfiguration() {
     boolean preview = true;
     Set<String> stageNames = new HashSet<>();
     boolean shouldBeSource = true;
@@ -757,6 +827,7 @@ public class PipelineConfigurationValidator {
           shouldBeSource,
           stageConf,
           false,
+          false,
           IssueCreator.getStage(stageConf.getInstanceName())
       );
       stageNames.add(stageConf.getInstanceName());
@@ -773,7 +844,6 @@ public class PipelineConfigurationValidator {
       Config conf,
       IssueCreator issueCreator
   ) {
-    String instanceName = stageConf.getInstanceName();
     boolean preview = true;
     switch (confDef.getModel().getModelType()) {
       case VALUE_CHOOSER:
@@ -997,9 +1067,11 @@ public class PipelineConfigurationValidator {
       String configName = entry.getKey();
       Object value = entry.getValue();
       ConfigDefinition configDefinition = configDefinitionsMap.get(configName);
+      Set<String> hideConfigs = stageDef.getHideConfigs();
       Config config = new Config(configName, value);
       preview &= validateConfigDefinition(
           configDefinition,
+          hideConfigs,
           config,
           stageConf,
           stageDef,
@@ -1057,8 +1129,62 @@ public class PipelineConfigurationValidator {
     StageConfiguration errorStage = pipelineConfiguration.getErrorStage();
     if (errorStage != null) {
       IssueCreator errorStageCreator = IssueCreator.getStage(errorStage.getInstanceName());
-      preview = validateStageConfiguration(false, errorStage, true, errorStageCreator);
+      preview = validateStageConfiguration(false, errorStage, true, false, errorStageCreator);
     }
     return preview;
   }
+
+  @VisibleForTesting
+  boolean validateStatsAggregatorStage() {
+    boolean preview = true;
+    StageConfiguration statsAggregatorStage = pipelineConfiguration.getStatsAggregatorStage();
+    if (statsAggregatorStage != null) {
+      IssueCreator errorStageCreator = IssueCreator.getStage(statsAggregatorStage.getInstanceName());
+      preview = validateStageConfiguration(false, statsAggregatorStage, false, true, errorStageCreator);
+    }
+    return preview;
+  }
+
+  private boolean validateCommitTriggerStage(PipelineConfiguration pipelineConfiguration) {
+    boolean valid = true;
+    StageConfiguration target = null;
+    int offsetCommitTriggerCount = 0;
+    // Count how many targets can trigger offset commit in this pipeline
+    for (StageConfiguration stageConf : pipelineConfiguration.getStages()) {
+      StageDefinition stageDefinition = stageLibrary.getStage(stageConf.getLibrary(), stageConf.getStageName(), false);
+      if (stageDefinition != null) {
+        if (stageDefinition.getType() == StageType.TARGET && stageDefinition.isOffsetCommitTrigger()) {
+          target = stageConf;
+          offsetCommitTriggerCount++;
+        }
+      } else {
+        valid = false;
+        IssueCreator issueCreator = IssueCreator.getStage(stageConf.getStageName());
+        issues.add(
+          issueCreator.create(
+            ValidationError.VALIDATION_0006,
+            stageConf.getLibrary(),
+            stageConf.getStageName(),
+            stageConf.getStageVersion()
+          )
+        );
+      }
+    }
+    // If a pipeline contains a target that triggers offset commit then,
+    // 1. delivery guarantee must be AT_LEAST_ONCE
+    // 2. the pipeline can have only one target that triggers offset commit
+    if (offsetCommitTriggerCount == 1) {
+      Config deliveryGuarantee = pipelineConfiguration.getConfiguration("deliveryGuarantee");
+      Object value = deliveryGuarantee.getValue();
+      if (!DeliveryGuarantee.AT_LEAST_ONCE.name().equals(String.valueOf(value))) {
+        IssueCreator issueCreator = IssueCreator.getStage(target.getInstanceName());
+        issues.add(issueCreator.create(ValidationError.VALIDATION_0092, DeliveryGuarantee.AT_LEAST_ONCE));
+      }
+    } else if (offsetCommitTriggerCount > 1) {
+      IssueCreator issueCreator = IssueCreator.getPipeline();
+      issues.add(issueCreator.create(ValidationError.VALIDATION_0091));
+    }
+    return valid;
+  }
+
 }

@@ -33,9 +33,11 @@ import com.streamsets.datacollector.config.MemoryLimitExceeded;
 import com.streamsets.datacollector.config.PipelineConfiguration;
 import com.streamsets.datacollector.config.RuleDefinition;
 import com.streamsets.datacollector.config.RuleDefinitions;
+import com.streamsets.datacollector.config.StageConfiguration;
 import com.streamsets.datacollector.creation.PipelineBeanCreator;
 import com.streamsets.datacollector.creation.PipelineConfigBean;
 import com.streamsets.datacollector.el.JvmEL;
+import com.streamsets.datacollector.event.handler.remote.RemoteDataCollector;
 import com.streamsets.datacollector.execution.AbstractRunner;
 import com.streamsets.datacollector.execution.PipelineState;
 import com.streamsets.datacollector.execution.PipelineStateStore;
@@ -85,7 +87,6 @@ import com.streamsets.pipeline.api.impl.ErrorMessage;
 import com.streamsets.pipeline.api.impl.Utils;
 import com.streamsets.pipeline.lib.executor.SafeScheduledExecutorService;
 import com.streamsets.pipeline.lib.log.LogConstants;
-import com.streamsets.pipeline.lib.util.ThreadUtil;
 
 import dagger.ObjectGraph;
 
@@ -99,20 +100,20 @@ import javax.inject.Named;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 public class StandaloneRunner extends AbstractRunner implements StateListener {
   private static final Logger LOG = LoggerFactory.getLogger(StandaloneRunner.class);
+  public static final String STATS_NULL_TARGET = "com_streamsets_pipeline_stage_destination_devnull_StatsNullDTarget";
 
   @Inject PipelineStoreTask pipelineStoreTask;
   @Inject PipelineStateStore pipelineStateStore;
@@ -263,7 +264,9 @@ public class StandaloneRunner extends AbstractRunner implements StateListener {
       if (retryTimeStamp > currentTime) {
         delay = retryTimeStamp - currentTime;
       }
-      retryFuture = scheduleForRetries(delay);
+      retryFuture = scheduleForRetries(runnerExecutor, delay);
+      isRetrying = true;
+      metricsForRetry = getState().getMetrics();
     }
   }
 
@@ -352,7 +355,7 @@ public class StandaloneRunner extends AbstractRunner implements StateListener {
   }
 
   @Override
-  public String captureSnapshot(String snapshotName, int batches, int batchSize)
+  public String captureSnapshot(String snapshotName, String snapshotLabel, int batches, int batchSize)
     throws PipelineException {
     int maxBatchSize = configuration.get(Constants.SNAPSHOT_MAX_BATCH_SIZE_KEY, Constants.SNAPSHOT_MAX_BATCH_SIZE_DEFAULT);
 
@@ -365,9 +368,20 @@ public class StandaloneRunner extends AbstractRunner implements StateListener {
     if(batchSize <= 0) {
       throw new PipelineRunnerException(ContainerError.CONTAINER_0107, batchSize);
     }
-    SnapshotInfo snapshotInfo = snapshotStore.create(user, name, rev, snapshotName);
+    SnapshotInfo snapshotInfo = snapshotStore.create(user, name, rev, snapshotName, snapshotLabel);
     prodPipeline.captureSnapshot(snapshotName, batchSize, batches);
     return snapshotInfo.getId();
+  }
+
+  @Override
+  public String updateSnapshotLabel(String snapshotName, String snapshotLabel)
+      throws PipelineException {
+    SnapshotInfo snapshotInfo = snapshotStore.updateLabel(name, rev, snapshotName, snapshotLabel);
+    if(snapshotInfo != null) {
+      return snapshotInfo.getId();
+    }
+
+    return null;
   }
 
   @Override
@@ -434,7 +448,7 @@ public class StandaloneRunner extends AbstractRunner implements StateListener {
         }
       }
 
-      for(RuleDefinition ruleDefinition: ruleDefinitions.getDataRuleDefinitions()) {
+      for(RuleDefinition ruleDefinition: ruleDefinitions.getAllDataRuleDefinitions()) {
         Gauge<Object> gauge = MetricsConfigurator.getGauge(metrics,
           AlertsUtil.getAlertGaugeName(ruleDefinition.getId()));
 
@@ -458,7 +472,13 @@ public class StandaloneRunner extends AbstractRunner implements StateListener {
   public void stateChanged(PipelineStatus pipelineStatus, String message, Map<String, Object> attributes)
     throws PipelineRuntimeException {
     try {
-      validateAndSetStateTransition(pipelineStatus, message, attributes);
+      Map<String, Object> allAttributes = null;
+      if (attributes != null) {
+        allAttributes = new HashMap<>();
+        allAttributes.putAll(getState().getAttributes());
+        allAttributes.putAll(attributes);
+      }
+      validateAndSetStateTransition(pipelineStatus, message, allAttributes);
     } catch (PipelineStoreException | PipelineRunnerException ex) {
       throw new PipelineRuntimeException(ex.getErrorCode(), ex);
     }
@@ -489,7 +509,9 @@ public class StandaloneRunner extends AbstractRunner implements StateListener {
           if (nextRetryTimeStamp > currentTime) {
             delay = nextRetryTimeStamp - currentTime;
           }
-          retryFuture = scheduleForRetries(delay);
+          retryFuture = scheduleForRetries(runnerExecutor, delay);
+          isRetrying = true;
+          metricsForRetry = getState().getMetrics();
         }
       } else if (!toStatus.isActive()) {
         retryAttempt = 0;
@@ -518,21 +540,7 @@ public class StandaloneRunner extends AbstractRunner implements StateListener {
     eventListenerManager.broadcastStateChange(fromState, pipelineState, ThreadUsage.STANDALONE);
   }
 
-  private ScheduledFuture<Void> scheduleForRetries(long delay) {
-    LOG.info("Scheduling retry in '{}' milliseconds", delay);
-    ScheduledFuture<Void> future = runnerExecutor.schedule(new Callable<Void>() {
-      @Override
-      public Void call() throws StageException, PipelineException {
-        LOG.info("Starting the runner now");
-        isRetrying = true;
-        metricsForRetry = getState().getMetrics();
-        prepareForStart();
-        start();
-        return null;
-      }
-    }, delay, TimeUnit.MILLISECONDS);
-    return future;
-  }
+
 
   private void checkState(boolean expr, ContainerError error, Object... args) throws PipelineRunnerException {
     if (!expr) {
@@ -558,6 +566,10 @@ public class StandaloneRunner extends AbstractRunner implements StateListener {
 
   @Override
   public void prepareForStart() throws PipelineStoreException, PipelineRunnerException {
+    PipelineState fromState = getState();
+    checkState(VALID_TRANSITIONS.get(fromState.getStatus()).contains(PipelineStatus.STARTING), ContainerError.CONTAINER_0102,
+        fromState.getStatus(), PipelineStatus.STARTING);
+
     if(!resourceManager.requestRunnerResources(ThreadUsage.STANDALONE)) {
       throw new PipelineRunnerException(ContainerError.CONTAINER_0166, name);
     }
@@ -612,12 +624,24 @@ public class StandaloneRunner extends AbstractRunner implements StateListener {
           new ArrayBlockingQueue<>(configuration.get(Constants.OBSERVER_QUEUE_SIZE_KEY,
             Constants.OBSERVER_QUEUE_SIZE_DEFAULT), true /* FIFO */);
 
+        BlockingQueue<Record> statsQueue = null;
+        boolean statsAggregationEnabled = isStatsAggregationEnabled(pipelineConfiguration);
+        if (statsAggregationEnabled) {
+          statsQueue = new ArrayBlockingQueue<>(
+              configuration.get(
+                  Constants.STATS_AGGREGATOR_QUEUE_SIZE_KEY,
+                  Constants.STATS_AGGREGATOR_QUEUE_SIZE_DEFAULT
+              ),
+              true /* FIFO */
+          );
+        }
+
         //Need to augment the existing object graph with pipeline related modules.
         //This ensures that the singletons defined in those modules are singletons within the
         //scope of a pipeline.
         //So if a pipeline is started again for the second time, the object graph recreates the production pipeline
         //with fresh instances of MetricRegistry, alert manager, observer etc etc..
-        ObjectGraph objectGraph = this.objectGraph.plus(new PipelineProviderModule(name, rev));
+        ObjectGraph objectGraph = this.objectGraph.plus(new PipelineProviderModule(name, rev, statsAggregationEnabled));
 
         threadHealthReporter = objectGraph.get(ThreadHealthReporter.class);
         observerRunnable = objectGraph.get(DataObserverRunnable.class);
@@ -642,6 +666,9 @@ public class StandaloneRunner extends AbstractRunner implements StateListener {
           }
           isRetrying = false;
         }
+        if (pipelineConfigBean.rateLimit > 0) {
+          runner.setRateLimit(pipelineConfigBean.rateLimit);
+        }
         ProductionPipelineBuilder builder = objectGraph.get(ProductionPipelineBuilder.class);
 
         //register email notifier with event listener manager
@@ -650,6 +677,7 @@ public class StandaloneRunner extends AbstractRunner implements StateListener {
         //This which are not injected as of now.
         productionObserver.setObserveRequests(productionObserveRequests);
         runner.setObserveRequests(productionObserveRequests);
+        runner.setStatsAggregatorRequests(statsQueue);
         runner.setDeliveryGuarantee(pipelineConfigBean.deliveryGuarantee);
         runner.setMemoryLimitConfiguration(memoryLimitConfiguration);
 
@@ -657,6 +685,8 @@ public class StandaloneRunner extends AbstractRunner implements StateListener {
         prodPipeline.registerStatusListener(this);
 
         ScheduledFuture<?> metricsFuture = null;
+        metricsEventRunnable.setStatsQueue(statsQueue);
+        metricsEventRunnable.setPipelineConfiguration(pipelineConfiguration);
         int refreshInterval = configuration.get(MetricsEventRunnable.REFRESH_INTERVAL_PROPERTY,
           MetricsEventRunnable.REFRESH_INTERVAL_PROPERTY_DEFAULT);
         if(refreshInterval > 0) {
@@ -665,6 +695,7 @@ public class StandaloneRunner extends AbstractRunner implements StateListener {
               TimeUnit.MILLISECONDS);
         }
         //Schedule Rules Config Loader
+        rulesConfigLoader.setStatsQueue(statsQueue);
         try {
           rulesConfigLoader.load(productionObserver);
         } catch (InterruptedException e) {
@@ -682,6 +713,7 @@ public class StandaloneRunner extends AbstractRunner implements StateListener {
         ScheduledFuture<?> updateCheckerFuture = runnerExecutor.scheduleAtFixedRate(updateChecker, 1, 24 * 60, TimeUnit.MINUTES);
 
         observerRunnable.setRequestQueue(productionObserveRequests);
+        observerRunnable.setStatsQueue(statsQueue);
         Future<?> observerFuture = runnerExecutor.submit(observerRunnable);
 
         List<Future<?>> list;
@@ -703,6 +735,17 @@ public class StandaloneRunner extends AbstractRunner implements StateListener {
       pipelineRunnable.run();
     }
 
+  }
+
+  private boolean isStatsAggregationEnabled(PipelineConfiguration pipelineConfiguration) throws PipelineStoreException {
+    boolean isEnabled = false;
+    StageConfiguration statsAggregatorStage = pipelineConfiguration.getStatsAggregatorStage();
+    if (statsAggregatorStage != null &&
+        !statsAggregatorStage.getStageName().equals(STATS_NULL_TARGET) &&
+        pipelineConfiguration.getMetadata() != null) {
+      isEnabled = true;
+    }
+    return isEnabled && this.isRemotePipeline();
   }
 
   private void stopPipeline(boolean sdcShutting) throws PipelineException {

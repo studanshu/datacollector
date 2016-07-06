@@ -19,6 +19,7 @@
  */
 package com.streamsets.pipeline.stage.processor.fieldhasher;
 
+import com.streamsets.pipeline.api.ConfigDefBean;
 import com.streamsets.pipeline.api.ListBeanModel;
 import com.streamsets.pipeline.api.ConfigDef;
 import com.streamsets.pipeline.api.ConfigDef.Type;
@@ -34,25 +35,19 @@ import com.streamsets.pipeline.configurablestage.DProcessor;
 import java.util.List;
 
 @StageDef(
-    version=1,
+    version=2,
     label="Field Hasher",
     description = "Uses an algorithm to hash field values",
-    icon="hash.png")
+    icon="hash.png",
+    upgrader = FieldHasherProcessorUpgrader.class,
+    onlineHelpRefUrl = "index.html#Processors/FieldHasher.html#task_xjd_dlk_wq"
+)
 @ConfigGroups(Groups.class)
 @GenerateResourceBundle
 public class FieldHasherDProcessor extends DProcessor {
 
-  @ConfigDef(
-      required = true,
-      type = Type.MODEL,
-      defaultValue="",
-      label = "",
-      description="",
-      displayPosition = 10,
-      group = "HASHING"
-  )
-  @ListBeanModel
-  public List<FieldHasherConfig> fieldHasherConfigs;
+  @ConfigDefBean(groups = {"FIELD_HASHING", "RECORD_HASHING"})
+  public HasherConfig hasherConfig;
 
   @ConfigDef(
     required = true,
@@ -62,14 +57,14 @@ public class FieldHasherDProcessor extends DProcessor {
     description="Action for data that does not contain the specified fields, the field value is null or if the " +
       "field type is Map or List",
     displayPosition = 20,
-    group = "HASHING"
+    group = "FIELD_HASHING"
   )
   @ValueChooserModel(OnStagePreConditionFailureChooserValues.class)
   public OnStagePreConditionFailure onStagePreConditionFailure;
 
   @Override
   protected Processor createProcessor() {
-    return new FieldHasherProcessor(fieldHasherConfigs, onStagePreConditionFailure);
+    return new FieldHasherProcessor(hasherConfig, onStagePreConditionFailure);
   }
 
 }

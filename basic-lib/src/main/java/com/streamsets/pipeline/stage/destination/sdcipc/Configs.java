@@ -23,6 +23,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.streamsets.pipeline.api.ConfigDef;
 import com.streamsets.pipeline.api.Stage;
 import com.streamsets.pipeline.api.impl.Utils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -41,6 +43,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -48,12 +51,16 @@ import java.util.List;
 import java.util.Set;
 
 public class Configs {
+  private static final Logger LOG = LoggerFactory.getLogger(Configs.class);
+  private static final String CONFIG_PREFIX = "config.";
+  private static final String HOST_PORTS = CONFIG_PREFIX + "hostPorts";
+  private static final String TRUST_STORE_FILE = CONFIG_PREFIX + "trustStoreFile";
 
   @ConfigDef(
       required = true,
       type = ConfigDef.Type.LIST,
       defaultValue = "[]",
-      label = "RPC Connection",
+      label = "SDC RPC Connection",
       description = "Connection information for the destination pipeline. Use the format <host>:<port>.",
       displayPosition = 10,
       group = "RPC"
@@ -63,8 +70,8 @@ public class Configs {
   @ConfigDef(
       required = true,
       type = ConfigDef.Type.STRING,
-      label = "RPC ID",
-      description = "User-defined ID. Must match the RPC ID used in the RPC origin of the destination pipeline.",
+      label = "SDC RPC ID",
+      description = "User-defined ID. Must match the SDC RPC ID used in the SDC RPC origin of the destination pipeline.",
       displayPosition = 20,
       group = "RPC"
   )
@@ -74,7 +81,8 @@ public class Configs {
       required = true,
       type = ConfigDef.Type.BOOLEAN,
       defaultValue = "false",
-      label = "SSL Enabled",
+      label = "TLS Enabled",
+      description = "Encrypt RPC communication using TLS.",
       displayPosition = 30,
       group = "RPC"
   )
@@ -85,7 +93,7 @@ public class Configs {
       type = ConfigDef.Type.STRING,
       defaultValue = "",
       label = "Truststore File",
-      description = "The truststore file is expected in  the Data Collector resources directory. Leave empty if none.",
+      description = "The truststore file is expected in the Data Collector resources directory. Leave empty if none.",
       displayPosition = 40,
       group = "RPC",
       dependsOn = "sslEnabled",
@@ -133,6 +141,19 @@ public class Configs {
   @ConfigDef(
       required = true,
       type = ConfigDef.Type.NUMBER,
+      defaultValue = "0",
+      label = "Back off period",
+      description = "If set to non-zero, each retry will be spaced exponentially. For value 10, first retry will be" +
+        " done after 10 milliseconds, second retry after additional 100 milliseconds, third retry after additional second, ...",
+      displayPosition = 15,
+      group = "ADVANCED",
+      min=0
+  )
+  public int backOff;
+
+  @ConfigDef(
+      required = true,
+      type = ConfigDef.Type.NUMBER,
       defaultValue = "5000",
       label = "Connection Timeout (ms)",
       displayPosition = 20,
@@ -174,12 +195,12 @@ public class Configs {
         try {
           sslSocketFactory = createSSLSocketFactory(context);
         } catch (Exception ex) {
-          issues.add(context.createConfigIssue(Groups.RPC.name(), "trustStoreFile",
+          issues.add(context.createConfigIssue(Groups.RPC.name(), TRUST_STORE_FILE,
                                                Errors.IPC_DEST_10, ex.toString()));
           ok = false;
         }
       }
-      if (ok) {
+      if (ok && !context.isPreview()) {
         validateConnectivity(context, issues);
       }
     }
@@ -187,53 +208,74 @@ public class Configs {
   }
 
   boolean validateHostPorts(Stage.Context context, List<Stage.ConfigIssue> issues) {
-    boolean ok = true;
     if (hostPorts.isEmpty()) {
-      issues.add(context.createConfigIssue(Groups.RPC.name(), "hostPorts", Errors.IPC_DEST_00));
-      ok = false;
-    } else {
-      Set<String> uniqueHostPorts = new HashSet<>();
-      for (String hostPort : hostPorts) {
-        if (hostPort == null) {
-          issues.add(context.createConfigIssue(Groups.RPC.name(), "hostPorts", Errors.IPC_DEST_01));
-          ok = false;
-        } else {
-          hostPort = hostPort.toLowerCase().trim();
-          uniqueHostPorts.add(hostPort);
-          String[] split = hostPort.split(":");
-          if (split.length != 2) {
-            issues.add(context.createConfigIssue(Groups.RPC.name(), "hostPorts", Errors.IPC_DEST_02,
-                                                 hostPort));
-            ok = false;
-          } else {
-            try {
-              InetAddress.getByName(split[0]);
-            } catch (Exception ex) {
-              issues.add(context.createConfigIssue(Groups.RPC.name(), "hostPorts", Errors.IPC_DEST_03,
-                                                   split[0], ex.toString()));
-              ok = false;
-            }
-            try {
-              int port = Integer.parseInt(split[1]);
-              if (port < 1 || port > 65535) {
-                issues.add(context.createConfigIssue(Groups.RPC.name(), "hostPorts", Errors.IPC_DEST_04,
-                                                     hostPort));
-                ok = false;
-              }
-            } catch (Exception ex) {
-              issues.add(context.createConfigIssue(Groups.RPC.name(), "hostPorts", Errors.IPC_DEST_05,
-                                                   hostPort, ex.toString()));
-              ok = false;
-            }
-          }
-        }
+      issues.add(context.createConfigIssue(Groups.RPC.name(), HOST_PORTS, Errors.IPC_DEST_00));
+      return false;
+    }
+    Set<String> uniqueHostPorts = new HashSet<>();
+    for (String rawHostPort : hostPorts) {
+      if (rawHostPort == null) {
+        issues.add(context.createConfigIssue(Groups.RPC.name(), HOST_PORTS, Errors.IPC_DEST_01));
+        return false;
       }
-      if (ok && uniqueHostPorts.size() != hostPorts.size()) {
-        issues.add(context.createConfigIssue(Groups.RPC.name(), "hostPorts", Errors.IPC_DEST_06));
-        ok = false;
+      final String hostPort = rawHostPort.toLowerCase().trim();
+      uniqueHostPorts.add(hostPort);
+      try {
+        InetAddress.getByName(getHost(hostPort));
+      } catch (UnknownHostException e) {
+        LOG.error(Errors.IPC_DEST_02.getMessage(), hostPort, e.toString(), e);
+        issues.add(context.createConfigIssue(Groups.RPC.name(), HOST_PORTS, Errors.IPC_DEST_02, hostPort));
+        return false;
+      }
+      try {
+        int port = getPort(hostPort);
+        if (port < 1 || port > 65535) {
+          issues.add(
+              context.createConfigIssue(Groups.RPC.name(), HOST_PORTS, Errors.IPC_DEST_04, hostPort)
+          );
+          return false;
+        }
+      } catch (IllegalArgumentException e) {
+        LOG.error(Errors.IPC_DEST_05.getMessage(), hostPort, e.toString(), e);
+        issues.add(
+            context.createConfigIssue(Groups.RPC.name(), HOST_PORTS, Errors.IPC_DEST_05, hostPort, e.toString())
+        );
+        return false;
       }
     }
-    return ok;
+    if (uniqueHostPorts.size() != hostPorts.size()) {
+      issues.add(context.createConfigIssue(Groups.RPC.name(), HOST_PORTS, Errors.IPC_DEST_06));
+      return false;
+    }
+    return true;
+  }
+
+  private String getHost(String hostPort) {
+    if (hostPort.contains("[") && hostPort.contains("]")) {
+      return hostPort.substring(hostPort.indexOf('[') + 1, hostPort.indexOf(']'));
+    }
+
+    // If there is more than one ':' and we didn't find [] then this isn't a valid IPv6 hostPort
+    if (hostPort.contains(":") && (hostPort.indexOf(':') == hostPort.lastIndexOf(':'))) {
+      return hostPort.substring(0, hostPort.lastIndexOf(':'));
+    } else {
+      return hostPort;
+    }
+  }
+
+  private int getPort(String hostPort) {
+    if (!hostPort.contains(":")) {
+      throw new IllegalArgumentException("Destination does not include ':' port delimiter");
+    }
+
+    int port;
+    try {
+      port = Integer.parseInt(hostPort.substring(hostPort.lastIndexOf(':') + 1));
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException(e);
+    }
+
+    return port;
   }
 
   boolean validateSecurity(Stage.Context context, List<Stage.ConfigIssue> issues) {
@@ -242,17 +284,17 @@ public class Configs {
       if (!trustStoreFile.isEmpty()) {
         File file = getTrustStoreFile(context);
         if (!file.exists()) {
-          issues.add(context.createConfigIssue(Groups.RPC.name(), "trustStoreFile",
+          issues.add(context.createConfigIssue(Groups.RPC.name(), TRUST_STORE_FILE,
                                                Errors.IPC_DEST_07));
           ok = false;
         } else {
           if (!file.isFile()) {
-            issues.add(context.createConfigIssue(Groups.RPC.name(), "trustStoreFile",
+            issues.add(context.createConfigIssue(Groups.RPC.name(), TRUST_STORE_FILE,
                                                  Errors.IPC_DEST_08));
             ok = false;
           } else {
             if (!file.canRead()) {
-              issues.add(context.createConfigIssue(Groups.RPC.name(), "trustStoreFile",
+              issues.add(context.createConfigIssue(Groups.RPC.name(), TRUST_STORE_FILE,
                                                    Errors.IPC_DEST_09));
               ok = false;
             } else {
@@ -262,7 +304,7 @@ public class Configs {
                   keystore.load(is, trustStorePassword.toCharArray());
                 }
               } catch (Exception ex) {
-                issues.add(context.createConfigIssue(Groups.RPC.name(), "trustStoreFile",
+                issues.add(context.createConfigIssue(Groups.RPC.name(), TRUST_STORE_FILE,
                                                      Errors.IPC_DEST_10, ex.toString()));
               }
             }
@@ -354,7 +396,7 @@ public class Configs {
           if (Constants.X_SDC_PING_VALUE.equals(conn.getHeaderField(Constants.X_SDC_PING_HEADER))) {
             ok = true;
           } else {
-            issues.add(context.createConfigIssue(Groups.RPC.name(), "hostPorts",
+            issues.add(context.createConfigIssue(Groups.RPC.name(), HOST_PORTS,
                                                  Errors.IPC_DEST_12, hostPort ));
           }
         } else {

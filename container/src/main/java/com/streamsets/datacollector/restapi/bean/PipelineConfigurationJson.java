@@ -44,13 +44,23 @@ public class PipelineConfigurationJson implements Serializable{
     @JsonProperty("uiInfo") Map<String, Object> uiInfo,
     @JsonProperty("stages") List<StageConfigurationJson> stages,
     @JsonProperty("errorStage") StageConfigurationJson errorStage,
-    @JsonProperty("info") PipelineInfoJson pipelineInfo) {
+    @JsonProperty("info") PipelineInfoJson pipelineInfo,
+    @JsonProperty("metadata") Map<String, Object> metadata,
+    @JsonProperty("statsAggregatorStage") StageConfigurationJson statsAggregatorStage) {
     version = (version == 0) ? 1 : version;
-    this.pipelineConfiguration = new com.streamsets.datacollector.config.PipelineConfiguration(schemaVersion, version,
-      uuid, description,
-      BeanHelper.unwrapConfigConfiguration(configuration), uiInfo, BeanHelper.unwrapStageConfigurations(stages),
-      BeanHelper.unwrapStageConfiguration(errorStage));
+    this.pipelineConfiguration = new com.streamsets.datacollector.config.PipelineConfiguration(
+        schemaVersion,
+        version,
+        uuid,
+        description,
+        BeanHelper.unwrapConfigConfiguration(configuration),
+        uiInfo,
+        BeanHelper.unwrapStageConfigurations(stages),
+        BeanHelper.unwrapStageConfiguration(errorStage),
+        BeanHelper.unwrapStageConfiguration(statsAggregatorStage)
+    );
     this.pipelineConfiguration.setPipelineInfo(BeanHelper.unwrapPipelineInfo(pipelineInfo));
+    this.pipelineConfiguration.setMetadata(metadata);
   }
 
   public PipelineConfigurationJson(com.streamsets.datacollector.config.PipelineConfiguration pipelineConfiguration) {
@@ -82,6 +92,10 @@ public class PipelineConfigurationJson implements Serializable{
     return BeanHelper.wrapStageConfiguration(pipelineConfiguration.getErrorStage());
   }
 
+  public StageConfigurationJson getStatsAggregatorStage() {
+    return BeanHelper.wrapStageConfiguration(pipelineConfiguration.getStatsAggregatorStage());
+  }
+
   public UUID getUuid() {
     return pipelineConfiguration.getUuid();
   }
@@ -104,6 +118,10 @@ public class PipelineConfigurationJson implements Serializable{
 
   public Map<String, Object> getUiInfo() {
     return pipelineConfiguration.getUiInfo();
+  }
+
+  public Map<String, Object> getMetadata() {
+    return pipelineConfiguration.getMetadata();
   }
 
   @JsonIgnore

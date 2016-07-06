@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -59,6 +60,10 @@ public class ActiveRecordWriters {
       return (diff > 0) ? 1 : (diff < 0) ? -1 : 0;
     }
 
+    public boolean equals(Delayed o) {
+      return compareTo(o) == 0;
+    }
+
     public RecordWriter getWriter() {
       return writer;
     }
@@ -75,7 +80,7 @@ public class ActiveRecordWriters {
   private DelayQueue<DelayedRecordWriter> cutOffQueue;
 
   public ActiveRecordWriters(RecordWriterManager manager) {
-    writers = new HashMap<>();
+    writers = Collections.synchronizedMap(new HashMap<String, RecordWriter>());
     cutOffQueue = new DelayQueue<>();
     this.manager = manager;
   }
@@ -104,12 +109,19 @@ public class ActiveRecordWriters {
   public RecordWriter get(Date now, Date recordDate, Record record) throws StageException, IOException {
     String path = manager.getPath(recordDate, record).toString();
     RecordWriter writer = writers.get(path);
+
+    if(writer != null && manager.shouldRoll(record)) {
+      release(writer, true);
+      writer = null;
+    }
+
     if (writer == null) {
       writer = manager.getWriter(now, recordDate, record);
       if (writer != null) {
         if (IS_TRACE_ENABLED) {
           LOG.trace("Got '{}'", writer.getPath());
         }
+        writer.setActiveRecordWriters(this);
         writers.put(path, writer);
         cutOffQueue.add(new DelayedRecordWriter(writer));
       }
@@ -127,13 +139,18 @@ public class ActiveRecordWriters {
     return cutOffQueue.size();
   }
 
-  public void release(RecordWriter writer) throws IOException {
-    if (manager.isOverThresholds(writer)) {
-      if (IS_TRACE_ENABLED) {
-        LOG.trace("Release '{}'", writer.getPath());
+  public void release(RecordWriter writer, boolean roll) throws IOException {
+    writer.closeLock();
+    try {
+      if (roll || writer.isIdleClosed() || manager.isOverThresholds(writer)) {
+        if (IS_TRACE_ENABLED) {
+          LOG.trace("Release '{}'", writer.getPath());
+        }
+        writers.remove(writer.getPath().toString());
+        manager.commitWriter(writer);
       }
-      writers.remove(writer.getPath().toString());
-      manager.commitWriter(writer);
+    } finally {
+      writer.closeUnlock();
     }
     purge();
   }
@@ -158,13 +175,18 @@ public class ActiveRecordWriters {
     if (IS_TRACE_ENABLED) {
       LOG.trace("Close all '{}'", toString());
     }
-    for (RecordWriter writer : writers.values()) {
-      if (!writer.isClosed()) {
+    if(writers != null) {
+      for (RecordWriter writer : writers.values()) {
+        writer.closeLock();
         try {
-          manager.commitWriter(writer);
+          if (!writer.isClosed()) {
+            manager.commitWriter(writer);
+          }
         } catch (IOException ex) {
           String msg = Utils.format("Error closing writer {} : {}", writer, ex);
           LOG.warn(msg, ex);
+        } finally {
+          writer.closeUnlock();
         }
       }
     }

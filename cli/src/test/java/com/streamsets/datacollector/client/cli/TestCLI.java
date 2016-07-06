@@ -21,8 +21,10 @@ package com.streamsets.datacollector.client.cli;
 
 import com.streamsets.datacollector.client.util.TestUtil;
 import com.streamsets.datacollector.task.Task;
+import com.streamsets.testing.NetworkUtils;
 import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -54,12 +56,13 @@ public class TestCLI {
     System.out.println(cliOutput);
   }
 
+  @Ignore
   @Test
   public void testForDifferentAuthenticationTypes() {
     Task server = null;
     try {
       for(String authType: authenticationTypes) {
-        int port = TestUtil.getRandomPort();
+        int port = NetworkUtils.getRandomPort();
         server = TestUtil.startServer(port, authType);
         baseURL = "http://127.0.0.1:" + port;
 
@@ -141,7 +144,7 @@ public class TestCLI {
     Assert.assertTrue(cliOutput.contains("builtDate"));
     Assert.assertTrue(cliOutput.contains("builtBy"));
     Assert.assertTrue(cliOutput.contains("builtRepoSha"));
-    Assert.assertTrue(cliOutput.contains("apiSourceMd5Checksum"));
+    Assert.assertTrue(cliOutput.contains("sourceMd5Checksum"));
     Assert.assertTrue(cliOutput.contains("version"));
   }
 
@@ -288,16 +291,25 @@ public class TestCLI {
       "import", "-f", filename);
     Assert.assertTrue(cliOutput.contains("Required option '-n' is missing"));
 
-    //export - without file name
+    //import - without file name
     cliOutput = TestUtil.runCliCommand("-U", baseURL, "-a", authType, "-u", "admin", "-p", "admin", "store",
       "import", "-n", "Sample Pipeline");
     Assert.assertTrue(cliOutput.contains("Required option '-f' is missing"));
 
-    //export - with all parameters
+    //import - with all parameters
     cliOutput = TestUtil.runCliCommand("-U", baseURL, "-a", authType, "-u", "admin", "-p", "admin", "store",
       "import", "-n", "Imported Pipeline", "-f", filename);
     Assert.assertTrue(cliOutput.contains("Successfully imported from file"));
-    Assert.assertTrue((new File(filename)).exists());
+
+    //import - to existing pipeline, should throw error
+    cliOutput = TestUtil.runCliCommand("-U", baseURL, "-a", authType, "-u", "admin", "-p", "admin", "store",
+        "import", "-n", "Sample Pipeline", "-f", filename);
+    Assert.assertTrue(cliOutput.contains("CONTAINER_0201 - Pipeline 'Sample Pipeline' already exists"));
+
+    //import - to existing pipeline with overwrite option
+    cliOutput = TestUtil.runCliCommand("-U", baseURL, "-a", authType, "-u", "admin", "-p", "admin", "store",
+        "import", "-n", "Sample Pipeline", "-f", filename, "-o");
+    Assert.assertTrue(cliOutput.contains("Successfully imported from file"));
   }
 
 

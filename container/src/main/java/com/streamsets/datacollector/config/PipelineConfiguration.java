@@ -46,13 +46,24 @@ public class PipelineConfiguration implements Serializable{
   private final Map<String, Object> uiInfo;
   private List<StageConfiguration> stages;
   private StageConfiguration errorStage;
+  private StageConfiguration statsAggregatorStage;
   private Issues issues;
   private boolean previewable;
   private MemoryLimitConfiguration memoryLimitConfiguration;
+  private Map<String, Object> metadata;
 
   @SuppressWarnings("unchecked")
-  public PipelineConfiguration(int schemaVersion, int version, UUID uuid, String description, List<Config> configuration,
-      Map<String, Object> uiInfo, List<StageConfiguration> stages, StageConfiguration errorStage) {
+  public PipelineConfiguration(
+      int schemaVersion,
+      int version,
+      UUID uuid,
+      String description,
+      List<Config> configuration,
+      Map<String, Object> uiInfo,
+      List<StageConfiguration> stages,
+      StageConfiguration errorStage,
+      StageConfiguration statsAggregatorStage
+  ) {
     this.schemaVersion = schemaVersion;
     this.version = version;
     this.uuid = Preconditions.checkNotNull(uuid, "uuid cannot be null");
@@ -61,6 +72,7 @@ public class PipelineConfiguration implements Serializable{
     this.uiInfo = (uiInfo != null) ? new HashMap<>(uiInfo) : new HashMap<String, Object>();
     this.stages = (stages != null) ? stages : Collections.<StageConfiguration>emptyList();
     this.errorStage = errorStage;
+    this.statsAggregatorStage = statsAggregatorStage;
     issues = new Issues();
     memoryLimitConfiguration = new MemoryLimitConfiguration();
   }
@@ -109,6 +121,10 @@ public class PipelineConfiguration implements Serializable{
 
   public void setErrorStage(StageConfiguration errorStage) {
     this.errorStage = errorStage;
+  }
+
+  public void setStatsAggregatorStage(StageConfiguration statsAggregatorStage) {
+    this.statsAggregatorStage = statsAggregatorStage;
   }
 
   public StageConfiguration getErrorStage() {
@@ -168,6 +184,10 @@ public class PipelineConfiguration implements Serializable{
     return null;
   }
 
+  public StageConfiguration getStatsAggregatorStage() {
+    return statsAggregatorStage;
+  }
+
   public void addConfiguration(Config config) {
     boolean found = false;
     for (int i = 0; !found && i < configuration.size(); i++) {
@@ -212,7 +232,25 @@ public class PipelineConfiguration implements Serializable{
         newConfigurations.add(candidate);
       }
     }
-    return new PipelineConfiguration(schemaVersion, version, uuid, description, newConfigurations, uiInfo, stages,
-      errorStage);
+    return new PipelineConfiguration(
+        schemaVersion,
+        version,
+        uuid,
+        description,
+        newConfigurations,
+        uiInfo,
+        stages,
+        errorStage,
+        statsAggregatorStage
+    );
   }
+
+  public Map<String, Object> getMetadata() {
+    return metadata;
+  }
+
+  public void setMetadata(Map<String, Object> metadata) {
+    this.metadata = metadata;
+  }
+
 }

@@ -24,10 +24,9 @@ import com.streamsets.datacollector.client.ApiException;
 import com.streamsets.datacollector.client.model.DefinitionsJson;
 import com.streamsets.datacollector.client.util.TestUtil;
 import com.streamsets.datacollector.task.Task;
+import com.streamsets.testing.NetworkUtils;
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.util.Map;
 
 public class  TestDefinitionsApi {
   private String baseURL;
@@ -38,7 +37,7 @@ public class  TestDefinitionsApi {
     Task server = null;
     try {
       for(String authType: authenticationTypes) {
-        int port = TestUtil.getRandomPort();
+        int port = NetworkUtils.getRandomPort();
         server = TestUtil.startServer(port, authType);
         baseURL = "http://127.0.0.1:" + port;
         ApiClient apiClient = getApiClient(authType);
@@ -46,7 +45,6 @@ public class  TestDefinitionsApi {
         DefinitionsApi definitionsApi = new DefinitionsApi(apiClient);
 
         testGetDefinitions(definitionsApi);
-        testGetHelpRefs(definitionsApi);
 
         if(!authType.equals("none")) {
           testInvalidUserNamePassword(authType);
@@ -75,12 +73,6 @@ public class  TestDefinitionsApi {
   public void testGetDefinitions(DefinitionsApi definitionsApi) throws ApiException  {
     DefinitionsJson definitions = definitionsApi.getDefinitions();
     Assert.assertNotNull(definitions);
-  }
-
-  public void testGetHelpRefs(DefinitionsApi definitionsApi) throws ApiException  {
-    Map<String, Object> helpRefs = definitionsApi.getHelpRefs();
-    Assert.assertNotNull(helpRefs);
-    Assert.assertTrue(helpRefs.size() > 0);
   }
 
   public void testInvalidUserNamePassword(String authType) {

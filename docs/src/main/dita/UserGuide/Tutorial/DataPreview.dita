@@ -15,11 +15,11 @@
 <!DOCTYPE task PUBLIC "-//OASIS//DTD DITA General Task//EN" "generalTask.dtd">
 <task id="task_xb5_2sf_4s">
     <title>Preview Data </title>
-    <shortdesc>Let's preview the source data to become more familiar with the data set and gather
-        some important details. </shortdesc>
+    <shortdesc>To become more familiar with the data set and gather some important details for
+        pipeline configuration, let's preview the source data.</shortdesc>
     <taskbody>
         <context>
-            <p> This is the information that we'll need to configure the pipeline: <ul
+            <p>Here are some key details that we need to configure the pipeline: <ul
                     id="ul_a41_hvh_4s">
                     <li>The field that contains payment information - We'll use this to route data
                         in the Stream Selector. </li>
@@ -30,11 +30,11 @@
                 path depends on the complexity of the record: <codeph>/&lt;fieldname></codeph> for
                 simple records and <codeph>&lt;path to field>/&lt;fieldname></codeph> for more
                 complex records.  </p>
-            <p>Because we're using the List-Map record type to for the delimited data, we can use
+            <p>Because we're using the List-Map root field type, we can use
                     <codeph>/&lt;fieldname></codeph>. </p>
-            <p>To start data preview, all stages must be connected and all required fields filled
-                (though not necessarily correctly). Since the origin is configured and the only
-                stage, the pipeline should be ready to preview as is. </p>
+            <p>To start data preview, all stages must be connected and all required properties
+                defined - though not necessarily correctly. Since the origin is configured and the
+                only stage, the pipeline should be ready to preview as is. </p>
         </context>
         <steps id="steps_jxv_fpf_4s">
             <step>
@@ -43,7 +43,9 @@
                     />.</cmd>
                 <info>If the icon is not enabled, make sure you completed all the previous steps for
                     the tutorial. If more than one issue displays in the list, correct any issue
-                    except Validation_0011 for the unconnected Directory stage. </info>
+                    except Validation_0011. <p>Validation_0011 just indicates that Directory origin
+                        isn't connected to anything yet and does not prevent data
+                    preview.</p></info>
             </step>
             <step>
                 <cmd>In the <wintitle>Preview Configuration</wintitle> dialog box, configure the
@@ -69,22 +71,21 @@
                                 </row>
                                 <row>
                                     <entry>Write to Destinations</entry>
-                                    <entry>Make sure this checkbox is cleared. In general, you 'll
-                                        want to clear this property to avoid writing data to
+                                    <entry>By default, this property is not selected. In general,
+                                        you should keep this property clear to avoid writing data to
                                         destination systems.</entry>
                                 </row>
                                 <row>
                                     <entry>Show Field Type</entry>
-                                    <entry>Select this so you can see the data type of fields in the
-                                        record. </entry>
+                                    <entry>By default, this property is selected. Keep it selected
+                                        to see the data type of fields in the record. </entry>
                                 </row>
                                 <row>
                                     <entry>Remember the Configuration</entry>
                                     <entry>Select to use these properties each time you run data
                                         preview. <p>When you select this option, the console enters
-                                            data preview without showing this dialog box again. To
-                                            change data preview options, click the Preview
-                                            Configuration icon in the properties panel. </p></entry>
+                                            data preview without showing this dialog box again.
+                                        </p></entry>
                                 </row>
                             </tbody>
                         </tgroup>
@@ -96,13 +97,16 @@
                 <stepresult>The Preview Panel displays a list of 10 output records for Directory in
                     list view. If you drill down a bit, you see that the each record displays an
                     ordered list of field names and values with the data type of each field.
-                        <p>Because the data is read from a file, all fields are strings.</p><p>Note
-                        that in the Preview panel, the preview records display on the
-                            <wintitle>Records</wintitle> tab. You can click the <wintitle>Stage
-                            Configuration</wintitle> tab to review or change properties: <image
+                        <p>Because the data is read from a file, all fields are
+                            strings:</p><p><image href="../Graphics/Tutorial-PreviewFirst.png"
+                            id="image_fyd_454_15" scale="40"/></p><p>Note that in the Preview panel,
+                        the preview records display on the <wintitle>Records</wintitle> tab: <image
+                            href="../Graphics/icon_PrevRecords.png" id="image_czm_lsl_zt" scale="80"
+                        />. To review or change properties, use the <wintitle>Stage
+                            Configuration</wintitle> tab: <image
                             href="../Graphics/icon_PrevStageConfig.png" id="image_gf2_kx1_tt"
-                            scale="80"/>You can click the <wintitle>Preview Configuration</wintitle>
-                        tab to change preview properties: <image
+                            scale="80"/>. To change preview properties, use the <wintitle>Preview
+                            Configuration</wintitle> tab: <image
                             href="../Graphics/icon_PrevPreviewConfig.png" id="image_a3l_mx1_tt"
                             scale="80"/>.</p></stepresult>
             </step>
@@ -116,9 +120,11 @@
             </step>
             <step>
                 <cmd>To view all columns, click <uicontrol>Show All</uicontrol>.</cmd>
-                <info>If you scroll to the right, you can verify that the credit_card field contains
-                    credit card numbers for the first three records. When you scroll back to the
-                    left, notice this corresponds to "CRD" in the payment_type field. </info>
+                <info>If you scroll to the right, you can verify that the
+                        <uicontrol>credit_card</uicontrol> field contains credit card numbers for
+                    the first three records. When you scroll back to the
+                        <uicontrol>payment_type</uicontrol> field, notice this corresponds to
+                    records where the payment type is "CRD".</info>
             </step>
             <step>
                 <cmd>Now that we have the information that we need, click the <uicontrol>Close
@@ -127,12 +133,13 @@
             </step>
         </steps>
         <result>Now we know the following: <ul id="ul_glg_yj1_mt">
-                <li>Payment type information is in the payment_type field and credit card
-                    information is in the credit_card field.</li>
-                <li>To use these fields in expressions, we'll use their field paths: /payment_type
-                    and /credit_card. </li>
-                <li>To route records paid by credit card, we'll look for records where the
-                    /payment_type = "CRD". </li>
+                <li>Payment type information is in the <uicontrol>payment_type </uicontrol>field and
+                    credit card information is in the <uicontrol>credit_card</uicontrol> field.</li>
+                <li>To use these fields in expressions, we'll use their field paths:
+                        <uicontrol>/payment_type</uicontrol> and
+                    <uicontrol>/credit_card</uicontrol>. </li>
+                <li>To route records paid by credit card, we'll look for records where the payment
+                    type is "CRD". </li>
             </ul></result>
     </taskbody>
 </task>

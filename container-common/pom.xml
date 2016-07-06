@@ -21,11 +21,11 @@
   <parent>
     <groupId>com.streamsets</groupId>
     <artifactId>streamsets-datacollector-root</artifactId>
-    <version>1.2.0-SNAPSHOT</version>
+    <version>1.6.0.0-SNAPSHOT</version>
     <relativePath>../root</relativePath>
   </parent>
   <artifactId>streamsets-datacollector-container-common</artifactId>
-  <version>1.2.0-SNAPSHOT</version>
+  <version>1.6.0.0-SNAPSHOT</version>
   <description>StreamSets Data Collector Container Common</description>
   <name>StreamSets Data Collector Container Common</name>
   <packaging>jar</packaging>
@@ -46,6 +46,16 @@
           <artifactId>commons-csv</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.streamsets</groupId>
+      <artifactId>streamsets-utils</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.streamsets</groupId>
+      <artifactId>streamsets-sso</artifactId>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>io.dropwizard.metrics</groupId>
@@ -94,6 +104,11 @@
     </dependency>
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-webapp</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-servlet</artifactId>
       <scope>compile</scope>
     </dependency>
@@ -110,6 +125,11 @@
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-util</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jetty</groupId>
+      <artifactId>jetty-jaas</artifactId>
       <scope>compile</scope>
     </dependency>
     <dependency>
@@ -130,6 +150,58 @@
     <dependency>
       <groupId>io.swagger</groupId>
       <artifactId>swagger-jersey2-jaxrs</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.glassfish.jersey.containers</groupId>
+          <artifactId>jersey-container-servlet-core</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.glassfish.jersey.media</groupId>
+          <artifactId>jersey-media-multipart</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <!-- Include current Jersey artifacts -->
+    <dependency>
+      <groupId>org.glassfish.jersey.media</groupId>
+      <artifactId>jersey-media-multipart</artifactId>
+      <version>${jersey.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish.jersey.containers</groupId>
+      <artifactId>jersey-container-servlet-core</artifactId>
+      <version>${jersey.version}</version>
+    </dependency>
+    <!-- End Jersey artifacts -->
+    <dependency>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>javax.mail</groupId>
+      <artifactId>mail</artifactId>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.icegreen</groupId>
+      <artifactId>greenmail</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.streamsets</groupId>
+      <artifactId>streamsets-testing</artifactId>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 

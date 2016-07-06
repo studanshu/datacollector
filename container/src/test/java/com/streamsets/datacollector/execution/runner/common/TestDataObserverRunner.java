@@ -32,11 +32,11 @@ import com.streamsets.datacollector.execution.alerts.TestDataRuleEvaluator;
 import com.streamsets.datacollector.execution.alerts.TestUtil;
 import com.streamsets.datacollector.main.RuntimeInfo;
 import com.streamsets.datacollector.main.RuntimeModule;
+import com.streamsets.datacollector.main.StandaloneRuntimeInfo;
 import com.streamsets.datacollector.metrics.MetricsConfigurator;
 import com.streamsets.datacollector.runner.production.DataRulesEvaluationRequest;
 import com.streamsets.datacollector.runner.production.RulesConfigurationChangeRequest;
 import com.streamsets.datacollector.util.Configuration;
-import com.streamsets.pipeline.api.Record;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -45,7 +45,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -62,7 +61,7 @@ public class TestDataObserverRunner {
 
   @Before
   public void setUp() {
-    runtimeInfo = new RuntimeInfo(RuntimeModule.SDC_PROPERTY_PREFIX, new MetricRegistry(),
+    runtimeInfo = new StandaloneRuntimeInfo(RuntimeModule.SDC_PROPERTY_PREFIX, new MetricRegistry(),
       Arrays.asList(TestDataRuleEvaluator.class.getClassLoader()));
     dataObserverRunner = new DataObserverRunner(PIPELINE_NAME, REVISION, metrics,
       new AlertManager(PIPELINE_NAME, REVISION, null, metrics, runtimeInfo, new EventListenerManager()), new Configuration());
@@ -119,15 +118,32 @@ public class TestDataObserverRunner {
 
   private RulesConfigurationChangeRequest createRulesConfigurationChangeRequest(boolean alert, boolean meter) {
     List<DataRuleDefinition> dataRuleDefinitions = new ArrayList<>();
-    dataRuleDefinitions.add(new DataRuleDefinition(ID, "myRule", LANE + "::s", 100, 5,
-      "${record:value(\"/name\")==null}", alert, "alertText", ThresholdType.COUNT, "2", 5, meter, false, true));
-    RuleDefinitions ruleDefinitions = new RuleDefinitions(null, dataRuleDefinitions, Collections.<String>emptyList(),
+    dataRuleDefinitions.add(
+        new DataRuleDefinition(
+            ID,
+            "myRule",
+            LANE + "::s",
+            100,
+            5,
+            "${record:value(\"/name\")==null}",
+            alert,
+            "alertText",
+            ThresholdType.COUNT,
+            "2",
+            5,
+            meter,
+            false,
+            true,
+            System.currentTimeMillis()
+        )
+    );
+    RuleDefinitions ruleDefinitions = new RuleDefinitions(null, dataRuleDefinitions, null, Collections.<String>emptyList(),
       UUID.randomUUID());
     Map<String, List<DataRuleDefinition>> laneToRuleDefinition = new HashMap<>();
     Map<String, Integer> ruleIdToSampledRecordsSize = new HashMap<>();
     laneToRuleDefinition.put(LANE + "::s", dataRuleDefinitions);
     RulesConfigurationChangeRequest rulesConfigurationChangeRequest =
-      new RulesConfigurationChangeRequest(ruleDefinitions, new HashSet<String>(),
+      new RulesConfigurationChangeRequest(ruleDefinitions, new HashMap<String, String>(),
         Collections.<String>emptySet(), laneToRuleDefinition, ruleIdToSampledRecordsSize);
     return rulesConfigurationChangeRequest;
   }
@@ -153,7 +169,7 @@ public class TestDataObserverRunner {
     Assert.assertTrue(rulesConfigurationChangeRequest.getRulesToRemove().isEmpty());
     //Create rule configuration change request where the previous rule is removed.
     // This simulates user action - change/disable/delete rule
-    rulesConfigurationChangeRequest.getRulesToRemove().add("myId");
+    rulesConfigurationChangeRequest.getRulesToRemove().put("myId", "myLane");
     dataObserverRunner.handleConfigurationChangeRequest(rulesConfigurationChangeRequest);
 
     sampleRecords = dataObserverRunner.getSampledRecords("myId", 5);

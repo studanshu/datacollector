@@ -40,6 +40,7 @@ import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +48,7 @@ import java.util.Properties;
 
 public class PipelineMapper extends Mapper {
   private static final Logger LOG = LoggerFactory.getLogger(PipelineMapper.class);
+  private static final String CLUSTER_HDFS_CONFIG_BEAN_PREFIX = "clusterHDFSConfigBean.";
 
   @Override
   protected void setup(Mapper.Context context) throws IOException, InterruptedException {
@@ -92,11 +94,18 @@ public class PipelineMapper extends Mapper {
     } else {
       throw new IllegalStateException("Unsupported InputSplit: " + inputSplit.getClass().getName());
     }
+    long splitLength = fileSplit.getLength();
+    if (splitLength == 0) {
+      LOG.info("Not processing as length of split is 0");
+      return;
+    } else {
+      LOG.debug("Length of split is " + splitLength);
+    }
     String header = null;
     if (fileSplit != null) {
       file = fileSplit.getPath() + "::" + fileSplit.getStart();
-      if (properties.getProperty("dataFormat").equals("DELIMITED")
-        && properties.getProperty("csvHeader").equals("WITH_HEADER")) {
+      if (properties.getProperty(CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "dataFormat").equals("DELIMITED")
+        && properties.getProperty(CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "dataFormatConfig.csvHeader").equals("WITH_HEADER")) {
         if (fileSplit.getStart() == 0) {
           boolean hasNext = context.nextKeyValue();
           if (hasNext) {
@@ -108,8 +117,8 @@ public class PipelineMapper extends Mapper {
         LOG.info("Header in file " + fileSplit.getPath() + " for start offset " + fileSplit.getStart() + ": " + header);
       }
     }
-    boolean isAvro = properties.getProperty("dataFormat").equalsIgnoreCase("AVRO");
-    int batchSize = Integer.parseInt(properties.getProperty("production.maxBatchSize", "1000").trim());
+    boolean isAvro = properties.getProperty(CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "dataFormat").equalsIgnoreCase("AVRO");
+    int batchSize = Integer.parseInt(properties.getProperty(CLUSTER_HDFS_CONFIG_BEAN_PREFIX + "maxBatchSize", "1000").trim());
     boolean errorOccurred = true;
     try {
       boolean hasNext = context.nextKeyValue();
@@ -173,7 +182,7 @@ public class PipelineMapper extends Mapper {
     BufferedReader br = null;
     try {
       FileSystem fs = FileSystem.get(hadoopConf);
-      br = new BufferedReader(new InputStreamReader(fs.open(path)));
+      br = new BufferedReader(new InputStreamReader(fs.open(path), StandardCharsets.UTF_8));
       // read one line - the header
       header = br.readLine();
     } finally {

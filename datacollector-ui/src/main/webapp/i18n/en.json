@@ -11,10 +11,12 @@
       },
       "admin": {
         "configuration": "Configuration",
+        "enableDPM": "Enable DPM",
         "jvmMetrics": "JVM Metrics",
         "logs": "Logs",
         "main": "Administration",
         "resetLocalStorage": "Reset Browser Local Storage",
+        "restart": "Restart",
         "shutdown": "Shutdown"
       },
       "clusterManager": "Cluster Manager",
@@ -25,9 +27,11 @@
         "useHelp": "Help:",
         "localHelp": "Local Help",
         "hostedHelp": "Hosted Help",
-        "restFulAPI": "RESTful API"
+        "restFulAPI": "RESTful API",
+        "settings": "Settings"
       },
       "home": "Home",
+      "remotelyControlled": "Data Performance Manager Enabled",
       "toggleNavigation": "Toggle navigation"
     },
     "form": {
@@ -43,12 +47,17 @@
       "createdBy": "Created By",
       "createdOn": "Created On",
       "delete": "Delete",
+      "deleting": "Deleting...",
       "deleteStage": "Delete Stage",
       "deleteStream": "Delete Selected Stream",
+      "deleteOriginConfirmation": "Delete Origin Confirmation",
       "description": "Description",
       "done": "Done",
       "duplicate": "Duplicate",
+      "duplicating": "Duplicating...",
       "duplicateStage": "Duplicate Stage",
+      "download": "Download",
+      "downloading": "Downloading...",
       "edit": "Edit",
       "error": "Error",
       "errorCode": "Error Code",
@@ -57,15 +66,20 @@
       "errorRecord": "Error",
       "errors": "Errors",
       "export": "Export",
+      "exportWithLibraryDefinitions": "Export With Library Definitions",
       "fieldName": "Field Name",
       "fieldName.placeholder": "New Field Name",
       "fromStage": "From Stage",
       "fromStageLane": "From Stage Stream",
       "fromStageLanePredicate": "From Stage Stream Condition",
+      "generate": "Generate",
+      "getThisVersion": "Get",
+      "gridView": "Grid View",
       "help": "Help",
       "histogram": "Records Per Batch Histogram (5 minutes decay)",
       "import": "Import",
       "label": "Label",
+      "labels": "Labels",
       "lastModifiedBy": "Last Modified By",
       "lastModifiedOn": "Last Modified On",
       "lastStatusChange": "Timestamp",
@@ -74,27 +88,32 @@
       "loading": "Loading",
       "maximizePane": "Maximize Pane",
       "message": "Message",
+      "metadata": "Metadata",
       "metrics": "Metrics",
       "minimizePane": "Minimize Pane",
       "name": "Name",
       "nextStage": "Next Stage",
       "no": "No",
+      "numberOfCopies": "Number of Copies",
       "outputRecord": "Output Record",
       "pipeline": "Pipeline",
       "previousStage": "Previous Stage",
       "processor": "Processor",
       "processors": "Processors",
+      "publish": "Publish Pipeline",
       "record": "Record",
       "recordHeader": "Record Header",
       "records": "Records",
       "redo": "Redo",
       "refresh": "Refresh",
       "required": "Required",
+      "restart": "Restart Data Collector",
       "revertChanges": "Revert Data Changes",
       "sampleRecords": "Sample Records",
       "sampleValue": "Sample Value",
       "save": "Save",
       "settings": "Settings",
+      "showMore": "Show More...",
       "source": "Origin",
       "stage": "Stage",
       "stages": "Stages",
@@ -118,6 +137,7 @@
     },
     "messages": {
       "info": {
+        "deleteOriginConfirmationMsg": "Deleting origin stage resets the current origin offset. Are you sure you want to delete?",
         "graphErrorBadgeLabel": "Total Error records + Stage errors.",
         "noPipelineExists": "No Pipeline found with name '{{name}}'",
         "noDataAvailable": "No Data Available.",
@@ -139,7 +159,36 @@
   },
   "home": {
     "ago": "ago",
+    "enableDPM": {
+      "dpmBaseURL": "DPM Base URL",
+      "dpmBaseURLPlaceholder": "Enter DPM Base URL",
+      "dpmUserName": "DPM User Name",
+      "dpmUserNamePlaceholder": "Enter DPM User Name",
+      "dpmUserPassword": "DPM User Password",
+      "dpmUserPasswordPlaceholder": "Enter DPM User Password",
+      "headerLabel": "Enable DPM",
+      "isEnableInProgress": "Enabling DPM...",
+      "isManagedByClouderaManager": "For an installation with Cloudera Manager, you must use the DPM console to enable Data Collector to work with DPM.",
+      "successMessage": "Successfully generated the authentication token and updated the files 'etc/application-token.txt' and 'etc/dpm.properties'. Restart the Data Collector for the changes to take effect. If you started the Data Collector manually, click Restart Data Collector. If you started the Data Collector as a service, click Cancel and then run the following command: sdc service restart"
+    },
     "createPipeline": "Create New Pipeline",
+    "commitPipelineHistory": {
+      "committer": "Committed By",
+      "commitTime": "Committed On",
+      "headerLabel": "Pipeline Commit History",
+      "noCommits": "No Commits to view."
+    },
+    "downloadRemotePipeline": "Download Remote Pipeline",
+    "downloadRemote": {
+      "actions": "Actions",
+      "commitMessage": "Commit Message",
+      "headerLabel": "Download Remote Pipeline",
+      "noPipelines": "No Pipelines to view.",
+      "pipelineName": "Pipeline Name",
+      "pipelineId": "Pipeline ID",
+      "version": "Version"
+    },
+    "remotePipeline": "Remote Pipeline",
     "getStarted": "Get Started",
     "importPipeline": "Import Pipeline",
     "invalidStatus": "Pipeline is invalid",
@@ -151,6 +200,7 @@
       "closeSnapshot": "Close Snapshot",
       "clusterManagerNode": "Cluster Manager:",
       "comfortable": "Comfortable",
+      "commitHistory": "Commit History",
       "compact": "Compact",
       "connectErrorPipeline": "Failed to Connect",
       "connectingPipeline": "Connecting...",
@@ -161,6 +211,8 @@
       "displayDensity": "Display density:",
       "emptyAlerts": "It’s all good! You don’t have any new alerts.",
       "finishingPipeline": "Finishing Pipeline...",
+      "hideDetails": "Hide Details",
+      "pullLatest": "Pull Latest",
       "importPipeline": "Import Pipeline",
       "issues": "Issues",
       "more": "More",
@@ -173,9 +225,11 @@
       "processors": "Processors",
       "refreshPreview": "Refresh Preview",
       "refreshSnapshot": "Refresh Snapshot",
+      "remoteOptions": "Remote Store Options",
       "retryPipeline": "Retrying to start Pipeline in ",
       "selectorProcessors": "Selectors",
       "settings": "Settings",
+      "showDetails": "Show Details",
       "snapshot": "Snapshot",
       "snapshots": "Snapshots",
       "sources": "Origins",
@@ -185,7 +239,9 @@
       "stop": "Stop",
       "stopConfirmationTitle": "Stop Pipeline Confirmation",
       "stopConfirmationMessage": "Are you sure you want to stop Pipeline '{{name}}'?",
+      "stopPipelinesConfirmationMessage": "Are you sure you want to stop below Pipelines?",
       "stoppingPipeline": "Stopping Pipeline...",
+      "stoppingPipelines": "Stopping Pipelines...",
       "targets": "Destinations",
       "toggleLibraryPane": "Toggle Library Pane",
       "uptime": "Uptime",
@@ -199,7 +255,7 @@
       "selectProcessor": "Select Processor to connect...",
       "selectProcessorToAddInBetween": "Select Processor to add in between the selected stream...",
       "selectTarget": "Select Destination to connect...",
-      "startErrorMessage": "Pipeline definition '{{name}}' is running. Pipeline Agent supports running only one Pipeline Definition.",
+      "startErrorMessage": "Pipeline definition '{{name}}' is running.",
       "viewStackTrace": "View Stack Trace"
     },
     "detailPane": {
@@ -239,9 +295,12 @@
         "stageInstanceName": "Stage Instance Name",
         "stageLibrary": "Stage Library",
         "stageType": "Stage Type",
-        "stageVersion": "Stage Version"
+        "stageVersion": "Stage Version",
+        "switchToBulkMode": "Switch to bulk edit mode",
+        "switchToSimpleMode": "Switch to simple edit mode"
       },
       "custom": "Custom",
+      "dataDriftRules": "Data Drift Rules",
       "dataRules": "Data Rules",
       "dataSummaryTab": {
         "allSampledRecords": "All",
@@ -298,6 +357,8 @@
         "condition": "Condition",
         "conditionPlaceholder": "Rule Condition in Expression Language",
         "counter": "Counter",
+        "dataDriftRule": "Data Drift Rule",
+        "dataDriftRules": "Data Drift Rules",
         "dataRule":"Data Rule",
         "dataRules": "Data Rules",
         "deleteRuleTooltip": "Delete Rule",
@@ -314,14 +375,15 @@
         "label": "Label",
         "labelPlaceholder": "Rule Label",
         "meter": "Meter",
-        "metricAlertRule": "Metric Alert Rule",
-        "metricAlertRules": "Metric Alert Rules",
+        "metricAlertRule": "Metric Rule",
+        "metricAlertRules": "Metric Rules",
         "metricElement": "Metric Element",
         "metricID": "Metric ID",
         "metricRules": "Metric Rules",
         "metricType": "Metric Type",
         "minVolumePlaceholder": "Min Volume",
         "newDataRule": "New Data Rule",
+        "noDataDriftRules": "No Data Drift Rules to view.",
         "noDataRules": "No Data Rules to view.",
         "noMetricAlertRules": "No Metric Alert Rules to view.",
         "samplingPercentage": "Sampling Percentage",
@@ -337,6 +399,7 @@
         "timer": "Timer",
         "valuePlaceholder": "Value"
       },
+      "statsAggregator": "Stats Aggregator",
       "summary": "Summary",
       "summaryTab": {
         "alertsTitle": "Alerts",
@@ -420,9 +483,12 @@
       "userProvider": "User Provided"
     },
     "library": {
+      "commitMessage": "Commit Message",
+      "commitMessagePlaceholder": "Enter Commit Message",
       "descriptionPlaceholder": "Pipeline Definition Description",
       "deleteConfirmationTitle": "Delete Confirmation",
       "deleteConfirmationMessage": "Are you sure you want to delete Pipeline Configuration '{{name}}'?",
+      "deletePipelinesConfirmationMessage": "Are you sure you want to delete below Pipelines?",
       "duplicatePipelineDefinition": "Duplicate Pipeline Definition",
       "emptyPipelineList": "No Pipeline to view.",
       "newPipelineDefinition": "New Pipeline",
@@ -433,12 +499,18 @@
       "sourcePlaceholder":"Select Origin...",
       "targetPlaceholder": "Select Destination..."
     },
+    "noPipelines": "No Pipeline Found",
     "import": {
       "headerLabel" : "Import Pipeline",
       "fileUploadPlaceholder": "No file chosen",
       "browse": "Browse",
       "overwritePipeline": "Overwrite Pipeline",
       "createPipelineAndImport": "Create New Pipeline & Import"
+    },
+    "publish": {
+      "headerLabel" : "Publish Pipeline",
+      "listHeaderLabel": "Publish Pipelines",
+      "pipelineRepository": "DPM Pipeline Repository"
     },
     "resetOffset": {
       "title": "Reset Origin",
@@ -448,23 +520,30 @@
       "successMessage": "Reset Origin is successful."
     },
     "runningStatus": "Pipeline is running",
+    "restart": {
+      "confirmationMessage": "Are you sure you want to restart Data Collector?",
+      "headerLabel": "Restart Collector",
+      "restarting": "Restarting Down the Data Collector...",
+      "successMessage": "Restarting Data Collector..."
+    },
     "shutdown": {
       "confirmationMessage": "Are you sure you want to shutdown Data Collector?",
       "headerLabel": "Shutdown Collector",
-      "secretPlaceholder": "Enter Secret...",
       "shuttingDown": "Shutting Down the Data Collector...",
       "successMessage": "Collector is stopped."
     },
     "snapshotsPane": {
       "captureSnapshot": "Capture Snapshot",
       "captureSnapshotInProgress": "Capturing...",
+      "labelChangeTitle": "Click to change Snapshot label",
       "modalTitle": "Snapshots",
       "noSnapshots": "No Snapshots"
     },
     "sortColumn": {
       "name": "Name",
       "created": "Date created",
-      "lastModified": "Date updated"
+      "lastModified": "Date updated",
+      "status": "Status"
     },
     "title": "Pipelines",
     "updated": "Updated"
@@ -504,6 +583,7 @@
     "settingsTitle": "JVM Metrics Settings"
   },
   "logs": {
+    "all": "All",
     "download": "Download",
     "emptyMessage": "Loading Logs...",
     "loadPreviousLog": "Load Previous Logs",
@@ -517,7 +597,7 @@
   },
   "about": {
     "builtBy": "built by",
-    "copyrightText": "Copyright &copy; 2015 StreamSets, Inc. All rights reserved.",
+    "copyrightText": "Copyright &copy; 2016 StreamSets, Inc. All rights reserved.",
     "on": "on",
     "productName": "StreamSets Data Collector",
     "title": "About",

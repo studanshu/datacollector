@@ -2,7 +2,7 @@
 <!DOCTYPE html
   SYSTEM "about:legacy-compat">
 <html xml:lang="en-us" lang="en-us">
-<head><meta name="description" content="A destination stage represents the target for a pipeline. You can use one or more destinations in a pipeline. You can use the following types of destinations in a pipeline: Amazon S3 - Writes data to ..."></meta><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><meta name="copyright" content="(C) Copyright 2005"></meta><meta name="DC.rights.owner" content="(C) Copyright 2005"></meta><meta name="DC.Type" content="concept"></meta><meta name="DC.Title" content="Destinations"></meta><meta name="abstract" content="A destination stage represents the target for a pipeline. You can use one or more destinations in a pipeline."></meta><meta name="description" content="A destination stage represents the target for a pipeline. You can use one or more destinations in a pipeline."></meta><meta name="DC.Relation" scheme="URI" content="../Destinations/Destinations-title.html"></meta><meta name="DC.Format" content="XHTML"></meta><meta name="DC.Identifier" content="concept_hpr_twm_jq"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/commonltr.css"><!----></link><title>Destinations</title><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/webhelp_topic.css"><!----></link><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/skins/skin.css"><!----></link><link rel="stylesheet" type="text/css" href="../skin.css"></link><script type="text/javascript"><!--
+<head><meta name="description" content="A destination stage represents the target for a pipeline. You can use one or more destinations in a pipeline. You can use the following types of destinations in a pipeline: Amazon S3 - Writes data to ..."></meta><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><meta name="copyright" content="(C) Copyright 2005"></meta><meta name="DC.rights.owner" content="(C) Copyright 2005"></meta><meta name="DC.Type" content="concept"></meta><meta name="DC.Title" content="Destinations"></meta><meta name="abstract" content="A destination stage represents the target for a pipeline. You can use one or more destinations in a pipeline."></meta><meta name="description" content="A destination stage represents the target for a pipeline. You can use one or more destinations in a pipeline."></meta><meta name="DC.Relation" scheme="URI" content="../Destinations/Destinations-title.html"></meta><meta name="DC.Format" content="XHTML"></meta><meta name="DC.Identifier" content="concept_hpr_twm_jq"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/commonltr.css"><!----></link><title>Destinations</title><!--  Generated with Oxygen version 17.1, build number 2016020417.  --><meta http-equiv="Content-Type" content="text/html; charset=utf-8"></meta><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/css/webhelp_topic.css"><!----></link><link rel="stylesheet" type="text/css" href="../oxygen-webhelp/resources/skins/skin.css"><!----></link><link rel="stylesheet" type="text/css" href="../skin.css"></link><script type="text/javascript"><!--
           
           var prefix = "../index.html";
           
@@ -52,13 +52,35 @@
 
         <li class="li">HBase - Writes data to an HBase cluster.</li>
 
+        <li class="li">Hive Metastore - Creates and updates Hive tables as needed.</li>
+
         <li class="li">Hive Streaming - Writes data to Hive.</li>
+
+        <li class="li">InfluxDB - Writes data to InfluxDB.</li>
 
         <li class="li">JDBC Producer - Writes data to JDBC.</li>
 
         <li class="li">Kafka Producer - Writes data to a Kafka cluster.</li>
 
-        <li class="li">Kinesis Producer - Writes data to a Kinesis cluster.</li>
+        <li class="li">Kinesis Firehose - Writes data to a Kinesis Firehose delivery stream.</li>
+
+        <li class="li">Kinesis Producer - Writes data to Kinesis Streams.</li>
+
+        <li class="li">Kudu - Writes data to Kudu.</li>
+
+        <li class="li">Local FS - Writes data to a local file system. </li>
+
+        <li class="li">MapR DB - Writes data to MapR DB.</li>
+
+        <li class="li">MapR FS - Writes data to MapR FS.</li>
+
+        <li class="li">MapR Streams Producer - Writes data to MapR Streams.</li>
+
+        <li class="li">MongoDB - Writes data to MongoDB.</li>
+
+        <li class="li">Rabbit MQ Producer - Writes data to RabbitMQ.</li>
+
+        <li class="li">Redis - Writes data to Redis.</li>
 
         <li class="li">SDC RPC - Passes data to an SDC RPC origin in an SDC RPC pipeline.</li>
 
@@ -74,8 +96,55 @@
  </div>
 
 <div class="related-links"></div>
+<div class="topic concept nested1" id="concept_adq_swp_kv">
+ <h2 class="title topictitle2">AWS Credentials</h2>
+
+ 
+ <div class="body conbody"><p class="shortdesc">When <span class="ph">Data
+                  Collector</span> writes data to an Amazon S3, Kinesis Firehose, or Kinesis Producer destination, it must
+        pass credentials to Amazon Web Services. </p>
+
+  <p class="p">
+            Use one of the following
+            methods to pass AWS credentials:</p>
+
+     <dl class="dl">
+         
+             <dt class="dt dlterm">IAM roles</dt>
+
+             <dd class="dd">When <span class="ph">Data
+                  Collector</span> runs on an Amazon EC2 instance, you can use the AWS Management Console to
+                    configure an IAM role for the EC2 instance. <span class="ph">Data
+                  Collector</span> uses the IAM instance profile credentials to automatically connect to AWS. </dd>
+
+                <dd class="dd">When you use IAM roles, you do not need to specify the <span class="ph uicontrol">Access Key
+                        ID</span> and <span class="ph uicontrol">Secret Access Key</span> properties in
+                    the destination. </dd>
+
+                <dd class="dd">For more information about assigning an IAM role to an EC2 instance, see the
+                    Amazon EC2 documentation.</dd>
+
+         
+            
+                <dt class="dt dlterm">AWS access key pairs</dt>
+
+                <dd class="dd">
+                    <p class="p">When <span class="ph">Data
+                  Collector</span> does not run on an Amazon EC2 instance or when the EC2 instance doesn’t
+                        have an IAM role, you must specify the <span class="ph uicontrol">Access Key ID</span>
+                        and <span class="ph uicontrol">Secret Access Key</span> properties in the
+                        destination.</p>
+
+                </dd>
+
+            
+     </dl>
+
+ </div>
+
+</div>
 </div>
 <div class="navfooter"><!---->
-<span class="navparent"><a class="link" href="../Destinations/Destinations-title.html" title="Destinations"><span class="navheader_label">Parent topic</span><span class="navheader_separator">: </span><span class="navheader_linktext">Destinations</span></a></span>  </div><div class="footer"></div>
+<span class="navparent"><a class="link" href="../Destinations/Destinations-title.html" title="Destinations"><span class="navheader_label">Parent topic</span><span class="navheader_separator">: </span><span class="navheader_linktext">Destinations</span></a></span>  </div>
 </body>
 </html>

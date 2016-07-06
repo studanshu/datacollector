@@ -19,16 +19,25 @@
  */
 package com.streamsets.pipeline.lib.jdbc;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
+import com.streamsets.pipeline.api.Field;
+import com.streamsets.pipeline.api.Record;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Utility classes for working with JDBC
@@ -41,6 +50,8 @@ public class JdbcUtil {
    * @see java.sql.DatabaseMetaData#getPrimaryKeys
    */
   public static final int COLUMN_NAME = 4;
+
+  private JdbcUtil() {}
 
   /**
    * <p>Mapping of sqlStates that when encountered should determine that we will send a record to the
@@ -70,9 +81,9 @@ public class JdbcUtil {
    */
   private static final String MYSQL_GENERAL_ERROR = "HY000";
   private static final Map<String, String> MYSQL_DATA_ERROR_ERROR_CODES = ImmutableMap.of(
-    "1364", "Field '%s' doesn't have a default value",
-    "1366", "Incorrect %s value: '%s' for column '%s' at row %ld",
-    "1391", "Key part '%s' length cannot be 0"
+      "1364", "Field '%s' doesn't have a default value",
+      "1366", "Incorrect %s value: '%s' for column '%s' at row %ld",
+      "1391", "Key part '%s' length cannot be 0"
   );
 
   public static boolean isDataError(String connectionString, SQLException ex) {
@@ -184,5 +195,31 @@ public class JdbcUtil {
       keys.add(result.getString(COLUMN_NAME));
     }
     return keys;
+  }
+
+  public static void setColumnSpecificHeaders(
+      Record record,
+      ResultSetMetaData metaData,
+      String jdbcNameSpacePrefix
+  ) throws SQLException {
+    Record.Header header = record.getHeader();
+    Set<String> tableNames = new HashSet<>();
+    for (int i=1; i<=metaData.getColumnCount(); i++) {
+      header.setAttribute(jdbcNameSpacePrefix + metaData.getColumnLabel(i) + ".jdbcType", String.valueOf(metaData.getColumnType(i)));
+
+      // Additional headers per various types
+      switch(metaData.getColumnType(i)) {
+        case Types.DECIMAL:
+        case Types.NUMERIC:
+          header.setAttribute(jdbcNameSpacePrefix + metaData.getColumnLabel(i) + ".scale", String.valueOf(metaData.getScale(i)));
+          header.setAttribute(jdbcNameSpacePrefix + metaData.getColumnLabel(i) + ".precision", String.valueOf(metaData.getPrecision(i)));
+          break;
+      }
+
+      // Store the column's table name
+      tableNames.add(metaData.getTableName(i));
+    }
+
+    header.setAttribute(jdbcNameSpacePrefix + "tables", Joiner.on(",").join(tableNames));
   }
 }

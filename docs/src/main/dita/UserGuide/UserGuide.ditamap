@@ -43,6 +43,7 @@
     </frontmatter>
     <chapter href="Chapter_Maps/GettingStarted.ditamap" format="ditamap" collection-type="sequence"/>
     <chapter href="Chapter_Maps/Install_Config.ditamap" format="ditamap"/>
+    <chapter href="Chapter_Maps/Upgrade.ditamap" format="ditamap"/>
     <chapter href="Chapter_Maps/PipelineDesign.ditamap" format="ditamap"/>
     <chapter href="Chapter_Maps/PipelineConfiguration.ditamap" format="ditamap"
         processing-role="normal"/>
@@ -51,6 +52,7 @@
     <chapter href="Chapter_Maps/Destinations.ditamap" format="ditamap"/>
     <chapter href="Chapter_Maps/ClusterMode.ditamap" format="ditamap"/>
     <chapter href="Chapter_Maps/RPCPipelines.ditamap" format="ditamap"/>
+    <chapter href="Chapter_Maps/HiveDriftSolution.ditamap" format="ditamap"/>
     <chapter href="Chapter_Maps/DataPreview.ditamap" format="ditamap"/>
     <chapter href="Chapter_Maps/Alerts.ditamap" format="ditamap"/>
     <chapter href="Chapter_Maps/AdvancedPipelineConfig.ditamap" format="ditamap"/>
@@ -60,6 +62,7 @@
     <chapter href="Chapter_Maps/Tutorial.ditamap" format="ditamap"/>
     <appendix href="Chapter_Maps/Troubleshooting.ditamap" format="ditamap"/>
     <appendix href="Chapter_Maps/Glossary.ditamap" format="ditamap"/>
+    <appendix href="Chapter_Maps/DataFormat-Apx.ditamap" format="ditamap"/>
     <appendix href="Chapter_Maps/ExpressionLanguage.ditamap" format="ditamap"/>
     <appendix href="Chapter_Maps/RegEx.ditamap" format="ditamap"/>
     <appendix href="Chapter_Maps/GrokPatterns.ditamap" format="ditamap"/>

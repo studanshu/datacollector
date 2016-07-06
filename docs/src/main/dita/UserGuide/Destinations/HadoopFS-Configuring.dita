@@ -67,15 +67,19 @@
                                             selected, uses the Kerberos principal and keytab defined
                                             in the <ph
                                                 conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                            /> configuration file. </p></entry>
+                                            /> configuration file,
+                                                <codeph>$SDC_CONF/sdc.properties</codeph>.
+                                        </p></entry>
                                 </row>
                                 <row>
                                     <entry>Hadoop FS Configuration Directory <xref
                                             href="HadoopFS-HadoopProperties-dest.dita">
                                             <image href="../Graphics/icon_moreInfo.png" scale="10"
                                                 id="image_br4_fgs_5r"/></xref></entry>
-                                    <entry>Location of the HDFS configuration files.<p>Use a
-                                            directory or symlink within the <ph
+                                    <entry>Location of the HDFS configuration files.<p>For a
+                                            Cloudera Manager installation, enter
+                                                <codeph>hadoop-conf</codeph>. For all other
+                                            installations, use a directory or symlink within the <ph
                                                 conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
                                             /> resources directory.</p><p>You can use the following
                                             files with the Hadoop FS destination:<ul
@@ -93,6 +97,10 @@
                                             name and value. Use the property names and values as
                                             expected by HDFS.</p></entry>
                                 </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableTables.dita#concept_wfr_rnw_yq/D-CHARSET-file">
+                                    <entry/>
+                                </row>
                             </tbody>
                         </tgroup>
                     </table>
@@ -102,10 +110,10 @@
                 <cmd>On the <wintitle>Output Files</wintitle> tab, configure the following
                     options:</cmd>
                 <info>
-                    <table frame="all" rowsep="1" colsep="1" id="table_byd_xpd_br">
+                    <table frame="all" rowsep="1" colsep="1" id="table_i4x_jh5_sv">
                         <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1.25*"/>
-                            <colspec colname="c2" colnum="2" colwidth="3.25*"/>
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
                             <thead>
                                 <row>
                                     <entry>Output Files Property</entry>
@@ -113,184 +121,109 @@
                                 </row>
                             </thead>
                             <tbody>
-                                <row>
-                                    <entry>File Type</entry>
-                                    <entry>Output file type:<ul id="ul_lgf_j3g_br">
-                                            <li>Text files</li>
-                                            <li>Sequence files</li>
-                                        </ul></entry>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/row-FileType">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/row-DataFormat">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/row-FilePrefix">
+                                    <entry/>
                                 </row>
                                 <row>
-                                    <entry>Data Format</entry>
-                                    <entry>Format of data to be written. Use one of the following
-                                            options:<ul id="ul_un2_cqd_br">
-                                            <li>Text</li>
-                                            <li>JSON</li>
-                                            <li>Delimited</li>
-                                            <li>Avro</li>
-                                        </ul></entry>
-                                </row>
-                                <row>
-                                    <entry>Files Prefix</entry>
-                                    <entry>Prefix to use for output files. Use when writing to a
-                                        directory that receives files from other sources.<p>Uses the
-                                            prefix sdc-${sdc:id()} by default. The prefix evaluates
-                                            to sdc-&lt;Data Collector ID>. </p><p>The Data Collector
-                                            ID is stored in the following file:
-                                                <filepath>&lt;SDCinstalldir>/data/sdc.id</filepath>.
-                                        </p></entry>
-                                </row>
-                                <row>
-                                    <entry>Data Charset</entry>
-                                    <entry>Character encoding to use when writing data. <p>Not used
-                                            for the SDC Record data format.</p></entry>
-                                </row>
-                                <row>
-                                    <entry>Directory Template <xref
-                                            href="HadoopFS-DirectoryTemplates.dita#concept_cvc_skd_br">
+                                    <entry>Directory in Header <xref
+                                            href="HadoopFS-RecordHeaderAttributes.dita">
                                             <image href="../Graphics/icon_moreInfo.png" scale="10"
-                                                id="image_c4p_p5v_yq"/></xref></entry>
-                                    <entry>Template for creating output directories. You can use
-                                        constants, field values, and datetime variables. <p>Output
-                                            directories are created based on the smallest datetime
-                                            variable in the template.</p></entry>
-                                </row>
-                                <row>
-                                    <entry>Data Time Zone</entry>
-                                    <entry>Time zone to use to create directories and evaluate where
-                                        records are written.</entry>
-                                </row>
-                                <row>
-                                    <entry>Time Basis <xref
-                                            href="HadoopFS-TimeBasis.dita#concept_gkz_smd_br">
-                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
-                                            /></xref></entry>
-                                    <entry>Time basis to use for creating output directories and
-                                        writing records to the directories. Use one of the following
-                                            expressions:<ul id="ul_ggs_43g_br">
-                                            <li>${time:now()} - Uses the processing time as the time
-                                                basis. </li>
-                                            <li>${record:value("/&lt;date field>")} - Uses the time
-                                                associated with the record as the time basis.</li>
-                                        </ul></entry>
-                                </row>
-                                <row>
-                                    <entry>Max Records in a File</entry>
-                                    <entry>Maximum number of records to be written to an output
-                                        file. Additional records are written to a new file. <p>Use 0
-                                            to opt out of this property.</p></entry>
-                                </row>
-                                <row>
-                                    <entry>Max File Size (MB)</entry>
-                                    <entry>Maximum size of an output file. Additional records are
-                                        written to a new file. <p>Use 0 to opt out of this
-                                            property.</p></entry>
-                                </row>
-                                <row>
-                                    <entry>Compression Codec</entry>
-                                    <entry>Program to use to compress output files:<ul
-                                            id="ul_ltx_djg_br">
-                                            <li>None </li>
-                                            <li>gzip</li>
-                                            <li>bzip2</li>
-                                            <li>Snappy</li>
-                                            <li>Other - use for LZO or other compression types.
-                                            </li>
-                                        </ul><p>LZO and Snappy compression require additional
-                                            configuration. For more information, see <xref
-                                                href="Compression-Overview.dita#concept_h4y_ycm_xs"
-                                            />.</p></entry>
-                                </row>
-                                <row>
-                                    <entry>Compression Codec Class</entry>
-                                    <entry>Full class name of the other compression codec that you
-                                        want to use. </entry>
-                                </row>
-                                <row>
-                                    <entry>Sequence File Key</entry>
-                                    <entry>Record key for creating Hadoop sequence files. Use one of
-                                        the following options:<ul id="ul_xzr_vkg_br">
-                                            <li>${record:value("/&lt;field name>")}</li>
-                                            <li>${uuid()}</li>
-                                        </ul></entry>
-                                </row>
-                                <row>
-                                    <entry>Compression Type</entry>
-                                    <entry>Compression type for sequence files when using a
-                                        compression codec:<ul id="ul_etm_1lg_br">
-                                            <li>Block Compression</li>
-                                            <li>Record Compression</li>
-                                        </ul></entry>
-                                </row>
-                            </tbody>
-                        </tgroup>
-                    </table>
-                </info>
-            </step>
-            <step>
-                <cmd>On the <wintitle>Late Records</wintitle> tab, configure the following
-                    properties:</cmd>
-                <info>
-                    <note>These properties are only relevant for a time basis based on the time of a
-                        record.</note>
-                    <table frame="all" rowsep="1" colsep="1" id="table_wv3_xzd_br">
-                        <tgroup cols="2">
-                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
-                            <colspec colname="c2" colnum="2" colwidth="3*"/>
-                            <thead>
-                                <row>
-                                    <entry>Late Records Property <xref
-                                            href="HadoopFS-LateRecordHandling.dita#concept_xgm_g4d_br">
-                                            <image href="../Graphics/icon_moreInfo.png" scale="10"/>
-                                        </xref>
+                                                id="image_ydt_vvg_1w"/></xref>
                                     </entry>
-                                    <entry>Description</entry>
+                                    <entry>Indicates that the target directory is defined in record
+                                        headers. Use only when the targetDirectory header attribute
+                                        is defined for all records. </entry>
                                 </row>
-                            </thead>
-                            <tbody>
-                                <row>
-                                    <entry>Late Record Time Limit (secs)</entry>
-                                    <entry>Time limit for output directories to accept data. <p>You
-                                            can enter a time in seconds, or use the expression to
-                                            enter a time in hours. You can also use MINUTES in the
-                                            default expression to define the time in minutes.
-                                        </p></entry>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/row-DirectoryTemplate">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/row-DataTimeZone">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/row-TimeBasis">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/row-MaxRecords">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/row-MaxFileSize">
+                                    <entry/>
                                 </row>
                                 <row>
-                                    <entry>Late Record Handling</entry>
-                                    <entry>Determines how to handle late records:<ul
-                                            id="ul_gx4_c12_br">
-                                            <li>Send to error - Sends the record to the stage for
-                                                error handling. </li>
-                                            <li>Send to late records file - Sends the record to a
-                                                late records file.</li>
-                                        </ul></entry>
-                                </row>
-                                <row>
-                                    <entry>Late Record Directory Template <xref
-                                            href="HadoopFS-DirectoryTemplates.dita#concept_cvc_skd_br">
+                                    <entry>Idle Timeout (secs) <xref
+                                            href="HadoopFS-IdleTimeout.dita">
                                             <image href="../Graphics/icon_moreInfo.png" scale="10"
-                                            /></xref></entry>
-                                    <entry>Template for creating late record directories. You can
-                                        use constants, field values, and datetime variables.
-                                            <p>Output directories are created based on the smallest
-                                            datetime variable in the template.</p></entry>
+                                                id="image_br5_fgs_7r"/></xref>
+                                    </entry>
+                                    <entry
+                                        conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/entry-IdleTimeout"
+                                    />
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/row-CCodec">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/row-CCodecClass">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/row-SequenceFileKey">
+                                    <entry/>
+                                </row>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/row-CompressionType">
+                                    <entry/>
+                                </row>
+                                <row>
+                                    <entry>Use Roll Attribute  <xref
+                                            href="HadoopFS-RecordHeaderAttributes.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_tfb_1ql_gw"/></xref>
+                                    </entry>
+                                    <entry>Checks the record header for the roll header attribute
+                                        and closes the current file when the roll attribute exists. </entry>
+                                </row>
+                                <row>
+                                    <entry>Roll Attribute Name</entry>
+                                    <entry>Name of the roll header attribute.<p>Default is roll, the
+                                            name used by the Hive Metadata processor.</p></entry>
                                 </row>
                             </tbody>
                         </tgroup>
                     </table>
                 </info>
             </step>
-            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/TextProps">
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/FS-LateRecords">
                 <cmd/>
             </step>
-            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/JSONProps">
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/D-AVRO-File">
                 <cmd/>
             </step>
             <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/DelimProps">
                 <cmd/>
             </step>
-            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/D-AVRO-File">
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/JSONProps">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/D-PROTO-props">
+                <cmd/>
+            </step>
+            <step conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/TextProps">
                 <cmd/>
             </step>
         </steps>

@@ -3,84 +3,28 @@
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
-
+  
       http://www.apache.org/licenses/LICENSE-2.0
-
+      
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
-<!DOCTYPE task PUBLIC "-//OASIS//DTD DITA General Task//EN" "generalTask.dtd">
-<task id="task_pnf_344_1r">
-    <title>Installation and Launch (Service Start)</title>
-    <shortdesc>Install the <ph id="pName-long">Data Collector</ph> on the machine to run pipelines.
-        After installation, you can launch the <ph
-            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-        />.</shortdesc>
-    <taskbody>
-        <context><p><indexterm>installation<indexterm>service
-            start</indexterm></indexterm><indexterm>launch the Data
-                Collector<indexterm>service start</indexterm></indexterm>Installing the <ph
-                    conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                /> as a service requires sudo privileges on the root directory.</p>
-            <p>This procedure walks through setting the default directories, but you can
-                alternatively use the <filepath>&lt;SDCinstalldir>/libexec/sdcd-env.sh</filepath>
-                script.</p></context>
-        <steps id="steps_wnx_444_1r">
-            <step>
-                <cmd>Download the StreamSets SDC tarball and extract it to the desired location,
-                    typically /opt/local/.</cmd>
-            </step>
-            <step>
-                <cmd>Copy <filepath>initd/_sdcinitd_prototype</filepath> to the
-                        <filepath>/etc/init.d/</filepath> directory as sdc.</cmd>
-            </step>
-            <step>
-                <cmd>Edit the sdc file and set the SDC_DIST and SDC_HOME environment variable to the
-                    location where you extracted the SDC tarball.</cmd>
-            </step>
-            <step>
-                <cmd>Use the following command to make the sdc file executable:</cmd>
-                <info>
-                    <codeblock>$ sudo chmod 755 /etc/init.d/sdc</codeblock>
-                </info>
-            </step>
-            <step>
-                <cmd>Create a system user and group to run the <ph
-                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                    />. </cmd>
-                <info>The default user and group are sdc/sdc.</info>
-            </step>
-            <step>
-                <cmd>Create the /etc/sdc directory and copy all files from etc into this
-                    directory.</cmd>
-            </step>
-            <step>
-                <cmd>Create the SDC log directory at /var/log/sdc and change the owner to
-                    sdc:sdc.</cmd>
-            </step>
-            <step>
-                <cmd>Create the SDC data directory at /var/lib/sdc and change the owner to
-                    sdc:sdc.</cmd>
-            </step>
-            <step>
-                <cmd>Create the SDC data directory at /var/lib/sdc-resources and change the owner to
-                    sdc:sdc.</cmd>
-            </step>
-            <step>
-                <cmd>To start the <ph
-                        conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                    /> as a service, use the following command: </cmd>
-                <info>
-                    <codeblock>$ service sdc start  </codeblock>
-                    <p>For CentOS, use the following
-                        command:<codeblock>$ chkconfig --add sdc</codeblock></p>
-                    <p>For Ubuntu, use the following
-                        command:<codeblock>$ update-rc.d sdc defaults 97 03</codeblock></p>
-                </info>
-            </step>
-        </steps>
-    </taskbody>
-</task>
+<!DOCTYPE concept PUBLIC "-//OASIS//DTD DITA Concept//EN" "concept.dtd">
+<concept id="concept_vq4_5tr_kv">
+ <title>Full Installation and Launch (Service Start)</title>
+ <conbody>
+     <p><indexterm>installation<indexterm>service start</indexterm></indexterm><indexterm>launch
+                Data Collector<indexterm>service start</indexterm></indexterm>To install the full
+                <ph conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+            /> as a service, you can download the <ph
+                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/>
+            RPM package or the <ph
+                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/>
+            tarball. Installing the full <ph
+                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"/> as
+            a service requires sudo privileges on the root directory.</p>
+ </conbody>
+</concept>

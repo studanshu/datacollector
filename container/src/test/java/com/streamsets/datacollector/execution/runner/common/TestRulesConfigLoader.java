@@ -20,6 +20,7 @@
 package com.streamsets.datacollector.execution.runner.common;
 
 import com.streamsets.datacollector.config.DataRuleDefinition;
+import com.streamsets.datacollector.config.DriftRuleDefinition;
 import com.streamsets.datacollector.config.MetricsRuleDefinition;
 import com.streamsets.datacollector.config.RuleDefinitions;
 import com.streamsets.datacollector.config.ThresholdType;
@@ -51,6 +52,7 @@ public class TestRulesConfigLoader {
 
   /*must be static and initialized in before class other wise an attempt to recreate a pipeline will fail*/
   private static PipelineStoreTask pipelineStoreTask;
+  private static Configuration configuration;
   private ProductionObserver observer;
   private BlockingQueue<Object> productionObserveRequests;
 
@@ -62,6 +64,7 @@ public class TestRulesConfigLoader {
     TestUtil.captureStagesForProductionRun();
     ObjectGraph g = ObjectGraph.create(TestUtil.TestPipelineStoreModuleNew.class);
     pipelineStoreTask = g.get(PipelineStoreTask.class);
+    configuration = g.get(Configuration.class);
   }
 
   @AfterClass
@@ -78,8 +81,12 @@ public class TestRulesConfigLoader {
 
   @Test
   public void testRulesConfigLoader() throws PipelineStoreException, InterruptedException {
-    RulesConfigLoader rulesConfigLoader = new RulesConfigLoader(TestUtil.MY_PIPELINE, TestUtil.PIPELINE_REV,
-      pipelineStoreTask);
+    RulesConfigLoader rulesConfigLoader = new RulesConfigLoader(
+        TestUtil.MY_PIPELINE,
+        TestUtil.PIPELINE_REV,
+        pipelineStoreTask,
+        configuration
+    );
     RuleDefinitions ruleDefinitions = rulesConfigLoader.load(observer);
     observer.reconfigure();
     Assert.assertEquals(1, productionObserveRequests.size());
@@ -88,22 +95,36 @@ public class TestRulesConfigLoader {
 
   @Test
   public void testRulesConfigLoaderWithPreviousConfiguration() throws PipelineStoreException, InterruptedException {
-    RulesConfigLoader rulesConfigLoader = new RulesConfigLoader(TestUtil.MY_PIPELINE, TestUtil.PIPELINE_REV,
-      pipelineStoreTask);
-
+    RulesConfigLoader rulesConfigLoader = new RulesConfigLoader(
+        TestUtil.MY_PIPELINE,
+        TestUtil.PIPELINE_REV,
+        pipelineStoreTask,
+        configuration
+    );
+    long timestamp = System.currentTimeMillis();
     //create a DataRuleDefinition for one of the stages
     DataRuleDefinition dataRuleDefinition = new DataRuleDefinition("myID", "myLabel", "p", 20, 10,
-      "${record:value(\"/\")==4}", true, "alertText", ThresholdType.COUNT, "20", 100, true, false, true);
+      "${record:value(\"/\")==4}", true, "alertText", ThresholdType.COUNT, "20", 100, true, false, true,
+      timestamp);
     DataRuleDefinition dataRuleDefinition2 = new DataRuleDefinition("myID2", "myLabel", "p", 20, 10,
-      "${record:value(\"/\")==4}", true, "alertText", ThresholdType.COUNT, "20", 100, true, false, true);
+      "${record:value(\"/\")==4}", true, "alertText", ThresholdType.COUNT, "20", 100, true, false, true,
+      timestamp);
     List<DataRuleDefinition> dataRuleDefinitions = new ArrayList<>();
 
     dataRuleDefinitions.add(dataRuleDefinition);
     dataRuleDefinitions.add(dataRuleDefinition2);
+
+    DriftRuleDefinition driftRuleDefinition = new DriftRuleDefinition("myDriftID", "myDriftLabel", "p", 20, 10,
+        "${record:value(\"/\")==4}", true, "alertText", true, false, true, timestamp);
+    List<DriftRuleDefinition> driftRuleDefinitions = new ArrayList<>();
+
+    driftRuleDefinitions.add(driftRuleDefinition);
+
     RuleDefinitions prevRuleDef = new RuleDefinitions(Collections.<MetricsRuleDefinition>emptyList(),
-      dataRuleDefinitions, Collections.<String>emptyList(), UUID.randomUUID());
+      dataRuleDefinitions, driftRuleDefinitions, Collections.<String>emptyList(),
+        UUID.randomUUID());
     //The latest rule definition has just one data rule definition.
-    //The old one had 2
+    //The old one had 2 data and 1 drift rule
     //Also there is a change in the condition of the data rule definition
     rulesConfigLoader.setPreviousRuleDefinitions(prevRuleDef);
 
@@ -113,7 +134,7 @@ public class TestRulesConfigLoader {
     Assert.assertEquals(1, productionObserveRequests.size());
     RulesConfigurationChangeRequest rulesConfigurationChangeRequest = (RulesConfigurationChangeRequest) productionObserveRequests.take();
     Assert.assertNotNull(rulesConfigurationChangeRequest);
-    Assert.assertEquals(2, rulesConfigurationChangeRequest.getRulesToRemove().size());
+    Assert.assertEquals(3, rulesConfigurationChangeRequest.getRulesToRemove().size());
   }
 
 }
