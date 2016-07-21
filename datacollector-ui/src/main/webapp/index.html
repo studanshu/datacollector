@@ -188,13 +188,19 @@
               </a>
             </li>
 
-            <li ng-if="isAuthorized([userRoles.admin]) && !common.remoteServerInfo.registrationStatus">
+            <!--li ng-if="isAuthorized([userRoles.admin]) && !common.remoteServerInfo.registrationStatus">
               <a href="javascript:;" ng-click="common.onEnableDPMClick()">
                 <i class="fa fa-file-text"></i>
                 <span translate="global.menu.admin.enableDPM">Enable DPM</span>
               </a>
-            </li>
+            </li-->
 
+            <li ng-if="isAuthorized([userRoles.admin]) && common.remoteServerInfo.registrationStatus">
+              <a href="javascript:;" ng-click="common.onDisableDPMClick()">
+                <i class="fa fa-file-text"></i>
+                <span translate="global.menu.admin.disableDPM">Disable DPM</span>
+              </a>
+            </li>
 
             <li ng-if="common.userName && isAuthorized([userRoles.admin]) && !common.isSlaveNode">
               <a href="javascript:;" ng-click="common.shutdownCollector()">

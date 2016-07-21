@@ -197,7 +197,7 @@ public class ScriptObjectFactory {
     } else if (scriptObject instanceof Double) {
       field = Field.create((Double) scriptObject);
     } else if (scriptObject instanceof Date) {
-      field = Field.createDate((Date) scriptObject);
+      field = Field.createDatetime((Date) scriptObject);
     } else if (scriptObject instanceof BigDecimal) {
       field = Field.create((BigDecimal) scriptObject);
     } else if (scriptObject instanceof String) {
@@ -205,7 +205,11 @@ public class ScriptObjectFactory {
     } else if (scriptObject instanceof byte[]) {
       field = Field.create((byte[]) scriptObject);
     } else {
-      field = Field.create(scriptObject.toString());
+      field = ScriptTypedNullObject.getTypedNullFieldFromScript(scriptObject);
+      if (field == null) {
+        // unable to find field type from scriptObject. Return null String.
+        field = Field.create(scriptObject.toString());
+      }
     }
     return field;
   }

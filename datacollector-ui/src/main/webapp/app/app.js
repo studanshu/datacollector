@@ -51,15 +51,9 @@ angular.module('dataCollectorApp')
     uiSelectConfig.theme = 'bootstrap';
 
     //Reload the page when the server is down.
-    $httpProvider.interceptors.push(function($q) {
+    $httpProvider.interceptors.push(function($q, $rootScope) {
       return {
         response: function(response) {
-          if(response && response.data && typeof response.data.indexOf == 'function' &&
-            response.data.indexOf('container login-container') !== -1) {
-            //Return response is login.html page content due to invalid session
-            //window.location.reload();
-            return;
-          }
           return response;
         },
         responseError: function(rejection) {
@@ -72,8 +66,9 @@ angular.module('dataCollectorApp')
             if (rejection.config && rejection.config.headers && rejection.config.headers['X-SS-User-Auth-Token']) {
               rejection.data = 'Failed to connect to Remote Service';
             } else {
-              window.location.reload();
-              return;
+              // window.location.reload();
+              $rootScope.common.openConnectionLostModal();
+              rejection.data = 'Connection to server lost';
             }
           }
           return $q.reject(rejection);
@@ -89,28 +84,30 @@ angular.module('dataCollectorApp')
     AnalyticsProvider.delayScriptTag(true);
 
   })
-  .run(function ($location, $rootScope, $modal, api, pipelineConstant, $localStorage, contextHelpService,
+  .run(function ($location, $rootScope, $modal, api, pipelineConstant, $localStorage, contextHelpService, $modalStack,
                  $timeout, $translate, authService, userRoles, configuration, Analytics, $q, editableOptions, $http) {
 
-    var defaultTitle = 'StreamSets Data Collector',
-      pipelineStatusTimer,
-      alertsTimer,
-      isWebSocketSupported,
-      loc = window.location,
-      httpBaseURL = ((loc.protocol === "https:") ? "https://" : "http://") + loc.hostname + (loc.port ? ":" + loc.port : ""),
-      bases = document.getElementsByTagName('base'),
-      baseHref = (bases.length > 0) ? (bases[0].href).replace(httpBaseURL, '') : '/',
-      webSocketBaseURL = ((loc.protocol === "https:") ?
-          "wss://" : "ws://") + loc.hostname + (((loc.protocol === "http:" && loc.port == 80) || (loc.protocol === "https:" && loc.port == 443)) ? "" : ":" + loc.port) + baseHref,
-      BACKSPACE_KEY = 8,
-      DELETE_KEY = 46,
-      Z_KEY = 90,
-      Y_KEY = 89,
-      destroyed = false,
-      webSocketStatusURL = webSocketBaseURL + 'rest/v1/webSocket?type=status',
-      statusWebSocket,
-      webSocketAlertsURL = webSocketBaseURL + 'rest/v1/webSocket?type=alerts',
-      alertsWebSocket;
+    var defaultTitle = 'StreamSets Data Collector';
+    var pipelineStatusTimer;
+    var alertsTimer;
+    var isWebSocketSupported;
+    var loc = window.location;
+    var httpBaseURL = ((loc.protocol === "https:") ? "https://" : "http://") + loc.hostname + (loc.port ? ":" + loc.port : "");
+    var bases = document.getElementsByTagName('base');
+    var baseHref = (bases.length > 0) ? (bases[0].href).replace(httpBaseURL, '') : '/';
+    var webSocketBaseURL = ((loc.protocol === "https:") ?
+        "wss://" : "ws://") + loc.hostname + (((loc.protocol === "http:" && loc.port == 80) || (loc.protocol === "https:" && loc.port == 443)) ? "" : ":" + loc.port) + baseHref;
+    var BACKSPACE_KEY = 8;
+    var DELETE_KEY = 46;
+    var D_KEY = 68;
+    var Z_KEY = 90;
+    var Y_KEY = 89;
+    var destroyed = false;
+    var webSocketStatusURL = webSocketBaseURL + 'rest/v1/webSocket?type=status';
+    var statusWebSocket;
+    var webSocketAlertsURL = webSocketBaseURL + 'rest/v1/webSocket?type=alerts';
+    var alertsWebSocket;
+    var isConnectionLostModalDisplayed;
 
     editableOptions.theme = 'bs3';
 
@@ -176,9 +173,35 @@ angular.module('dataCollectorApp')
             return;
           }
 
+          if ($rootScope.common.remoteServerInfo.registrationStatus) {
+            $translate('home.enableDPM.alreadyEnabledMsg').then(function(translation) {
+              $rootScope.common.errors = [translation];
+            });
+            return;
+          }
+
           $modal.open({
             templateUrl: 'common/administration/enableDPM/enableDPM.tpl.html',
             controller: 'EnableDPMModalInstanceController',
+            size: '',
+            backdrop: 'static'
+          });
+        },
+
+        /**
+         * Open the Disable DPM Modal Dialog
+         */
+        onDisableDPMClick: function() {
+          if (configuration.isManagedByClouderaManager()) {
+            $translate('home.enableDPM.isManagedByClouderaManager').then(function(translation) {
+              $rootScope.common.errors = [translation];
+            });
+            return;
+          }
+
+          $modal.open({
+            templateUrl: 'common/administration/disableDPM/disableDPM.tpl.html',
+            controller: 'DisableDPMModalInstanceController',
             size: '',
             backdrop: 'static'
           });
@@ -293,6 +316,10 @@ angular.module('dataCollectorApp')
             //UNDO Operation
             $rootScope.$broadcast('bodyUndoKeyPressed');
           }
+
+          if ($event.ctrlKey && $event.altKey && $event.keyCode === D_KEY) {
+            $rootScope.common.onEnableDPMClick();
+          }
         },
 
         /**
@@ -352,6 +379,24 @@ angular.module('dataCollectorApp')
 
         ignoreCodeMirrorEnterKey: function() {
           //console.log('onCodeMirrorEnterKey');
+        },
+
+        openConnectionLostModal: function () {
+          if (!isConnectionLostModalDisplayed) {
+            isConnectionLostModalDisplayed = true;
+            $modalStack.dismissAll();
+            $modal.open({
+              templateUrl: 'common/administration/connectionLost/connectionLost.tpl.html',
+              controller: 'ConnectionLostModalInstanceController',
+              size: '',
+              backdrop: 'static',
+              keyboard: false
+            });
+          }
+        },
+
+        closeConnectionLostModal: function() {
+          isConnectionLostModalDisplayed = false;
         }
       };
 

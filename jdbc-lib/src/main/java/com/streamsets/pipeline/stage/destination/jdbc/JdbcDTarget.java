@@ -34,6 +34,7 @@ import com.streamsets.pipeline.lib.el.TimeEL;
 import com.streamsets.pipeline.lib.el.TimeNowEL;
 import com.streamsets.pipeline.lib.jdbc.ChangeLogFormat;
 import com.streamsets.pipeline.lib.jdbc.HikariPoolConfigBean;
+import com.streamsets.pipeline.lib.jdbc.JdbcFieldColumnParamMapping;
 
 import java.util.List;
 
@@ -74,7 +75,7 @@ public class JdbcDTarget extends DTarget {
       group = "JDBC"
   )
   @ListBeanModel
-  public List<JdbcFieldMappingConfig> columnNames;
+  public List<JdbcFieldColumnParamMapping> columnNames;
 
   @ConfigDef(
       required = false,

@@ -21,6 +21,7 @@ package com.streamsets.pipeline.stage.destination.http;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Stopwatch;
+import com.streamsets.datacollector.http.SnappyWriterInterceptor;
 import com.streamsets.datacollector.json.ObjectMapperFactory;
 import com.streamsets.datacollector.restapi.bean.MetricRegistryJson;
 import com.streamsets.datacollector.restapi.bean.SDCMetricsJson;
@@ -36,7 +37,6 @@ import com.streamsets.pipeline.api.impl.Utils;
 import com.streamsets.pipeline.stage.common.DefaultErrorRecordHandler;
 import com.streamsets.pipeline.stage.common.ErrorRecordHandler;
 import org.glassfish.jersey.client.filter.CsrfProtectionFilter;
-import org.glassfish.jersey.message.GZipEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,6 +74,7 @@ public class HttpTarget extends BaseTarget implements OffsetCommitTrigger {
   private final String pipelineCommitId;
   private final String jobId;
   private final int waitTimeBetweenUpdates;
+  private final boolean compressRequests;
   private final Map<String, Record> sdcIdToRecordMap;
 
   private Client client;
@@ -88,7 +89,8 @@ public class HttpTarget extends BaseTarget implements OffsetCommitTrigger {
       String appComponentId,
       String pipelineCommitId,
       String jobId,
-      int waitTimeBetweenUpdates
+      int waitTimeBetweenUpdates,
+      boolean compressRequests
   ) {
     this.targetUrl = targetUrl;
     this.sdcAuthToken = authToken;
@@ -96,6 +98,7 @@ public class HttpTarget extends BaseTarget implements OffsetCommitTrigger {
     this.pipelineCommitId = pipelineCommitId;
     this.jobId = jobId;
     this.waitTimeBetweenUpdates = waitTimeBetweenUpdates;
+    this.compressRequests = compressRequests;
     sdcIdToRecordMap = new LinkedHashMap<>();
   }
 
@@ -125,7 +128,9 @@ public class HttpTarget extends BaseTarget implements OffsetCommitTrigger {
     super.init();
     client = ClientBuilder.newBuilder().build();
     client.register(new CsrfProtectionFilter("CSRF"));
-    client.register(GZipEncoder.class);
+    if (compressRequests) {
+      client.register(SnappyWriterInterceptor.class);
+    }
     target = client.target(targetUrl);
     stopwatch = Stopwatch.createStarted();
     errorRecordHandler = new DefaultErrorRecordHandler(getContext());
@@ -215,5 +220,4 @@ public class HttpTarget extends BaseTarget implements OffsetCommitTrigger {
       sdcIdToRecordMap.put(record.get("/" + AggregatorUtil.SDC_ID).getValueAsString(), record);
     }
   }
-
 }

@@ -28,6 +28,7 @@ import com.streamsets.datacollector.creation.PipelineConfigBean;
 import com.streamsets.datacollector.definition.StageDefinitionExtractor;
 import com.streamsets.datacollector.definition.StageLibraryDefinitionExtractor;
 import com.streamsets.datacollector.stagelibrary.StageLibraryTask;
+import com.streamsets.datacollector.store.PipelineStoreTask;
 import com.streamsets.datacollector.validation.Issue;
 import com.streamsets.pipeline.api.BatchMaker;
 import com.streamsets.pipeline.api.Config;
@@ -41,6 +42,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import javax.validation.constraints.AssertTrue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -107,7 +109,7 @@ public class TestPipelineConfigurationUpgrader {
 
     StageConfiguration stageConf = new StageConfiguration("i", SOURCE2_V1_DEF.getLibrary(), SOURCE2_V1_DEF.getName(),
                                                           SOURCE2_V1_DEF.getVersion(), Collections.EMPTY_LIST, null,
-                                                          null, null);
+                                                          null, null, null);
     // no upgrade
     List<Issue> issues = new ArrayList<>();
     Assert.assertFalse(up.needsUpgrade(SOURCE2_V1_DEF, stageConf, issues));
@@ -118,7 +120,7 @@ public class TestPipelineConfigurationUpgrader {
     Assert.assertTrue(issues.isEmpty());
 
     stageConf = new StageConfiguration("i", SOURCE2_V1_DEF.getLibrary(), SOURCE2_V1_DEF.getName(),
-                                       SOURCE2_V2_DEF.getVersion(), Collections.EMPTY_LIST, null, null, null);
+                                       SOURCE2_V2_DEF.getVersion(), Collections.EMPTY_LIST, null, null, null, null);
 
     // null def
     Assert.assertFalse(up.needsUpgrade(null, stageConf, issues));
@@ -177,7 +179,7 @@ public class TestPipelineConfigurationUpgrader {
 
     StageConfiguration stageConf = new StageConfiguration("i", SOURCE2_V1_DEF.getLibrary(), SOURCE2_V1_DEF.getName(),
                                                           SOURCE2_V1_DEF.getVersion(), Collections.EMPTY_LIST, null,
-                                                          null, null);
+                                                          null, null, null);
 
     PipelineConfiguration pipelineConf = new PipelineConfiguration(1, PipelineConfigBean.VERSION, UUID.randomUUID(),
                                                                    null, Collections.EMPTY_LIST, null,
@@ -193,7 +195,7 @@ public class TestPipelineConfigurationUpgrader {
 
     // invalid downgrade
     stageConf = new StageConfiguration("i", SOURCE2_V1_DEF.getLibrary(), SOURCE2_V1_DEF.getName(),
-                                       SOURCE2_V2_DEF.getVersion(), Collections.EMPTY_LIST, null, null, null);
+                                       SOURCE2_V2_DEF.getVersion(), Collections.EMPTY_LIST, null, null, null, null);
     pipelineConf = new PipelineConfiguration(1, PipelineConfigBean.VERSION, UUID.randomUUID(),
                                              null, Collections.EMPTY_LIST, null,
                                              Collections.EMPTY_LIST, stageConf, null);
@@ -207,7 +209,7 @@ public class TestPipelineConfigurationUpgrader {
 
     StageConfiguration stageConf = new StageConfiguration("i", SOURCE2_V1_DEF.getLibrary(), SOURCE2_V1_DEF.getName(),
                                                           SOURCE2_V1_DEF.getVersion(), Collections.EMPTY_LIST, null,
-                                                          null, null);
+                                                          null, null, null);
 
     PipelineConfiguration pipelineConf = new PipelineConfiguration(1, PipelineConfigBean.VERSION, UUID.randomUUID(),
                                                                    null, Collections.EMPTY_LIST, null,
@@ -223,7 +225,7 @@ public class TestPipelineConfigurationUpgrader {
 
     // invalid downgrade
     stageConf = new StageConfiguration("i", SOURCE2_V1_DEF.getLibrary(), SOURCE2_V1_DEF.getName(),
-                                       SOURCE2_V2_DEF.getVersion(), Collections.EMPTY_LIST, null, null, null);
+                                       SOURCE2_V2_DEF.getVersion(), Collections.EMPTY_LIST, null, null, null, null);
     pipelineConf = new PipelineConfiguration(1, PipelineConfigBean.VERSION, UUID.randomUUID(),
                                              null, Collections.EMPTY_LIST, null,
                                              ImmutableList.of(stageConf), null, null);
@@ -238,7 +240,7 @@ public class TestPipelineConfigurationUpgrader {
 
     StageConfiguration stageConf = new StageConfiguration("i", SOURCE2_V1_DEF.getLibrary(), SOURCE2_V1_DEF.getName(),
                                                           SOURCE2_V1_DEF.getVersion(), Collections.EMPTY_LIST, null,
-                                                          null, null);
+                                                          null, null, null);
     List<Issue> issues = new ArrayList<>();
 
     Assert.assertTrue(up.needsUpgrade(SOURCE2_V2_DEF, stageConf, issues));
@@ -255,15 +257,15 @@ public class TestPipelineConfigurationUpgrader {
   private PipelineConfiguration getPipelineUpToDate() {
     StageConfiguration stageConf1 = new StageConfiguration("i1", SOURCE2_V1_DEF.getLibrary(), SOURCE2_V1_DEF.getName(),
                                                            SOURCE2_V2_DEF.getVersion(), Collections.EMPTY_LIST, null,
-                                                           null, null);
+                                                           null, null, null);
 
     StageConfiguration stageConf2 = new StageConfiguration("i2", SOURCE2_V1_DEF.getLibrary(), SOURCE2_V1_DEF.getName(),
                                                            SOURCE2_V2_DEF.getVersion(), Collections.EMPTY_LIST, null,
-                                                           null, null);
+                                                           null, null, null);
 
     StageConfiguration errorConf = new StageConfiguration("e", SOURCE2_V1_DEF.getLibrary(), SOURCE2_V1_DEF.getName(),
                                                           SOURCE2_V2_DEF.getVersion(), Collections.EMPTY_LIST, null,
-                                                          null, null);
+                                                          null, null, null);
 
     return new PipelineConfiguration(1, PipelineConfigBean.VERSION, UUID.randomUUID(), null, Collections.EMPTY_LIST,
                                      null, ImmutableList.of(stageConf1, stageConf2), errorConf, null);
@@ -272,15 +274,15 @@ public class TestPipelineConfigurationUpgrader {
   private PipelineConfiguration getPipelineToUpgrade() {
     StageConfiguration stageConf1 = new StageConfiguration("i1", SOURCE2_V1_DEF.getLibrary(), SOURCE2_V1_DEF.getName(),
                                                            SOURCE2_V2_DEF.getVersion(), Collections.EMPTY_LIST, null,
-                                                           Collections.EMPTY_LIST, null);
+                                                           Collections.EMPTY_LIST, null, null);
 
     StageConfiguration stageConf2 = new StageConfiguration("i2", SOURCE2_V1_DEF.getLibrary(), SOURCE2_V1_DEF.getName(),
                                                            SOURCE2_V1_DEF.getVersion(), Collections.EMPTY_LIST, null,
-                                                           Collections.EMPTY_LIST, null);
+                                                           Collections.EMPTY_LIST, null, null);
 
     StageConfiguration errorConf = new StageConfiguration("e", SOURCE2_V1_DEF.getLibrary(), SOURCE2_V1_DEF.getName(),
                                                           SOURCE2_V1_DEF.getVersion(), Collections.EMPTY_LIST, null,
-                                                          Collections.EMPTY_LIST, null);
+                                                          Collections.EMPTY_LIST, null, null);
 
     return new PipelineConfiguration(1, PipelineConfigBean.VERSION, UUID.randomUUID(), null, Collections.EMPTY_LIST,
                                      null, ImmutableList.of(stageConf1, stageConf2), errorConf, null);
@@ -327,6 +329,7 @@ public class TestPipelineConfigurationUpgrader {
 
     Assert.assertNotNull(pipelineConf);
     Assert.assertTrue(issues.isEmpty());
+    Assert.assertEquals(PipelineStoreTask.SCHEMA_VERSION, pipelineConf.getSchemaVersion());
     Assert.assertEquals(SOURCE2_V2_DEF.getVersion(), pipelineConf.getErrorStage().getStageVersion());
     Assert.assertEquals(SOURCE2_V2_DEF.getVersion(), pipelineConf.getStages().get(0).getStageVersion());
     Assert.assertEquals(SOURCE2_V2_DEF.getVersion(), pipelineConf.getStages().get(1).getStageVersion());
@@ -341,13 +344,25 @@ public class TestPipelineConfigurationUpgrader {
   }
 
   @Test
-  public void testUpgradeIfNecessaryPipelineNoNeedTo() throws Exception {
-    PipelineConfigurationUpgrader up = PipelineConfigurationUpgrader.get();
+  public void testUpgradeSchemaVersion1to2() throws Exception {
+    PipelineConfiguration pipelineConf = getPipelineToUpgrade();
+    PipelineConfigurationUpgrader up = getPipelineV2Upgrader();
 
     List<Issue> issues = new ArrayList<>();
-    PipelineConfiguration pipelineConf = getPipelineToUpgrade();
-    PipelineConfiguration pipelineConf2 = up.upgradeIfNecessary(getLibrary(SOURCE2_V2_DEF), pipelineConf, issues);
-    Assert.assertSame(pipelineConf, pipelineConf2);
+    pipelineConf = up.upgradeIfNecessary(getLibrary(SOURCE2_V2_DEF), pipelineConf, issues);
+
+    Assert.assertNotNull(pipelineConf);
+    Assert.assertTrue(issues.isEmpty());
+    Assert.assertEquals(PipelineStoreTask.SCHEMA_VERSION, pipelineConf.getSchemaVersion());
+    Assert.assertEquals(2, pipelineConf.getStages().size());
+
+    for(StageConfiguration stage : pipelineConf.getStages()) {
+      Assert.assertNotNull(stage.getEventLanes());
+      Assert.assertEquals(0, stage.getEventLanes().size());
+    }
+
+    Assert.assertNotNull(pipelineConf.getErrorStage().getEventLanes());
+    Assert.assertEquals(0, pipelineConf.getErrorStage().getEventLanes().size());
   }
 
 }

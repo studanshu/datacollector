@@ -19,6 +19,7 @@
  */
 package com.streamsets.pipeline.stage.origin.ipctokafka;
 
+import com.streamsets.datacollector.el.VaultEL;
 import com.streamsets.pipeline.api.ConfigDef;
 import com.streamsets.pipeline.api.Stage;
 
@@ -39,7 +40,7 @@ public class RpcConfigs {
       required = true,
       type = ConfigDef.Type.NUMBER,
       defaultValue = "20000",
-      label = "SDC RPC to Kafka Listening Port",
+      label = "RPC Listening Port",
       description = "Port number to listen for data. Must match one of the port numbers used by the SDC RPC destination of the origin pipeline.",
       displayPosition = 10,
       group = "RPC",
@@ -52,8 +53,8 @@ public class RpcConfigs {
       required = true,
       type = ConfigDef.Type.NUMBER,
       defaultValue = "10",
-      label = "Maximum Concurrent Requests",
-      description = "",
+      label = "Max Concurrent Requests",
+      description = "Maximum number of concurrent requests allowed by the origin. Configure based on the number of incoming pipelines, volume of data, and Data Collector resources.",
       displayPosition = 15,
       group = "RPC",
       min = 1,
@@ -64,9 +65,10 @@ public class RpcConfigs {
   @ConfigDef(
       required = true,
       type = ConfigDef.Type.STRING,
-      label = "SDC RPC ID",
-      description = "User-defined ID. Must match the SDC RPC ID used by the SDC RPC destination of the origin pipeline.",
+      label = "RPC ID",
+      description = "User-defined ID. Must match the RPC ID used by the RPC destination of the origin pipeline.",
       displayPosition = 20,
+      elDefs = VaultEL.class,
       group = "RPC"
   )
   public String appId;
@@ -75,8 +77,8 @@ public class RpcConfigs {
       required = true,
       type = ConfigDef.Type.NUMBER,
       defaultValue = "100",
-      label = "Max RPC request Size (MB)",
-      description = "",
+      label = "Max Batch Request Size (MB)",
+      description = "Maximum batch request size in MB. This is the maximum size of data that can be transferred in one RPC call.",
       displayPosition = 30,
       group = "RPC",
       min = 1,
@@ -114,6 +116,7 @@ public class RpcConfigs {
       defaultValue = "",
       label = "Keystore Password",
       displayPosition = 60,
+      elDefs = VaultEL.class,
       group = "RPC",
       dependsOn = "sslEnabled",
       triggeredByValue = "true"

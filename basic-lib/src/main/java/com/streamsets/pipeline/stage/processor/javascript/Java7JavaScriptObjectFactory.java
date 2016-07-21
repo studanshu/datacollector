@@ -26,6 +26,8 @@ import javax.script.ScriptEngine;
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
+
+import com.streamsets.pipeline.stage.processor.scripting.ScriptTypedNullObject;
 import sun.org.mozilla.javascript.internal.NativeObject;
 import sun.org.mozilla.javascript.internal.NativeArray;
 
@@ -83,7 +85,7 @@ public class Java7JavaScriptObjectFactory extends ScriptObjectFactory {
     } else if (scriptObject instanceof Double) {
       field = Field.create((Double) scriptObject);
     } else if (scriptObject instanceof Date) {
-      field = Field.createDate((Date) scriptObject);
+      field = Field.createDatetime((Date) scriptObject);
     } else if (scriptObject instanceof BigDecimal) {
       field = Field.create((BigDecimal) scriptObject);
     } else if (scriptObject instanceof String) {
@@ -91,7 +93,11 @@ public class Java7JavaScriptObjectFactory extends ScriptObjectFactory {
     } else if (scriptObject instanceof byte[]) {
       field = Field.create((byte[]) scriptObject);
     } else {
-      field = Field.create(scriptObject.toString());
+      field = ScriptTypedNullObject.getTypedNullFieldFromScript(scriptObject);
+      if (field == null) {
+        // unable to find field type from scriptObject. Return null String.
+        field = Field.create(scriptObject.toString());
+      }
     }
     return field;
   }

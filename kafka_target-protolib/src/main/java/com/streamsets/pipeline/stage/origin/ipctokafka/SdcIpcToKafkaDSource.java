@@ -80,13 +80,13 @@ public class SdcIpcToKafkaDSource extends DSourceOffsetCommitter {
   @ConfigDef(
     required = true,
     type = ConfigDef.Type.NUMBER,
-    defaultValue = "1",
+    defaultValue = "900",
     label = "Max Message Size (KB)",
-    description = "",
+    description = "Maximum size of the message written to Kafka. Configure in relationship to Max Batch Request Size and the maximum message size configured in Kafka. ",
     displayPosition = 30,
     group = "KAFKA",
     min = 1,
-    max = 100
+    max = 10000
   )
   public int kafkaMaxMessageSize;
 

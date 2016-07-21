@@ -33,6 +33,7 @@ import com.streamsets.datacollector.el.ELVariables;
 import com.streamsets.datacollector.email.EmailException;
 import com.streamsets.datacollector.email.EmailSender;
 import com.streamsets.datacollector.metrics.MetricsConfigurator;
+import com.streamsets.datacollector.record.EventRecordImpl;
 import com.streamsets.datacollector.record.RecordImpl;
 import com.streamsets.datacollector.record.io.RecordWriterReaderFactory;
 import com.streamsets.datacollector.util.ContainerError;
@@ -43,6 +44,7 @@ import com.streamsets.pipeline.api.ExecutionMode;
 import com.streamsets.pipeline.api.OnRecordError;
 import com.streamsets.pipeline.api.Processor;
 import com.streamsets.pipeline.api.Record;
+import com.streamsets.pipeline.api.EventRecord;
 import com.streamsets.pipeline.api.Source;
 import com.streamsets.pipeline.api.Stage;
 import com.streamsets.pipeline.api.StageException;
@@ -375,6 +377,16 @@ public class StageContext implements Source.Context, Target.Context, Processor.C
   @Override
   public boolean isStopped() {
     return stop;
+  }
+
+  @Override
+  public EventRecord createEventRecord(String type, int version) {
+    return new EventRecordImpl(type, version, instanceName, Utils.format("event:{}:{}:{}:{}", type, version, instanceName, System.currentTimeMillis()), null, null);
+  }
+
+  @Override
+  public void toEvent(EventRecord record) {
+    // Stub to be implemented as part of SDC-3421
   }
 
   public void setStop(boolean stop) {

@@ -475,6 +475,64 @@
             </step>
             <step>
                 <cmd>
+                    <draft-comment author="Loretta"><uicontrol>O-Datagram</uicontrol> - just Kafka
+                        Consumer right now.</draft-comment>
+                </cmd>
+            </step>
+            <step id="O-Datagram">
+                <cmd>For datagram data, on the <wintitle>Datagram</wintitle> tab, configure the
+                    following properties:</cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_qrx_zqz_pw">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Datagram Properties</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row
+                                    conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/row-UDPdataformat">
+                                    <entry/>
+                                </row>
+                                <row>
+                                    <entry
+                                        conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/entry-TypesDBname"/>
+                                    <entry><ph
+                                            conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/ph-TypesDBinfo"
+                                            /><p>For collectd data only.</p></entry>
+                                </row>
+                                <row>
+                                    <entry
+                                        conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/entry-HiRestitle"/>
+                                    <entry><ph
+                                            conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/ph-HiResinfo"
+                                            /><p>For collectd data only.</p></entry>
+                                </row>
+                                <row>
+                                    <entry
+                                        conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/entry-Exludename"/>
+                                    <entry><ph
+                                            conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/ph-Excludeinfo"
+                                            /><p>For collectd data only.</p></entry>
+                                </row>
+                                <row>
+                                    <entry
+                                        conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/entry-Authname"/>
+                                    <entry><ph
+                                            conref="../Reusable_Content/ReusableSteps.dita#task_kzs_5vz_sq/ph-Authinfo"
+                                            /><p>For collectd data only.</p></entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step>
+                <cmd>
                     <draft-comment author="Loretta"><uicontrol>DELIMITED data</uicontrol> -
                         Directory, Hadoop FS, JMS Consumer, Kafka Consumer, Kinesis
                         Consumer</draft-comment>
@@ -748,11 +806,14 @@
                                     <entry>Descriptor file (.desc) to use. The descriptor file must
                                         be in the <ph
                                             conref="ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                        /> resources directory, <codeph>$SDC_RESOURCES</codeph>.<p>For information
-                                            about generating the descriptor file, see <xref
+                                        /> resources directory,
+                                            <codeph>$SDC_RESOURCES</codeph>.<p>For information about
+                                            generating the descriptor file, see <xref
                                                 href="../Pipeline_Design/Protobuf-Prerequisites.dita"
-                                            />. For more information about environment variables, see <xref
-                                                href="../Install_Config/DCEnvironmentConfig.dita#concept_rng_qym_qr"/>.</p></entry>
+                                            />. For more information about environment variables,
+                                            see <xref
+                                                href="../Install_Config/DCEnvironmentConfig.dita#concept_rng_qym_qr"
+                                            />.</p></entry>
                                 </row>
                                 <row id="row-MessageType">
                                     <entry>Message Type</entry>
@@ -800,9 +861,12 @@
                                     <entry>Descriptor file (.desc) to use. The descriptor file must
                                         be in the <ph
                                             conref="ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                        /> resources directory, <codeph>$SDC_RESOURCES</codeph>. <p>For more information about environment variables, see <xref
-                                            href="../Install_Config/DCEnvironmentConfig.dita#concept_rng_qym_qr"/>. For information
-                                            about generating the descriptor file, see <xref
+                                        /> resources directory, <codeph>$SDC_RESOURCES</codeph>.
+                                            <p>For more information about environment variables, see
+                                                <xref
+                                                href="../Install_Config/DCEnvironmentConfig.dita#concept_rng_qym_qr"
+                                            />. For information about generating the descriptor
+                                            file, see <xref
                                                 href="../Pipeline_Design/Protobuf-Prerequisites.dita"
                                             />.</p></entry>
                                 </row>
@@ -900,6 +964,9 @@
                 
            <step>     
                 <cmd>
+                    <draft-comment author="Loretta"><uicontrol>ORIGIN-MIXED REUSE - </uicontrol>The
+                        following handful of steps are for origin/origin, origin/processor or
+                        possibly origin/destination reuse. In alphabetical order.</draft-comment>
                     <draft-comment author="Loretta"><uicontrol>HTTPClient-Credentials</uicontrol> -
                         The following steps are used in HTTP Client origin and processor Configuring
                         topics:</draft-comment>
@@ -1034,8 +1101,8 @@
             </step>
             <step>
                 <cmd>
-                    <draft-comment author="Loretta">The following steps are used in JDBC Consumer
-                        &amp; Producer config topics.</draft-comment>
+                    <draft-comment author="Loretta">The following steps are used in <uicontrol>JDBC
+                            Consumer &amp; Producer </uicontrol>config topics.</draft-comment>
                 </cmd>
             </step>
             <step id="JDBC-Credentials">
@@ -1098,6 +1165,61 @@
                         </tgroup>
                     </table>
                 </info>
+            </step>
+            <step>
+                <cmd>
+                    <draft-comment author="Loretta">Rows in this table are used by Kafka Consumer
+                        and SDC RPC to Kafka origins, also UDP to Kafka.</draft-comment>
+                </cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_pzz_wtr_pw">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Misc Kafka Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row id="O-KafkaBrokerURI">
+                                    <entry>Broker URI</entry>
+                                    <entry>Connection string for the Kafka broker. Use the following
+                                        format: <codeph>&lt;host>:&lt;port></codeph>. <p>To ensure a
+                                            connection, enter a comma-separated list of additional
+                                            broker URI.</p></entry>
+                                </row>
+                                <row id="O-KafkaTopic">
+                                    <entry>Topic</entry>
+                                    <entry>Kafka topic to read.</entry>
+                                </row>
+                                <row id="O-KafkaConfig">
+                                    <entry>Kafka Configuration <xref
+                                            href="../Origins/KConsumer_AdditionalKProp.dita#concept_d5f_n2g_vq">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_mwv_b52_zq"/></xref>
+                                    </entry>
+                                    <entry>
+                                        <p id="p-KafkaConfig1">Additional Kafka configuration
+                                            properties to use. To add properties, click
+                                                <uicontrol>Add</uicontrol> and define the Kafka
+                                            property name and value.</p>
+                                        <p id="p-KafkaConfig2">Use the property names and values as
+                                            expected by Kafka.</p>
+                                        <p id="p-KafkaConfig3">For information about enabling secure
+                                            connections to Kafka, see <xref
+                                                href="../Origins/KConsumer-EnablingSecurity.dita"
+                                            />.</p>
+                                    </entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step>
+                <cmd/>
             </step>
             <step>
                 <cmd>
@@ -1351,6 +1473,186 @@
                             </tbody>
                         </tgroup>
                     </table></info>
+            </step>
+            <step>
+                <cmd>
+                    <draft-comment author="Loretta">The following is used for SDC RPC origins
+                    </draft-comment>
+                </cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_uq4_2rr_pw">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3.5*"/>
+                            <thead>
+                                <row>
+                                    <entry>Misc SDC RPC Properties</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row id="row-RPCListPort">
+                                    <entry>RPC Listening Port</entry>
+                                    <entry id="entry-RPCListPort">Port number to listen to for data.
+                                        Must match one of the port numbers associated with the SDC
+                                        RPC destination that provides the data.</entry>
+                                </row>
+                                <row id="row-RPC-ID">
+                                    <entry>RPC ID</entry>
+                                    <entry id="entry-RPC-ID">User-defined ID. Must match the RPC ID
+                                        defined in the SDC RPC destination.</entry>
+                                </row>
+                                <row id="O-RPC-TLSenabled">
+                                    <entry>TLS Enabled <xref
+                                            href="../RPC_Pipelines/EnablingEncryption.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                placement="inline" id="image_b2n_wrr_pw"
+                                        /></xref></entry>
+                                    <entry>Enables the secure transfer of data using TLS. <p>To use
+                                            encryption, both the origin and SDC RPC destination must
+                                            be enabled for TLS.</p></entry>
+                                </row>
+                                <row id="O-RPC-KeystoreFile">
+                                    <entry>Keystore File</entry>
+                                    <entry>Keystore file for SSL. <p>Must be stored in the <ph
+                                                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                            /> resources directory,
+                                                <filepath>$SDC_RESOURCES</filepath>. For more
+                                            information about environment variables, see <xref
+                                                href="../Install_Config/DCEnvironmentConfig.dita#concept_rng_qym_qr"
+                                            />.</p></entry>
+                                </row>
+                                <row id="O-RPC-KeystorePass">
+                                    <entry>Keystore Password</entry>
+                                    <entry>Password for the keystore file.</entry>
+                                </row>
+                                <row>
+                                    <entry/>
+                                    <entry/>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step>
+                <cmd>
+                    <draft-comment author="Loretta"><uicontrol>O-UDPprops</uicontrol> - whole step
+                        used by UDP Source. Rows in this table by UDP to Kafka. Data Format is also
+                        used by Configuring the Kafka Consumer > Datagram step.</draft-comment>
+                </cmd>
+            </step>
+            <step id="O-step-UDPprops">
+                <cmd>On the <wintitle>UDP</wintitle> tab, configure the following properties:</cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1" id="table_ovk_ndv_1s">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3*"/>
+                            <thead>
+                                <row>
+                                    <entry>UDP Property</entry>
+                                    <entry>Description</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row id="row-UDPport">
+                                    <entry>Port</entry>
+                                    <entry>Port to listen to for data. To list additional ports,
+                                        click the<uicontrol> Add</uicontrol> icon.<note>To listen to
+                                            a port below 1024, <ph
+                                                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                            /> must be run by a user with root privileges.
+                                            Otherwise, the operating system does not allow <ph
+                                                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                            /> to bind to the port.</note></entry>
+                                </row>
+                                <row id="row-UDPdataformat">
+                                    <entry>Data Format</entry>
+                                    <entry>Data format passed by UDP:<ul id="ul_dfw_dqj_ks">
+                                            <li>collectd</li>
+                                            <li>NetFlow</li>
+                                            <li>syslog </li>
+                                        </ul></entry>
+                                </row>
+                                <row>
+                                    <entry>Max Batch Size (messages)</entry>
+                                    <entry>Maximum number of messages include in a batch and pass
+                                        through the pipeline at one time. Honors values up to the
+                                            <ph
+                                            conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                        /> maximum batch size. <p>Default is 1000. The <ph
+                                                conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
+                                            /> default is 1000.</p></entry>
+                                </row>
+                                <row>
+                                    <entry>Batch Wait Time (ms) <xref
+                                            href="../Origins/BatchSizeWaitTime.dita#concept_ypd_vgr_5q">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_mgp_2q3_br" placement="inline"
+                                        /></xref></entry>
+                                    <entry>Milliseconds to wait before sending a partial or empty
+                                        batch.</entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
+            </step>
+            <step>
+                <cmd>
+                    <draft-comment author="Loretta"><uicontrol>O-UDP-collectd</uicontrol> - used by
+                        UDP Source and entries and ph used in Kafka Consumer.</draft-comment>
+                </cmd>
+            </step>
+            <step id="O-UDP-collectd">
+                <cmd>On the <uicontrol>collectd</uicontrol> tab, define the following collectd
+                    properties:</cmd>
+                <info>
+                    <table frame="all" rowsep="1" colsep="1">
+                        <tgroup cols="2">
+                            <colspec colname="c1" colnum="1" colwidth="1.5*"/>
+                            <colspec colname="c2" colnum="2" colwidth="3*"/>
+                            <thead>
+                                <row>
+                                    <entry>collectd Property</entry>
+                                    <entry>Properties</entry>
+                                </row>
+                            </thead>
+                            <tbody>
+                                <row>
+                                    <entry id="entry-TypesDBname">TypesDB File Path</entry>
+                                    <entry><ph id="ph-TypesDBinfo">Path to a user-provided types.db
+                                            file. Overrides the default types.db file.</ph>
+                                    </entry>
+                                </row>
+                                <row>
+                                    <entry id="entry-HiRestitle">Convert Hi-Res Time &amp;
+                                        Interval</entry>
+                                    <entry><ph id="ph-HiResinfo">Converts the collectd high
+                                            resolution time format interval and timestamp to UNIX
+                                            time, in milliseconds.</ph></entry>
+                                </row>
+                                <row>
+                                    <entry id="entry-Exludename">Exclude Interval</entry>
+                                    <entry><ph id="ph-Excludeinfo">Excludes the interval field from
+                                            output record.</ph></entry>
+                                </row>
+                                <row>
+                                    <entry id="entry-Authname">Auth File</entry>
+                                    <entry><ph id="ph-Authinfo">Path to an optional authentication
+                                            file. Use an authentication file to accept signed and
+                                            encrypted data.</ph>
+                                    </entry>
+                                </row>
+                                <row id="row-Charset">
+                                    <entry>Charset</entry>
+                                    <entry>Character set of the data.</entry>
+                                </row>
+                            </tbody>
+                        </tgroup>
+                    </table>
+                </info>
             </step>
             <step id="PROCESSORS">
                 <cmd>
@@ -1675,7 +1977,11 @@
                             </thead>
                             <tbody>
                                 <row>
-                                    <entry>Load Schema from Header</entry>
+                                    <entry>Load Schema from Header <xref
+                                            href="../Destinations/RecordHeaderAttributes.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_qn5_tlt_nw"/></xref>
+                                    </entry>
                                     <entry>Indicates that the Avro schema is embedded in the
                                         avroSchema record header attribute. <p>Use only when the
                                             avroSchema attribute is defined for all
@@ -1725,7 +2031,11 @@
                             </thead>
                             <tbody>
                                 <row>
-                                    <entry>Load Schema from Header </entry>
+                                    <entry>Load Schema from Header <xref
+                                            href="../Destinations/RecordHeaderAttributes.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_tfb_1ql_gw"/></xref>
+                                    </entry>
                                     <entry>Indicates that the Avro schema is embedded in the
                                         avroSchema record header attribute. The destination includes
                                         the schema definition in each generated file. <p>Use only
@@ -1771,7 +2081,11 @@
                             </thead>
                             <tbody>
                                 <row>
-                                    <entry>Load Schema from Header</entry>
+                                    <entry>Load Schema from Header <xref
+                                            href="../Destinations/RecordHeaderAttributes.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_fvp_srs_nw"/></xref>
+                                    </entry>
                                     <entry>Indicates that the Avro schema is embedded in the
                                         avroSchema record header attribute. <p>Use only when the
                                             avroSchema attribute is defined for all
@@ -1981,9 +2295,12 @@
                                     <entry>Descriptor file (.desc) to use. The descriptor file must
                                         be in the <ph
                                             conref="ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
-                                        /> resources directory, <codeph>$SDC_RESOURCES</codeph>. <p>For more information about environment variables, see <xref
-                                            href="../Install_Config/DCEnvironmentConfig.dita#concept_rng_qym_qr"/>. For information
-                                            about generating the descriptor file, see <xref
+                                        /> resources directory, <codeph>$SDC_RESOURCES</codeph>.
+                                            <p>For more information about environment variables, see
+                                                <xref
+                                                href="../Install_Config/DCEnvironmentConfig.dita#concept_rng_qym_qr"
+                                            />. For information about generating the descriptor
+                                            file, see <xref
                                                 href="../Pipeline_Design/Protobuf-Prerequisites.dita"
                                             />.</p></entry>
                                 </row>
@@ -2008,9 +2325,8 @@
             </step>
             <step>
                 <cmd>
-                    <draft-comment author="Loretta"><uicontrol>FS-OutputFiles</uicontrol> - Local FS
-                        and MapR FS conref the entire table. Hadoop FS conrefs each
-                        row</draft-comment>
+                    <draft-comment author="Loretta"><uicontrol>FS-OutputFiles</uicontrol> - Hadoop
+                        FS, Local FS and MapR FS conref rows/partial rows in the table </draft-comment>
                 </cmd>
             </step>
             <step id="FS-OutputFiles">
@@ -2066,6 +2382,16 @@
                                             ID is stored in the following file:
                                                 <filepath>$SDC_DATA/sdc.id</filepath>. For more information about environment variables, see <xref
                                                     href="../Install_Config/DCEnvironmentConfig.dita#concept_rng_qym_qr"/>.</p></entry>
+                                </row>
+                                <row id="row-DirectoryinHeader">
+                                    <entry>Directory in Header <xref
+                                            href="../Destinations/RecordHeaderAttributes.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                                id="image_ydt_vvg_1w"/></xref>
+                                    </entry>
+                                    <entry>Indicates that the target directory is defined in record
+                                        headers. Use only when the targetDirectory header attribute
+                                        is defined for all records. </entry>
                                 </row>
                                 <row id="row-DirectoryTemplate">
                                     <entry>Directory Template <xref
@@ -2140,6 +2466,22 @@
                                             <li>Block Compression</li>
                                             <li>Record Compression</li>
                                         </ul></entry>
+                                </row>
+                                <row id="row-RollAttri">
+                                    <entry>Use Roll Attribute <xref
+                                            href="../Destinations/RecordHeaderAttributes.dita">
+                                            <image href="../Graphics/icon_moreInfo.png" scale="10"
+                                            /></xref>
+                                    </entry>
+                                    <entry>Checks the record header for the roll header attribute
+                                        and closes the current file when the roll attribute exists.
+                                            <p>Can be used with Max Records in a File and Max File
+                                            Size to close files.</p></entry>
+                                </row>
+                                <row id="row-RollAttrName">
+                                    <entry>Roll Attribute Name</entry>
+                                    <entry>Name of the roll header attribute.<p>Default is
+                                        roll.</p></entry>
                                 </row>
                             </tbody>
                         </tgroup>
@@ -2520,7 +2862,7 @@
                                                 defined by default. You can edit or delete the
                                                 properties. </p><p>For information about enabling
                                                 secure connections to Kafka, see <xref
-                                                  href="../Destinations/KProducer-EnablingSecurity.dita"
+                                                  href="Reusable_Topics/Kafka-EnablingSecurity.dita"
                                                 />.</p></entry>
                                     </row>
                                     <row id="KP-DataFormats">
@@ -2627,7 +2969,7 @@
             <step>
                 <cmd>
                     <draft-comment author="Loretta"><uicontrol>RPCdest</uicontrol> - Used for Config
-                        RPC Dest and pipeline error handling > Write to pipeline </draft-comment>
+                        RPC Dest and pipeline error handling > Write to pipeline.</draft-comment>
                 </cmd>
             </step>
             <step id="RPCdest">
@@ -2680,8 +3022,10 @@
                                         a self-signed certificate.<p>Must be stored in the <ph
                                                 conref="../Reusable_Content/ReusablePhrases.dita#concept_vhs_5tz_xp/pName-long"
                                             /> resources directory,
-                                            <filepath>$SDC_RESOURCES</filepath>. For more information about environment variables, see <xref
-                                                href="../Install_Config/DCEnvironmentConfig.dita#concept_rng_qym_qr"/>.</p></entry>
+                                                <filepath>$SDC_RESOURCES</filepath>. For more
+                                            information about environment variables, see <xref
+                                                href="../Install_Config/DCEnvironmentConfig.dita#concept_rng_qym_qr"
+                                            />.</p></entry>
                                 </row>
                                 <row id="row-TSpass">
                                     <entry>Truststore Password</entry>

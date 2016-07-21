@@ -19,6 +19,8 @@
  */
 package com.streamsets.pipeline.stage.processor.scripting;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.streamsets.pipeline.api.Field;
 import com.streamsets.pipeline.api.OnRecordError;
 import com.streamsets.pipeline.api.Processor;
@@ -352,7 +354,7 @@ public class ScriptingProcessorTestUtil {
       Assert.assertEquals(Field.Type.LONG, outRec.get("int_long").getType());
       Assert.assertEquals(Field.Type.DECIMAL, outRec.get("double_decimal").getType());
       // JavaScript fails this test because Date is Object type.
-      Assert.assertEquals(Field.Type.DATE, outRec.get("str_date").getType());
+      Assert.assertEquals(Field.Type.DATETIME, outRec.get("str_date").getType());
     }
     Assert.assertEquals(Field.Type.BOOLEAN, outRec.get("long_bool").getType());
   }
@@ -525,10 +527,130 @@ public class ScriptingProcessorTestUtil {
     // All of the values in the "row1" map are null, but type should be preserved
     Map<String, Field> row1map = outRec.get().getValueAsMap().get("row1").getValueAsMap();
     for (Map.Entry<String, Field> r1 : row1map.entrySet()){
+      Assert.assertNull(r1.getValue().getValue());
       Assert.assertEquals(r1.getValue().getType(), row1.get(r1.getKey()).getType());
     }
     // "row2" map is null, but the type should be preserved
     Assert.assertEquals(Field.Type.MAP, outRec.get().getValueAsMap().get("row2").getType());
     Assert.assertNull(outRec.get().getValueAsMap().get("row2").getValue());
+  }
+
+  public static <C extends Processor> void verifyTypedFieldWithNullValue(
+      Class<C> clazz,
+      Processor processor,
+      Record record
+  ) throws StageException {
+    ProcessorRunner runner = new ProcessorRunner.Builder(clazz, processor)
+        .addOutputLane("lane")
+        .build();
+
+    runner.runInit();
+    StageRunner.Output output;
+    try{
+      output = runner.runProcess(Collections.singletonList(record));
+    } finally {
+      runner.runDestroy();
+    }
+    Record outRec = output.getRecords().get("lane").get(0);
+    Assert.assertEquals(record.get().getValueAsMap().size(), outRec.get().getValueAsMap().size());
+    Map<String, Field> outMap = outRec.get().getValueAsMap();
+    for(Map.Entry<String, Field> entry : outMap.entrySet()) {
+      assertFieldUtil(entry.getKey(), entry.getValue(), null);
+    }
+  }
+
+  public static <C extends Processor> void verifyNullField(
+      Class<C> clazz,
+      Processor processor,
+      Record record
+  ) throws StageException {
+    ProcessorRunner runner = new ProcessorRunner.Builder(clazz, processor)
+        .addOutputLane("lane")
+        .build();
+
+    runner.runInit();
+    StageRunner.Output output;
+    try{
+      output = runner.runProcess(Collections.singletonList(record));
+    } finally {
+      runner.runDestroy();
+    }
+    Record outRec = output.getRecords().get("lane").get(0);
+    Assert.assertEquals(record.get().getValueAsMap().size(), outRec.get().getValueAsMap().size());
+    Map<String, Field> outMap = outRec.get().getValueAsMap();
+
+    assertFieldUtil("null_int", outMap.get("null_int"), 123);
+    assertFieldUtil("null_string", outMap.get("null_string"), "test");
+    assertFieldUtil("null_boolean", outMap.get("null_boolean"), true);
+    assertFieldUtil("null_list", outMap.get("null_list"),
+        ImmutableList.of(Field.create("elem1"), Field.create("elem2"))
+    );
+    assertFieldUtil("null_map", outMap.get("null_map"),
+        ImmutableMap.of(
+            "x", Field.create("X"),
+            "y", Field.create("Y"))
+    );
+
+    assertFieldUtil("null_datetime", outMap.get("null_datetime"), record.get("/null_datetime").getValueAsDatetime());
+  }
+
+  static void assertFieldUtil(String fieldName, Field field, Object obj){
+    Field.Type expectedType = null;
+
+    switch(fieldName){
+      case "null_boolean":
+        expectedType = Field.Type.BOOLEAN;
+        break;
+      case "null_char":
+        expectedType = Field.Type.CHAR;
+        break;
+      case "null_byte":
+        expectedType = Field.Type.BYTE;
+        break;
+      case "null_short":
+        expectedType = Field.Type.SHORT;
+        break;
+      case "null_int":
+        expectedType = Field.Type.INTEGER;
+        break;
+      case "null_long":
+        expectedType = Field.Type.LONG;
+        break;
+      case "null_float":
+        expectedType = Field.Type.FLOAT;
+        break;
+      case "null_double":
+        expectedType = Field.Type.DOUBLE;
+        break;
+      case "null_date":
+        expectedType = Field.Type.DATE;
+        break;
+      case "null_datetime":
+        expectedType = Field.Type.DATETIME;
+        break;
+      case "null_time":
+        expectedType = Field.Type.TIME;
+        break;
+      case "null_decimal":
+        expectedType = Field.Type.DECIMAL;
+        break;
+      case "null_byteArray":
+        expectedType =  Field.Type.BYTE_ARRAY;
+        break;
+      case "null_string":
+        expectedType = Field.Type.STRING;
+        break;
+      case "null_list":
+        expectedType = Field.Type.LIST;
+        break;
+      case "null_map":
+        expectedType = Field.Type.MAP;
+        break;
+    }
+    Assert.assertEquals(expectedType, field.getType());
+    if(obj == null)
+      Assert.assertNull(field.getValue());
+    else
+      Assert.assertEquals(obj, field.getValue());
   }
 }
