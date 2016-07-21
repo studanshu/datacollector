@@ -68,7 +68,7 @@ public class TestRecordEL {
     Assert.assertEquals("dummy", eval.eval(variables, "${record:valueOrDefault('/z', 'dummy')}", Object.class));
     Assert.assertEquals("A", eval.eval(variables, "${record:valueOrDefault('/a', 'dummy')}", Object.class));
     Assert.assertEquals(1, (int)eval.eval(variables, "${record:valueOrDefault('/b', 'dummy')}", Object.class));
-    Assert.assertEquals(1, eval.eval(variables, "${record:valueOrDefault('/z', '1')}", Object.class));
+    Assert.assertEquals(1, (int)eval.eval(variables, "${record:valueOrDefault('/z', '1')}", Object.class));
     Assert.assertEquals("dummy", eval.eval(variables, "${record:valueOrDefault('/null', 'dummy')}", Object.class));
   }
 
