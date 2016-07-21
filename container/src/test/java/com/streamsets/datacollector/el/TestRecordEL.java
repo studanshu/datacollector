@@ -51,11 +51,8 @@ public class TestRecordEL {
     Mockito.when(record.has(Mockito.eq("/x"))).thenReturn(true);
     Mockito.when(record.has(Mockito.eq("/y"))).thenReturn(false);
     Mockito.when(record.get(Mockito.eq("/a"))).thenReturn(Field.create("A"));
-<<<<<<< HEAD
     Mockito.when(record.get(Mockito.eq("/b"))).thenReturn(Field.create(1));
-=======
     Mockito.when(record.get(Mockito.eq("/null"))).thenReturn(Field.create((String)null));
->>>>>>> master
 
     RecordEL.setRecordInContext(variables, record);
 
@@ -71,7 +68,7 @@ public class TestRecordEL {
     Assert.assertEquals("dummy", eval.eval(variables, "${record:valueOrDefault('/z', 'dummy')}", Object.class));
     Assert.assertEquals("A", eval.eval(variables, "${record:valueOrDefault('/a', 'dummy')}", Object.class));
     Assert.assertEquals(1, (int)eval.eval(variables, "${record:valueOrDefault('/b', 'dummy')}", Object.class));
-    Assert.assertEquals("B", eval.eval(variables, "${record:valueOrDefault('/z', 'B')}", Object.class));
+    Assert.assertEquals(1, eval.eval(variables, "${record:valueOrDefault('/z', '1')}", Object.class));
     Assert.assertEquals("dummy", eval.eval(variables, "${record:valueOrDefault('/null', 'dummy')}", Object.class));
   }
 
